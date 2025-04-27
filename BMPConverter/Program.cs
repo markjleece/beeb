@@ -20,6 +20,7 @@ namespace BMPConverter
 
     internal class Program
     {
+        const char MaxLevel = '3';
         private static string folderPath = "c:\\dev\\Beeb\\Dalek\\";
         private static string assetsFolderPath = folderPath + "assets\\level{0}\\";
 
@@ -27,7 +28,7 @@ namespace BMPConverter
         {
             try
             {
-                for (char level = '1'; level <= '3'; level++)
+                for (char level = '1'; level <= MaxLevel; level++)
                 {
                     Color[] palette = ReadLevelPalette(level);
 
