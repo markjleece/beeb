@@ -34,20 +34,20 @@ This project contains a Windows Forms based level editor, that allows levels to 
 2. Create new sprite images for the level, by copying an existing **game/level\<N\>** folder, renaming it, and editing the image files within using paint.net, or other image editor. Note that the assets must use the same colors as is defined in the new level's palette.
 3. Update the **MaxLevel** constant in **BMPConverter/program.cs**, rebuild BMPConverter, and run it.  A new **level\<N\>.alt** sprite atlas file should be generated in the **game** folder.
 4. Update the **LEVEL_COUNT** constant in **game/program.6502**.
-5. Package the new level by adding a new **'level N --> SSD'** section at the bottom of game/program.6502.
+5. Package the new level by adding a new **'level N --> SSD'** section at the bottom of **game/program.6502**.
 6. Rebuild All
 
 ## BMP Converter
-This project builds a console app that converts 32-bit BMP level sprite assets (created in paint.net) into level atlas files, which are then packaged with other intermediate level files to create levels within the disc image.
+This project is used to convert 32-bit BMP sprite atlas assets (created in paint.net) into level sprite atlas files, which are then packaged with other intermediate level files to create levels within the disc image.
 
-The app should be run after any BMP asset files changes are made, followed by a rebuild of the **Game** project; so the new level atlas files are repackaged with the game.
+The app should be run after any BMP sprite atlas file changes are made, followed by a rebuild of the **Game** project; so the new level sprite atlas files are repackaged with the game.
 
-Each level's BMP assets are held in a folder named **'game\assets\level\<N\>'**, where **N** is the level number
+Each level's BMP assets are held in a folder named **'game\assets\level\<N\>'**, where **N** is the level number.  The **MaxLevel** constant in **program.cs** defines the number of levels that are converted.
 
 Note that the colors used within the BMP asset files must be a close match to the colors defined in the associated level's palette.  The converter will report errors if it can't match the colors.
 
 ## MIDI Converter
-This project builds a console app then converts a type-0 MIDI file into a more compact format that is binary included in **music.6502**, which in turn is included in **program.6502**. The app also generates a pitch table which is embedded in **music.6502**.
+This project is used to convert a type-0 MIDI file (Doctor Who titles music) into a more compact and Beeb friendly format (**music.dat**) that is binary included in **music.6502**, which in turn is included in **program.6502**. The app also generates a pitch table which is embedded in **music.6502**.
 
 ## Other files
 | File name | Description |
