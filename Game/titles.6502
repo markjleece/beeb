@@ -1,0 +1,267 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ Title routines and data (overwritten when game starts)
+\
+
+\
+\ titles
+\
+\ show titles screen, setting up the game
+\
+.titles
+{
+    JSR resetOSVectors
+    JSR showTitleScreen
+    JSR initializeVariables
+    JSR playMusic
+    JSR waitForSpaceKeyPress
+
+    JSR showInstructionsScreen
+    JSR waitForSpaceKeyPress
+    
+    JSR stopMusic
+    JSR initializeInGameInterrupts
+    JSR initializeEnvelopes
+    JSR relocateBlackPalette
+    JMP setBlackPalette \ implicit RTS
+}
+
+\
+\ initializeEnvelopes
+\
+
+.envelopesLocal
+    EQUB 1, 1, 8, 4, -12, 4, 4, 4, 100, 0, 0, 0, 100, 100       \ SOUND_EFFECT_LASER_ON
+    EQUB 2, 1, 0, 100, 0, 3, 1, 40, 127, -1, -1, -5, 126, 126   \ SOUND_EFFECT_LEVEL_COMPLETE & SOUND_EFFECT_KEY_JEWEL
+    EQUB 3, 1, 0, -10, 0, 10, 1, 40, 126, -1, -5, -5, 126, 126  \ SOUND_EFFECT_DOOR_LOCKED
+    EQUB 4, 4, 6, -3, -3, 4, 2, 2, 0, 0, -1, 0, 63, 58          \ SOUND_EFFECT_PURSUIT_ON
+
+MACRO DEFINE_ENVELOPE index
+    \ call OSWORD with A = 8 to set up sound envelope
+    LDX #LO(envelopesLocal + index * 14) 
+    LDY #HI(envelopesLocal + index * 14)      
+    LDA #8
+    JSR osword
+ENDMACRO
+
+.initializeEnvelopes
+{
+    DEFINE_ENVELOPE 0
+    DEFINE_ENVELOPE 1
+    DEFINE_ENVELOPE 2
+    DEFINE_ENVELOPE 3
+}
+
+\
+\ relocate black palette
+\
+
+\ logical colors
+PAL_color_0 = &00
+PAL_color_1 = &20
+PAL_color_2 = &80
+PAL_color_3 = &A0
+
+\ phycical colors
+PAL_black	= (0 EOR 7)
+PAL_red		= (1 EOR 7)
+PAL_green	= (2 EOR 7)
+PAL_yellow	= (3 EOR 7)
+PAL_blue	= (4 EOR 7)
+PAL_magenta = (5 EOR 7)
+PAL_cyan	= (6 EOR 7)
+PAL_white	= (7 EOR 7)
+
+MACRO PALETTE_ENTRY logicalColor, physicalColor
+	EQUB logicalColor + &00 + physicalColor
+	EQUB logicalColor + &10 + physicalColor
+	EQUB logicalColor + &40 + physicalColor
+	EQUB logicalColor + &50 + physicalColor
+ENDMACRO
+
+.relocateBlackPalette
+{
+    \ black palette
+    LDA #LO(blackPaletteLocal) : STA srcAddr
+    LDA #HI(blackPaletteLocal) : STA srcAddr+1
+
+    LDA #LO(blackPalette) : STA dstAddr
+    LDA #HI(blackPalette) : STA dstAddr+1
+
+    LDA #LO(16) : STA sizeLo
+    LDA #HI(16) : STA sizeHi
+
+    JMP memcpy \ implicit RTS
+
+.blackPaletteLocal
+    PALETTE_ENTRY PAL_color_0, PAL_black
+    PALETTE_ENTRY PAL_color_1, PAL_black
+    PALETTE_ENTRY PAL_color_2, PAL_black
+    PALETTE_ENTRY PAL_color_3, PAL_black
+}
+
+\
+\ showTitleScreen()
+\
+\ Note that this routine is overwritten
+\
+.showTitleScreen
+{
+    \ switch to mode 7
+    JSR setMode7  
+
+    \ populate mode 7 screen memory
+    LDA #LO(titles) : STA srcAddr
+    LDA #HI(titles) : STA srcAddr+1
+
+    LDA #LO(&7C00) : STA dstAddr
+    LDA #HI(&7C00): STA dstAddr+1
+
+    LDA #LO(1000) : STA sizeLo
+    LDA #HI(1000) : STA sizeHi
+
+    JMP memcpy \ implicit RTS
+
+.titles
+INCBIN "titles.bin"
+}
+
+\
+\ showInstructionsScreen
+\
+.showInstructionsScreen
+{
+    \ switch to mode 7
+    JSR setMode7  
+
+    \ populate mode 7 screen memory
+    LDA #LO(instructions) : STA srcAddr
+    LDA #HI(instructions) : STA srcAddr+1
+
+    LDA #LO(&7C00) : STA dstAddr
+    LDA #HI(&7C00): STA dstAddr+1
+
+    LDA #LO(1000) : STA sizeLo
+    LDA #HI(1000) : STA sizeHi
+
+    JMP memcpy \ implicit RTS
+
+.instructions
+INCBIN "instructions.bin"
+}
+
+
+\
+\ initialize variables
+\ 
+.initializeVariables
+{
+    \ zero zero-page variables
+    LDX #(zeroPageMOS - 1)
+    LDA #0
+    .loop
+        STA 0, X
+        DEX
+        BNE loop
+    STA 0
+
+    \ set level
+    LDA #1 : STA level
+
+    RTS
+}
+
+\
+\ resetOSVectors()
+\
+.resetOSVectors
+{
+    \ get OS version, in X (1 denotes version 1.20)
+    LDA #0
+    LDX #1
+    JSR osbyte
+
+    SEI \ disable interrupts
+
+    LDY #0
+    CPX #1
+    BEQ os120
+     
+    .os100
+        .loop1
+            \ copy vector
+            LDA &D941,Y
+            STA &0200,Y
+            INY
+
+            \ copied 27 vectors?
+            CPY #54
+            BNE loop1
+
+        BEQ endif
+
+    .os120
+        \ srcAddr = &FFB7/&FFB8
+        LDA &FFB7
+        STA srcAddr
+        LDA &FFB8
+        STA srcAddr+1
+
+        .loop2
+            \ copy vector
+            LDA (srcAddr),Y
+            STA &0200,Y
+            INY                
+
+            \ copied all vectors?
+            CPY &FFB6
+            BNE loop2
+    .endif
+
+    CLI \ re-enable interrupts
+    RTS
+}
+
+\
+\ initialize in game interrupts
+\
+.initializeInGameInterrupts
+{
+    SEI \ disable interupts
+
+    \ remember MOS IRQ1V
+    LDA IRQ1V : STA mosIRQ1V
+    LDA IRQ1V+1 : STA mosIRQ1V+1
+
+    \ set IRQ1V vector to in-game interrupt IRQ
+    LDA #LO(irq) : STA IRQ1V
+    LDA #HI(irq) : STA IRQ1V+1
+
+    \ disable System-VIA Timer2, CB1, CB2, and CA2 interrupts
+    LDA #&7F
+    STA &FE4E
+
+    \ enable System-VIA Timer1 and vSync interrupts
+	LDA #&C2
+    STA &FE4E   
+
+    \ set addressable latch for writing
+	LDA #&0F
+    STA &FE42
+
+    \ set Timer1 to one shot mode
+	LDA #0
+    STA &FE4B
+
+    \ set default Timer1 length
+    LDA #&FF
+	STA &FE44
+    STA &FE45  
+
+    CLI \ reenable interrupts
+
+    RTS
+}
+
+\ end file

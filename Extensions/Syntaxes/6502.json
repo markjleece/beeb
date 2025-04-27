@@ -1,0 +1,95 @@
+{
+  "name": "6502.assembler",
+  "scopeName": "source.6502",
+  "fileTypes": [
+    "6502"
+  ],
+  "repository": {
+    "line_comment": {
+      "comment": "Single-line comment",
+      "name": "comment.line.double-slash.6502",
+      "begin": "\\\\",
+      "end": "$"
+    },
+    "single_quoted_string": {
+      "comment": "Single quoted comment",
+      "name": "string.quoted.single.6502",
+      "begin": "'",
+      "end": "'"
+    },
+    "double_quoted_string": {
+      "comment": "Single quoted comment",
+      "name": "string.quoted.double.6502",
+      "begin": "\"",
+      "end": "\""
+    }
+  },
+  "patterns": [
+    {
+      "include": "#line_comment"
+    },
+    {
+      "include": "#single_quoted_string"
+    },
+    {
+      "include": "#double_quoted_string"
+    },
+    {
+      "comment": "Character literal",
+      "name": "constant.character.6502",
+      "match": "'.'"
+    },
+    {
+      "comment": "Directive",
+      "name": "keyword.other.6502",
+      "match": "\\b(ORG|CPU|SKIP|SKIPTO|ALIGN|COPYBLOCK|INCLUDE|INCBIN|EQUB|EQUW|EQUD|EQUS|MAPCHAR|GUARD|CLEAR|SAVE|PRINT|ERROR|PUTFILE|PUTTEXT|PUTBASIC|ENDMACRO|ASSERT|RANDOMIZE|ASM|SOURELINE|OR|DIV|MOD)\\b"
+    },
+    {
+      "comment": "Control keyword",
+      "name": "keyword.control.6502",
+      "match": "\\b(IF|ELSE|ENDIF|FOR|NEXT)\\b"
+    },
+    {
+        "comment": "Keyword",
+        "name": "keyword.other.6502",
+        "match": "\\b(ADC|AND|ASL|BCC|BCS|BEQ|BIT|BMI|BNE|BPL|BRK|BVC|BCS|CLC|CLD|CLI|CLV|CMP|CPX|CPY|DEC|DEX|DEY|EOR|INC|INX|INY|JMP|JSR|LDA|LDX|LDY|LSR|NOP|ORA|PHA|PHP|PLA|PLP|ROL|ROR|RTI|RTS|SBC|SEC|SED|SEI|STA|STX|STY|TAX|TAY|TYA|TSX|TXA|TXS)\\b"
+    },
+    {
+      "comment": "Support Functions",
+      "name": "support.function.6502",
+      "match": "\\b(HI|LO|SQR|SIN|COS|TAN|ASN|ACS|ATN|RAD|DEG|INT|ABS|SGN|RND|NOT|LOG|LN|EXP|VAL|EVAL|STR|ASC|MID|LEFT|RIGHT|TIME)\\b"
+    },
+    {
+      "comment": "Operator",
+      "name": "keyword.operator.6502",
+      "match": "\\b(\\+|\\-|\\*|\\/|\\<\\<|\\>\\>|\\^|\\(|\\)|\\[|\\]|\\=|\\=\\=|\\<\\>|\\!\\=|\\<|\\>|\\<\\=|\\>\\=)\\b"
+    },
+    {
+      "comment": "Integer literal (decimal)",
+      "match": "[\\s|\\#]+([0-9]+)\\b",
+      "captures": {
+        "1": {
+            "name": "constant.numeric.integer.decimal.6502"
+        }
+      }
+    },
+    {
+      "comment": "Integer literal (hexadecimal)",
+      "match": "[\\s|\\#]+(&[a-fA-F0-9]+)\\b",
+      "captures": {
+        "1": {
+            "name": "constant.numeric.integer.hexidecimal.6502"
+        }
+      }
+    },
+    {
+      "comment": "Macro declaration",
+      "match": "\\b(MACRO)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+      "captures": {
+        "1": {
+          "name": "keyword.other.function.6502"
+        }
+      }
+    }
+  ]
+}

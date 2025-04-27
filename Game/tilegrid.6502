@@ -1,0 +1,513 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ Tile grid routines
+\
+
+\
+\ querySetObjectLeftTileGridFlags(X register, flags)
+\
+\ query and sets tile flags to the left of the passed object
+\
+\ returns zero on success (if the tile flags were both clear and then set), otherwise
+\ the tile type of the tile whose tile flags were not clear/set
+\
+\ params:
+\   X register   Object index
+\   flags        Flags to query: TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY
+\
+\ modifies:
+\   self: offsetX, offsetY, Y
+\   setObjectTileGridFlags: tileGridAddr, temp, Y
+\
+.querySetObjectLeftTileGridFlags
+{
+    \ query upper tile
+    LDA #LO(-1)
+
+.^querySetTileGridFlagsCommon
+    STA offsetX
+    LDA #0
+    STA offsetY
+    JSR getObjectTileGridValue
+    TAY
+    AND flags
+    BNE flagsNotClear
+
+    \ query lower tile...
+    LDA heightMinusOne : STA offsetY
+    JSR getObjectTileGridValue
+    TAY
+    AND flags
+    BNE flagsNotClear
+
+    \ query floor tile...
+    INC offsetY
+    JSR getObjectTileGridValue
+    AND #TILE_GRID_FLAGS_OPAQUE
+    BNE skip
+        LDA #TILE_TYPE_WALL
+        RTS
+    .skip
+
+    \ set lower left tile...
+    DEC offsetY
+    JSR setObjectTileGridFlags
+
+    \ set upper left tile...
+    LDA #0: STA offsetY
+    JSR setObjectTileGridFlags
+
+    \ return success
+    LDA #0
+    RTS
+
+    .flagsNotClear
+    TYA \ <-- tile grid value
+    AND #TILE_GRID_INDEX_MASK
+    TAY
+    LDA levelTileTypes, Y
+    RTS
+}
+
+\
+\ querySetObjectRightTileGridFlags(X register, flags)
+\
+\ query and sets tile flags to the right of the passed object
+\
+\ returns zero on success (if the tile flags were both clear and then set), otherwise
+\ the tile type of the tile whose tile flags were not clear/set
+\
+\ params:
+\   X register   Object index
+\   flags        Flags to query: TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY
+\
+\ modifies:
+\   self: offsetX, offsetY, Y
+\   setObjectTileGridFlags: tileGridAddr, temp, Y
+\
+.querySetObjectRightTileGridFlags
+{
+    \ query higher right tile
+    LDA width
+
+    \ common code...
+    JMP querySetTileGridFlagsCommon \ implicit RTS
+}
+
+\
+\ clearObjectLeftTileFlags(X register)
+\
+\ clears the tile flags for the tiles to the left of the passed object
+\
+\ params:
+\   X register      Object index
+\   flags           Tile flags (TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY)
+\
+\ modifies:
+\   self: offsetX, offsetY
+\   clearObjectTileGridFlags: tileGridAddr, temp, Y
+\
+.clearObjectLeftTileFlags
+{
+    \ clear higher tile...
+    LDA #LO(-1)
+
+.^clearTileFlagsCommon
+    STA offsetX
+
+    LDA #0
+    STA offsetY
+
+    JSR clearObjectTileGridFlags
+
+    \ clear lower tile
+    LDA heightMinusOne : STA offsetY
+
+    JMP clearObjectTileGridFlags \ implicit RTS
+}
+
+\
+\ clearObjectRightTileFlags(X register)
+\
+\ clears the tile flags for the tiles to the right of the passed object
+\
+\ params:
+\   X register      Object index
+\   flags           Tile flags (TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY)
+\
+\ modifies:
+\   self: offsetX, offsetY
+\   clearObjectTileGridFlags: tileGridAddr, temp, Y
+\
+.clearObjectRightTileFlags
+{
+    \ clear higher right tile...
+    LDA width
+
+    \ common code...
+    JMP clearTileFlagsCommon \ implicit RTS
+}
+
+\
+\ clearObjectTileFlagsAbove(X register)
+\
+\ clears the tile flags for the tiles above the passed object
+\
+\ params:
+\   X register      Object index
+\   flags           Tile flags (TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY)
+\
+\ modifies:
+\   self: offsetX, offsetY
+\   getObjectTileGridAddr: tileGridAddr, temp, Y
+\
+.clearObjectTileFlagsAbove
+{
+    \ get tileGridAddr of tile just above object
+    LDA #0: STA offsetX
+    LDA #LO(-1) : STA offsetY
+
+    JSR getObjectTileGridAddr
+
+    \ clear tile flags above
+    LDY #0
+    LDA flags
+    EOR #&FF
+    STA temp \ --> flags XOR &FF
+    AND (tileGridAddr), Y
+    STA (tileGridAddr), Y
+
+    \ clear tile flags to the right
+    INY
+    LDA temp \ <-- flags XOR &FF
+    AND (tileGridAddr), Y
+    STA (tileGridAddr), Y
+
+    \ clear tile flags above
+    LDA tileGridAddr
+    SEC
+    SBC horzTileCount
+    STA tileGridAddr
+    BCS skip
+        DEC tileGridAddr+1
+    .skip
+
+    LDA temp \ <-- flags XOR &FF
+    AND (tileGridAddr), Y
+    STA (tileGridAddr), Y
+
+    \ clear tile flags to the left
+    DEY
+    LDA temp \ <-- flags XOR &FF
+    AND (tileGridAddr), Y
+    STA (tileGridAddr), Y
+
+    RTS
+}
+
+\
+\ setObjectInsideTileFlags(X register)
+\
+\ sets the tile flags for the four corners of the passed object
+\
+\ params:
+\   X register      Object index
+\   flags           Tile flags (TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY)
+\
+\ modifies:
+\   self: offsetX, offsetY
+\   setObjectTileGridFlags: tileGridAddr, temp, Y
+\
+.setObjectInsideTileFlags
+{
+    \ top left
+    LDA #0: STA offsetX : STA offsetY
+    JSR setObjectTileGridFlags
+
+    \ top right
+    LDA widthMinusOne : STA offsetX
+    JSR setObjectTileGridFlags
+
+    \ bottom right
+    LDA heightMinusOne : STA offsetY
+    JSR setObjectTileGridFlags
+
+    \ bottom right
+    LDA #0 : STA offsetX
+    JMP setObjectTileGridFlags \ implicit RTS
+}
+
+\
+\ clearObjectInsideTileFlags(X register)
+\
+\ clear the tile flags for the four corners and mid-points of the passed object
+\
+\ params:
+\   X register      Object index
+\   flags           Tile flags (TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY)
+\
+\ modifies:
+\   self: offsetX, offsetY
+\   clearObjectTileGridFlags: tileGridAddr, temp, Y
+\
+.clearObjectInsideTileFlags
+{
+    \ top left
+    LDA #0: STA offsetX : STA offsetY
+    JSR clearObjectTileGridFlags
+
+    \ bottom left
+    LDA heightMinusOne : STA offsetY
+    JSR clearObjectTileGridFlags
+
+    \ bottom middle
+    LDA widthMinusOne : LSR A : STA offsetX
+    JSR clearObjectTileGridFlags
+
+    \ top middle
+    LDA #0 : STA offsetY
+    JSR clearObjectTileGridFlags
+
+    \ top right
+    LDA widthMinusOne : STA offsetX
+    JSR clearObjectTileGridFlags
+
+    \ bottom right
+    LDA heightMinusOne : STA offsetY
+    JMP clearObjectTileGridFlags \ implicit RTS
+}
+
+\
+\ getObjectTileGridAddr(X register, offsetX, offsetY)
+\
+\ Get the object's tile grid address located at: objectX[X] + offsetX, objectY[X] + offsetY
+\
+\ returns:
+\   tileGridAddr    address of tile grid location
+\
+\ params:
+\   X register      Object index
+\   offsetX         X offset (signed)
+\   offsetY         Y offset (signed)
+\
+\ modifies:
+\   tileGridAddr, temp, Y
+\
+.getObjectTileGridAddr
+{
+    \ tileGridAddr = levelTileGrid + 128|64|32|16 * ((objectY[X] + offsetY) / 16)
+    LDA objectYLo, X
+    CLC
+    ADC offsetY
+    TAY
+
+    LDA objectYHi, X
+    BIT offsetY : BMI else_1
+        ADC #0 : JMP endif_1
+    .else_1
+        SBC #0
+    .endif_1
+
+    \ common code...
+    JSR getTileAddrCommon1
+
+    \ tileGridAddr += (objectX[X] + offsetX) / 16
+    LDA objectXLo, X
+    CLC
+    ADC offsetX
+    TAY
+
+    LDA objectXHi, X
+    BIT offsetX : BMI else_2
+        ADC #0 : JMP endif_2
+    .else_2
+        SBC #0
+    .endif_2
+
+    \ common code...
+.^getTileAddrCommon2
+    STA temp
+    TYA
+
+    LSR temp : ROR A
+    LSR temp : ROR A
+    LSR temp : ROR A
+    LSR temp : ROR A
+
+    CLC
+    ADC tileGridAddr
+    STA tileGridAddr
+    LDA temp
+    ADC tileGridAddr+1
+    STA tileGridAddr+1
+    RTS
+
+.^getTileAddrCommon1
+    STA temp
+    TYA
+
+    AND #&F0
+    CLC
+    .*bcc_inst
+    BCC bcc_inst \ patched in relocateLevelData()
+    ASL A : ROL temp
+    ASL A : ROL temp
+    ASL A : ROL temp
+
+    CLC
+    ADC #LO(levelTileGrid)
+    STA tileGridAddr
+    LDA #HI(levelTileGrid)
+    ADC temp
+    STA tileGridAddr+1
+    RTS
+}
+
+\
+\ getScreenTileGridAddr(offsetX, offsetY)
+\
+\ Get the screen's tile grid address located at: scrnLeft + offsetX, scrntop + offsetY
+\
+\ returns:
+\   tileGridAddr    address of tile grid location, relative to screen
+\
+\ params:
+\   offsetX         X screen coord
+\   offsetY         Y screen coord
+\
+\ modifies:
+\   tileGridAddr, temp, Y
+\
+.getScreenTileGridAddr
+{
+    \ tileGridAddr = levelTileGrid + 128|64|32|16 * ((scrnTop + offsetY) / 16)
+    LDA scrnTopLo
+    CLC
+    ADC offsetY
+    TAY
+    LDA scrnTopHi
+    ADC #0
+
+    \ common code...
+    JSR getTileAddrCommon1
+
+    \ tileGridAddr += (scrnLeft + offsetX) / 16
+    LDA scrnLeftLo
+    CLC
+    ADC offsetX
+    TAY
+    LDA scrnLeftHi
+    ADC #0
+
+    \ common code...
+    JMP getTileAddrCommon2 \ implicit RTS
+}
+
+\
+\ getObjectTileGridValue(X register, offsetX, offsetY)
+\
+\ Get the tile grid value located at: objectX[X] + offsetX, objectY[X] + offsetY
+\
+\ The tile index/flags are returned in the accumulator.
+\
+\ params:
+\   X register      Object index
+\   offsetX         X offset
+\   offsetY         Y offset
+\
+\ modifies:
+\   getObjectTileGridAddr: tileGridAddr, temp, Y
+\
+.getObjectTileGridValue
+{
+    JSR getObjectTileGridAddr
+    LDY #0
+    LDA (tileGridAddr), Y
+    RTS
+}
+
+\
+\ setObjectTileGridFlags(X register, offsetX, offsetY, flags)
+\
+\ Set the tile grid flags located at: objectX[X] + offsetX, objectY[X] + offsetY
+\
+\ params:
+\   X register      Object index
+\   offsetX         X offset
+\   offsetY         Y offset
+\   flags           Tile flags (TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY)
+\
+\ modifies:
+\   getObjectTileGridAddr: tileGridAddr, temp, Y
+\
+.setObjectTileGridFlags
+{
+    JSR getObjectTileGridAddr
+    LDY #0
+    LDA flags
+    ORA (tileGridAddr), Y
+    STA (tileGridAddr), Y
+    RTS
+}
+
+\
+\ clearObjectTileGridFlags(X register, offsetX, offsetY, flags)
+\
+\ Clear the tile grid flags located at: objectX[X] + offsetX, objectY[X] + offsetY
+\
+\ params:
+\   X register      Object index
+\   offsetX         X offset
+\   offsetY         Y offset
+\   flags           Tile flags (TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY)
+\
+\ modifies:
+\   getObjectTileGridAddr: tileGridAddr, temp, Y
+\
+.clearObjectTileGridFlags
+{
+    JSR getObjectTileGridAddr
+    LDY #0
+    LDA flags
+    EOR #&FF
+    AND (tileGridAddr), Y
+    STA (tileGridAddr), Y
+    RTS
+}
+
+\
+\ tileGridAddr_add_horzTileCount()
+\
+\ tileGridAddr += horzTileCount
+\
+.tileGridAddr_add_horzTileCount
+{
+    LDA tileGridAddr
+    CLC
+    ADC horzTileCount
+    STA tileGridAddr
+    BCC skip
+        INC tileGridAddr+1
+    .skip
+    RTS
+}
+
+\
+\ tileGridAddr_sub_horzTileCount()
+\
+\ tileGridAddr -= horzTileCount
+\
+.tileGridAddr_sub_horzTileCount
+{
+    LDA tileGridAddr
+    SEC
+    SBC horzTileCount
+    STA tileGridAddr
+    BCS skip
+        DEC tileGridAddr+1
+    .skip
+    RTS
+}
+
+\ end file

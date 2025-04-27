@@ -1,0 +1,193 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ Sound routines (sound definitions are defined in titles.6502)
+\
+
+\ 
+\ updateSoundEffects
+\
+\ called every frame to update sound effects
+\
+.updateSoundEffects
+{
+    \ decrement inhibitMoveSoundEffect (used to inhibit move sound effect)
+    LDA inhibitMoveSoundEffect : BEQ endif1
+        DEC inhibitMoveSoundEffect
+    .endif1
+
+    \ heart beat sound effect...
+    LDA healthHi
+    CMP #LASER_HEALTH_THRESHOLD_HI : BCS endif2
+
+        \ sound heart beat blip every 64 frames
+        LDA frameCount
+        AND #&3F
+        BNE endif2
+
+        LDA #SOUND_EFFECT_HEART_BEAT
+        BNE soundEffect \ implicit RTS
+    .endif2
+
+    RTS
+}
+
+\
+\ keyJewelSoundEffect
+\
+\ sound key/jewel sound effect
+\
+.keyJewelSoundEffect
+{
+    \ inhibit move sound effects, which use the same channel
+    LDA #INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT : STA inhibitMoveSoundEffect
+
+    LDA #SOUND_EFFECT_KEY_JEWEL
+    BNE soundEffect \ implicit RTS
+}
+
+\
+\ laserSoundEffect
+\
+\ sound laser sound effect (once)
+\
+.laserSoundEffect
+{
+    LDA laserSoundEffectOn : BNE rts_3
+        INC laserSoundEffectOn
+        LDA #SOUND_EFFECT_LASER_ON
+        \ fall through to soundEffect
+}
+
+\
+\ soundEffect(A)
+\
+\ Calls OS sound API with a sound effect, whilst preserving X register
+\
+\ params:
+\   A (accumulator)   SOUND_EFFECT_PAIN..SOUND_EFFECT_PURSUIT_OFF
+\
+\ modifies:
+\   soundParams, Y
+\
+.soundEffect
+{
+    TAY
+    TXA : PHA \ preserve X
+
+    \ populate sound params
+    LDX #0
+    .loop
+        LDA soundEffects, Y
+        INY
+        STA soundParams, X
+        INX : INX
+        CPX #8
+        BNE loop
+
+    \ invoke OS sound API
+    LDX #LO(soundParams)
+    LDY #HI(soundParams)
+    LDA #7             
+    JSR osword
+
+    PLA : TAX \ restore X
+
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_3
+{
+    RTS
+}
+
+\
+\ silenceLaserSoundEffect
+\
+\ silence laser sound effect (once)
+\
+.silenceLaserSoundEffect
+{
+    LDA laserSoundEffectOn : BEQ rts_3
+        DEC laserSoundEffectOn
+        LDA #SOUND_EFFECT_LASER_OFF
+        BNE soundEffect \ implicit RTS
+}
+
+\
+\ pursuitSoundEffect
+\
+\ sound pursuit sound effect (once)
+\
+.pursuitSoundEffect
+{
+    LDA pursuitSoundEffectOn : BNE rts_3
+        INC pursuitSoundEffectOn
+        LDA #SOUND_EFFECT_PURSUIT_ON
+        BNE soundEffect \ implicit RTS
+}
+
+\
+\ silencePursuitSoundEffect
+\
+\ silence the pursuit sound effect, first checking that no enemies are in pursuit
+\
+.silencePursuitSoundEffect
+{
+    \ do nothing if any enemy is in pursuit
+    LDX enemyCount
+    .loop
+        LDA objectType, X : BMI rts_3
+        DEX
+        BNE loop
+
+    \ silence sound effect (once)
+    LDA pursuitSoundEffectOn : BEQ rts_3
+        DEC pursuitSoundEffectOn
+        LDA #SOUND_EFFECT_PURSUIT_OFF
+        BNE soundEffect \ implicit RTS
+}
+
+\
+\ doorLockedSoundEffect
+\
+.doorLockedSoundEffect
+{
+    LDA doorLockedSoundEffectOn : BNE rts_3
+        INC doorLockedSoundEffectOn
+
+        \ inhibit move sound effects, which use the same channel
+        LDA #INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT : STA inhibitMoveSoundEffect
+  
+        LDA #SOUND_EFFECT_DOOR_LOCKED
+        BNE soundEffect \ implicit RTS
+}
+
+\
+\ moveSoundEffect
+\
+\ sound move effect
+\
+.moveSoundEffect
+{
+    LDA inhibitMoveSoundEffect : BNE rts_3
+        LDA #SOUND_EFFECT_MOVE
+        BNE soundEffect \ implicit RTS
+}
+
+\
+\ silenseSoundEffects()
+\
+.silenseSoundEffects
+{
+    LDA #SOUND_EFFECT_LASER_OFF
+    JSR soundEffect
+
+    LDA #SOUND_EFFECT_PURSUIT_OFF
+    BNE soundEffect \ implicit RTS
+}
+
+\ end file

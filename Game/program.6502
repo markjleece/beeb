@@ -1,0 +1,1400 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ beebasm ref: https://github.com/stardot/beebasm
+\
+\ God mode - activated by pressing and holding 'D' 'G' 'O' in quick succession
+\  - gives K9 unlimited health and keys
+\  - enables scrolling using the arror keys
+\  - enables a specific level to be loaded using the number keys: 1..3
+\
+\ Memory map:
+\
+\   +---------------------------------+ &FFFF
+\   | Machine Operating System (MOS)  |
+\   +---------------------------------+ &C000
+\   | Paged ROMs                      |
+\   +---------------------------------+ &8000
+\   | Screen (256x256, 4 color mode)  |
+\   +---------------------------------+ &4000 
+\   | Game data (portions reloaded)   |
+\   +---------------------------------+ &2BA0
+\   | Game code (7680 bytes)          |
+\   +---------------------------------+ &1100
+\   | Game data (portions reloaded)   | 
+\   +---------------------------------+ &10E0
+\   | DFS workspace                   |
+\   +---------------------------------+ &10C0
+\   | Game data (portions reloaded)   | 
+\   +---------------------------------+ &1090
+\   | DFS workspace                   |
+\   +---------------------------------+ &1000
+\   | Game data                       |
+\   +---------------------------------+ &0E00
+\   | MOS ROM workspace               |
+\   +---------------------------------+ &0D60 
+\   | Game data (portions reloaded)   | 
+\   +---------------------------------+ &0900
+\   | MOS sound/printer workspace     | 
+\   +---------------------------------+ &08C0
+\   | Game data (portions reloaded)   | 
+\   +---------------------------------+ &0880
+\   | MOS sound/printer workspace     | 
+\   +---------------------------------+ &0800
+\   | Game data (portions reloaded)   |
+\   +---------------------------------+ &0300
+\   | MOS general workspace           |
+\   +---------------------------------+ &0200
+\   | Stack (64 bytes)                | 
+\   +---------------------------------+ &01C0
+\   | Game data (portions reloaded)   |
+\   +---------------------------------+ &0100
+\   | Zero page MOS variables         |
+\   +---------------------------------+ &0090
+\   | Zero page game variables        |
+\   +---------------------------------+ &0000
+\
+\ Memory addresses:
+\
+\   Address	 Size  Description
+\   -------  ----  -----------
+\   &0100    192   1 enemy sprite*
+\   &01C0    64    Program stack
+\   &0200    256   MOS general workspace
+\   &0300    192   1 enemy sprite*
+\   &03C0    32	   1 door sprite*
+\   &03E0    32	   Tile types* (repurposed MOS keyboard buffer)
+\   &0400    480   10 game objects array*
+\   &05E0    48	   Game object order array*
+\   &0610    384   2 enemy sprites*
+\   &0790    96	   1 K9 sprite*
+\   &07F0    16	   Level palette*
+\   &0800    128   MOS workspace
+\   &0880    64	   Sprite address table* (repurposed MOS printer buffer)
+\   &08C0    64	   MOS workspace
+\   &0900    960   5 enemy sprites*
+\   &0CC0    64	   2 door sprites*
+\   &0D00    32	   Enemy health bar atlas* (repurposed NMI memory)
+\   &0D20    64	   Tile address table* (repurposed NMI memory)
+\   &0D60    160   MOS ROM workspace
+\   &0E00    384   2 enemy sprites*
+\   &0F80    32	   1 door sprite*
+\   &0FA0    96	   1 K9 sprite*
+\   &1000    144   DFS workspace
+\   &1090    48	   Sound effects* (repurposed transient DFS memory)
+\   &10C0    32	   DFS workspace
+\   &10E0    12	   Sprite health bar table* (repurposed transient DFS memory)
+\   &10EC    20	   Draw object jump tables* (repurposed transient DFS memory)
+\   &1100    7680  Program code
+\   &2BA0    864   9 K9 sprites*
+\   &2F00    96	   4 elevator sprites*
+\   &2F60    224   Gamebar sprites*
+\   &3040    1984  Level tiles*
+\   &3800    2048  Level tile grid*
+\   &4000    16K   256x256 4-color screen**
+\
+\   * data updated on level load/reload
+\   ** code and data is loaded beyond &4000 during startup and level load/reload
+\
+\ Scheduling:
+\
+\ Intermittent work is scheduled across frames using the frameCount variable, 
+\ which is incremented each frame. Work is scheduled as follow:
+\
+\   Work                    Cadence 
+\   ----                    -------
+\   Redraw closed door      Every eight frames, offset by object index
+\   Redraw static elevator  Every eight frames, offset by object index
+\   Redraw static enemy     Every eight frames, offset by object index
+\   Enemy AI                Every sixteen frames, offset by object index
+\   End all enemy pursuit?  Every sixteen frames
+\   Redraw gamebar          Every eight frames, offset by 2
+\   Inflict damage on K9    Every eight frames, offset by 6  
+\   Update draw order       Every thrity-two frames, offset by 8
+\
+
+\
+\ Constants (addresses & VALUES)
+\
+
+osbyte = &FFF4
+oswrch = &FFEE
+osasci = &FFE3
+oscli = &FFF7
+osword = &FFF1
+osfile = &FFDD
+
+\ debug flags
+DEBUG_TILE_GRID_FLAGS = 0 \ overlay tile grid flags (super useful)
+DEBUG_WAIT_TENTHS = 0 \ waitTenths util routine
+
+\ keys (keyTbl indices)
+KEY_A = 0
+KEY_D = 1
+KEY_W = 2
+KEY_S = 3
+KEY_G = 4
+KEY_O = 5
+KEY_R = 6
+KEY_SPACE = 7 
+KEY_UP = 8
+KEY_DOWN = 9 
+KEY_LEFT = 10
+KEY_RIGHT = 11
+KEY_1 = 12
+KEY_2 = 13
+KEY_3 = 14
+KEY_4 = 15
+KEY_5 = 16
+KEY_6 = 17
+KEY_7 = 18
+KEY_8 = 19
+KEY_9 = 20
+
+\ tile grid size (bytes)
+LEVEL_TILE_GRID_SIZE = 2048
+
+\ object types (objectType bits 0,1)
+OBJECT_TYPE_MASK = %00000011
+OBJECT_TYPE_K9 = 0
+OBJECT_TYPE_ENEMY = 1
+OBJECT_TYPE_ELEVATOR = 2
+OBJECT_TYPE_DOOR = 3
+
+\ object animations (objectType bits 2..4)
+ANIMATE_MASK = %00011100
+ANIMATE_LOOK_LEFT = (0 << 2)
+ANIMATE_LOOK_RIGHT = (1 << 2)
+ANIMATE_MOVE_LEFT = (2 << 2)
+ANIMATE_MOVE_RIGHT = (3 << 2)
+ANIMATE_TURN_LEFT_TO_RIGHT = (4 << 2)
+ANIMATE_TURN_RIGHT_TO_LEFT = (5 << 2)
+
+\ enemy actions (objectType bits 5..7)
+ACTION_MASK = %11100000
+ACTION_LOOK = &00           \ zero
+ACTION_PACE = &20           \ positive (non-zero)
+ACTION_PURSUE_LEFT = &80    \ negative
+ACTION_PURSUE_RIGHT = &A0   \ negative
+ACTION_PURSUE_UP = &C0      \ negative
+ACTION_PURSUE_DOWN = &E0    \ negative
+
+\ animation counters
+FRAME_COUNT_K9_TURN = 4
+FRAME_COUNT_ENEMY_TURN = 8
+FRAME_COUNT_ENEMY_WAIT = 150
+
+\ laser frame counts
+LASER_ON_FRAME_COUNT = 2
+LASER_OFF_FRAME_COUNT = 1
+
+\ directions
+DIRECTION_UP = -1
+DIRECTION_DOWN = 1
+DIRECTION_LEFT = -2
+DIRECTION_RIGHT = 2
+
+\ scrolling constants
+AUTO_SCROLL_THRESHOLD = 96
+AUTO_SCROLL_DISTANCE = 16
+
+\ tile grid masks used to extract tile flags (top 3-bits) and tile indices (bottom 5 bits) from tile grid values
+TILE_GRID_INDEX_MASK = &1F
+TILE_GRID_FLAGS_MASK = &E0
+
+\ tile grid flags
+TILE_GRID_FLAGS_OPAQUE = &80 \ set if the tile is opaque.  E.g. a wall, closed door, active elevator, or is occupied by k9 or an enemy
+TILE_GRID_FLAGS_K9 = &40     \ set if the tile is occupied by k9
+TILE_GRID_FLAGS_ENEMY = &20  \ set if the tile is occupied by an enemy
+
+\ tile type flags (copied from level editor)
+TILE_TYPE_FLAG_OPAQUE = &80  \ matches tile grid opaque flag (see above)
+
+\ tile types (copied from level editor)
+TILE_TYPE_SPACE = 1
+TILE_TYPE_WALL = (TILE_TYPE_FLAG_OPAQUE + 0)
+TILE_TYPE_FLOOR = (TILE_TYPE_FLAG_OPAQUE + 1)
+TILE_TYPE_KEY = (TILE_TYPE_FLAG_OPAQUE + 2)
+TILE_TYPE_JEWEL = (TILE_TYPE_FLAG_OPAQUE + 3)
+TILE_TYPE_DOOR = (TILE_TYPE_FLAG_OPAQUE + 4)
+TILE_TYPE_ELEVATOR = (TILE_TYPE_FLAG_OPAQUE + 5)
+TILE_TYPE_EXIT = (TILE_TYPE_FLAG_OPAQUE + 6)
+
+\ common object state render flags (objectState high nibble)
+OBJECT_STATE_FLAGS_MASK = &F0
+OBJECT_STATE_FLAGS_REDRAW = &80 \ negative
+OBJECT_STATE_FLAGS_DESCENDING = &40
+OBJECT_STATE_FLAGS_ASCENDING = &20
+OBJECT_STATE_FLAGS_LASERED = &10
+
+\ door state flags (objectState low nibble)
+DOOR_STATE_FLAGS_DOOR_OPEN = &08 \ set if door is open
+DOOR_STATE_FLAGS_DOOR_UNLOCKED = &04 \ set if door is unlocked
+
+\ elevator state passenger mask (objectState low nibble)
+ELEVATOR_STATE_PASSENGER_MASK = &0F \ used to get index of passenger
+
+\ enemy state flags and mask (objectState low nibble)
+ENEMY_STATE_HEALTH_MASK = &07 \ enemy health (bits 0..2)
+ENEMY_STATE_FLAGS_FIRING = &08 \ set if enemy if firing weapon (bit 3)
+
+\ enemy constants
+ENEMY_LOOK_RANGE = 12 \ range enemies can see (in tiles) 
+ENEMY_WEAPON_RANGE = 3 \ range of enemy weapons (in tiles)
+ENEMY_WEAPON_THRESHOLD = 2 \ enemy health required to use weapon
+ENEMY_SPRINT_THRESHOLD = 4 \ enemy health required to move quickly
+ENEMY_WEAPON_DAMAGE_COUNTER = 2 \ weapon damage counter (used to inflict damage on K9)
+ENEMY_END_PURSUIT_COUNTER = 32 \ number of frames (x16) before enemies give up pursuit (10 seconds)
+
+\ sprite indices (index into spriteAddrTbl)
+SPRITE_INDEX_ENEMY_LEFT = 0  \ 0..3
+SPRITE_INDEX_ENEMY_RIGHT = 4 \ 4..7
+SPRITE_INDEX_ENEMY_TURN = 8  \ 8..10
+SPRITE_INDEX_DOOR = 11       \ 11..14
+SPRITE_INDEX_ELEVATOR = 15   \ 15..18
+SPRITE_INDEX_K9_LEFT = 19    \ 19..22
+SPRITE_INDEX_K9_RIGHT = 23   \ 23..26
+SPRITE_INDEX_K9_TURN = 27    \ 27..29
+SPRITE_INDEX_GAMEBAR = 30    \ 30
+
+\ maximum number of game objects (k9 + enemies + elevators + doors)
+MAX_OBJECT_COUNT = 48
+
+\ sprite sizes (fixed)
+ENEMY_SPRITE_WIDTH = 24
+ENEMY_SPRITE_HEIGHT = 32
+ENEMY_SPRITE_SIZE = ENEMY_SPRITE_WIDTH * ENEMY_SPRITE_HEIGHT / 4
+
+K9_SPRITE_WIDTH = 24
+K9_SPRITE_HEIGHT = 16 
+K9_SPRITE_SIZE = K9_SPRITE_WIDTH * K9_SPRITE_HEIGHT / 4
+
+ELEVATOR_SPRITE_WIDTH = 32
+ELEVATOR_SPRITE_HEIGHT = 3
+ELEVATOR_SPRITE_SIZE = ELEVATOR_SPRITE_WIDTH * ELEVATOR_SPRITE_HEIGHT / 4
+
+DOOR_SPRITE_WIDTH = 4
+DOOR_SPRITE_HEIGHT = 32
+DOOR_SPRITE_SIZE = DOOR_SPRITE_WIDTH * DOOR_SPRITE_HEIGHT / 4
+
+GAMEBAR_SPRITE_WIDTH = 112
+GAMEBAR_SPRITE_HEIGHT = 8
+GAMEBAR_SPRITE_SIZE = GAMEBAR_SPRITE_WIDTH * GAMEBAR_SPRITE_HEIGHT / 4
+
+\ k9 health
+MAX_HEALTH_HI = 16 \ (hi-byte)
+LASER_HEALTH_THRESHOLD_HI = 5 \ (hi-byte)
+
+\ number of levels
+LEVEL_COUNT = 3 \ max supported levels is 9
+
+\ maximum key count
+MAX_KEY_COUNT = 9
+
+\ IRQ vector address
+IRQ1V = &0204
+
+\ sound timer length (sounds are processed when the last scanline is being read)
+SOUND_TIMER_LENTH = 64*8*36
+
+\ sound effects
+SOUND_EFFECT_PAIN = 0
+SOUND_EFFECT_LASER_ON = 4
+SOUND_EFFECT_LASER_OFF = 8
+SOUND_EFFECT_HEART_BEAT = 12
+SOUND_EFFECT_DIED = 16
+SOUND_EFFECT_LEVEL_COMPLETE = 20
+SOUND_EFFECT_KEY_JEWEL = 24
+SOUND_EFFECT_DOOR_LOCKED = 28
+SOUND_EFFECT_MOVE = 32
+SOUND_EFFECT_PURSUIT_ON = 36
+SOUND_EFFECT_PURSUIT_OFF = 40
+
+\ frame counter used to inhibit move sound effects
+INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT = 30
+
+\ sprite atlas locations
+enemyAtlas1 = &100
+enemyAtlas2 = &300
+enemyAtlas3 = &610
+enemyAtlas4 = &900
+enemyAtlas5 = &E00
+doorAtlas1 = &3C0
+doorAtlas2 = &CC0
+doorAtlas3 = &F80
+elevatorAtlas = &2F00
+k9Atlas1 = &790
+k9Atlas2 = &FA0
+k9Atlas3 = &2BA0
+gamebarAtlas = &2F60
+healthBarAtlas = &0D02                 \ 30 byte atlas (repurposes NMI workspace)
+
+\ sound effects location
+soundEffects = &1090                   \ 44 byte sound effect data (repurposes DFS &1090-&10BF workspace)
+
+\ tile and sprite tables
+spriteAddrTbl = &0880                  \ 64 byte sprite address table (repurposes MOS printer buffer)
+spriteHealthBarTbl = &10E0             \ 12 byte sprite health bar table (repurposes DFS &10E0-&10FF workspace)
+tileAddrTbl = &0D20                    \ 64 byte tile address table (repurposes NMI workspace)
+
+\ level data locations
+levelLoadAddr = &3040                  \ address where level data is loaded
+levelTiles = &3040                     \ 31 x 64 byte tiles.  Each tile contain two character rows of texel quads. Tiles are indexed from 1. Tile 0 is implicitly filled with zeros.
+levelTileGrid = &3800                  \ 2K of tile values (flags/indicies)
+levelTileTypes = &03E0                 \ 32 x 1-byte tile types (repurposes MOS keyboard buffer)
+levelPalette = &07F0                   \ 16 byte level palette
+
+\ level load locations (data loaded into screen memory and relocated)
+levelHorzTileCountLoaded = &4000       \ level width in tiles (copied to horzTileCount)
+levelVertTileCountLoaded = &4001       \ level height in tiles (copied to vertTileCount)
+levelTileTypesLoaded = &4002           \ level tile types (relocated to levelTileTypes)
+levelPaletteLoaded = &4022             \ level palette (relocated to levelPalette)
+levelEnemyWeaponStrengthLoaded = &4032 \ level enemy weapon strength (relocated to enemyWeaponStrength)
+levelLaserStrengthLoaded = &4033       \ level laser strength (relocated to laserStrength)
+levelLaserHealthDrainLoaded = &4034    \ level laser health drain (relocated to laserHealthDrain)
+levelJewelHealthGainLoLoaded = &4035   \ level jewel health gain (relocated to jewelHealthGainLo/Hi)
+levelJewelHealthGainHiLoaded = &4036
+levelObjectsLoaded = &4037             \ 48 x 3 byte objects descriptors (used to populate game objects)
+
+\ drawObject head and tail jump offset tables
+drawObject_headJumpTbl = &10EC         \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
+drawObject_tailJumpTbl = &10F6         \ 10 byte tail jump offset table (repurposes DFS &10E0-&10FF workspace)
+
+\ zero page MOS location
+zeroPageMOS = &90
+
+\ 
+\ Zero page variables...
+\ 
+ORG 0
+
+\ persistent data (values persist across frames)
+.zeroMemory32               SKIP 32 \ 32-byte zero memory (located here to catch errant writes)
+.mosIRQ1V                   SKIP 2  \ MOS IRQ vector
+.scrnAddr                   SKIP 2  \ top left screen address
+.godMode                    SKIP 1  \ see comment at top of file
+.level                      SKIP 1  \ 1..LEVEL_COUNT
+.objectCount                SKIP 1  \ number of game objects (<= MAX_OBJECT_COUNT)
+.enemyCount                 SKIP 1  \ number of enemy game objects
+.elevatorCount              SKIP 1  \ number of elevator game objects
+.doorCount                  SKIP 1  \ number of door objects
+.vsync			            SKIP 1  \ set on vsync
+.frameCount                 SKIP 1  \ incremented every frame
+.scrnLeftLo                 SKIP 1  \ left position of screen (low/high bytes)
+.scrnLeftHi                 SKIP 1  
+.scrnLeftHiMaxMinusOne      SKIP 1  \ maximum value of above variable, minue one
+.scrnTopLo                  SKIP 1  \ top position of screen (low/high bytes)
+.scrnTopHi                  SKIP 1
+.scrnTopHiMaxMinusOne       SKIP 1  \ maximum value of above variable, minue one
+.scrollCounter              SKIP 1  \ number of half-tiles to scroll, in the direction specified by scrollDirection
+.scrollDirection            SKIP 1  \ scroll direction (DIRECTION_UP..DIRECTION_RIGHT)
+.horzTileCount              SKIP 1  \ number of horizontal tiles in level (16, 32, 64, or 128)
+.vertTileCount              SKIP 1  \ number of vertical tiles in level (16, 32, 64, or 128)
+.keyCount                   SKIP 1  \ current number of keys (0..9)
+.healthLo                   SKIP 1  \ k9's health (low/high bytes) value range: 0..0FFF
+.healthHi                   SKIP 1  
+.laserFrameCount            SKIP 1  \ 0..2 (2 = turn on, 1 = turn off, 0 = off)
+.laserInhibited             SKIP 1  \ set if laser is inhibited (occurs when enemy is destroyed)
+.laserAddr                  SKIP 2  \ start address of drawn laser beam (used to undraw laser beam)
+.laserDirection             SKIP 1  \ direction in which laser beam was drawn (used to undraw laser beam)
+.laserLength                SKIP 1  \ length of drawn laser beam (used to undraw laser beam)
+.laserLastPixels            SKIP 1  \ last pixels of drawn laser (used to undraw laser beam)
+.enemyHealthLo              SKIP 1  \ low health byte of enemy. Used to decrement ememy health
+.k9DamageCounter            SKIP 1  \ set to ENEMY_WEAPON_DAMAGE_COUNTER when enemy uses weapon
+.endPursuitCounter          SKIP 1  \ set to ENEMY_END_PURSUIT_COUNTER when k9 is in sight
+.laserSoundEffectOn         SKIP 1  \ sound effect flag. Used to ingore duplicate requests
+.pursuitSoundEffectOn       SKIP 1  \ sound effect flag. Used to ingore duplicate requests
+.doorLockedSoundEffectOn    SKIP 1  \ sound effect flag. Used to ingore duplicate requests
+.inhibitMoveSoundEffect     SKIP 1  \ sound effect flag. Used to inhibit move sound effects.
+.enemyHitTestLastFound      SKIP 1  \ cached hit test result (hit-test optimization)
+.doorScrollRedrawCount      SKIP 1  \ used to redraw all doors after scrolling
+.enemyWeaponStrength        SKIP 1  \ enemy weapon strength
+.laserStrength              SKIP 1  \ laser strength
+.laserHealthDrain           SKIP 1  \ laser health drain
+.jewelHealthGainLo          SKIP 1  \ jewel health gain (low/high bytes)
+.jewelHealthGainHi          SKIP 1  
+.blackPalette               SKIP 16 \ black palette (resides here as there was space)
+
+\ transient data (values do not persist across frames)
+.soundParams                SKIP 8  
+.tileGridAddr               SKIP 2  
+.srcAddr                    SKIP 2 
+.dstAddr                    SKIP 2
+.srcBaseAddr                SKIP 2
+.dstBaseAddr                SKIP 2
+.leftLo                     SKIP 1
+.leftHi                     SKIP 1
+.topLo                      SKIP 1
+.topHi                      SKIP 1
+.rightLo                    SKIP 1
+.rightHi                    SKIP 1
+.bottomLo                   SKIP 1
+.bottomHi                   SKIP 1
+.offsetX                    SKIP 1
+.offsetY                    SKIP 1
+.sizeLo                     SKIP 1
+.sizeHi                     SKIP 1
+.index                      SKIP 1
+.outerIndex                 SKIP 1
+.stride                     SKIP 1
+.direction                  SKIP 1
+.mask                       SKIP 1
+.temp                       SKIP 1
+.count                      SKIP 1
+.outerCount                 SKIP 1
+.innerCount                 SKIP 1
+.headCount                  SKIP 1
+.tailCount                  SKIP 1
+.offset                     SKIP 1
+.eraseAbove                 SKIP 1
+.eraseBelow                 SKIP 1
+.lasered                    SKIP 1
+.flags                      SKIP 1
+.width                      SKIP 1
+.height                     SKIP 1
+.widthMinusOne              SKIP 1
+.heightMinusOne             SKIP 1
+
+.lastZeroPageAddr
+
+\ guard addresses
+FOR addr, &90, &3FF
+    GUARD addr
+NEXT
+
+\
+\ game objects (properties are held across correlated arrays)
+\
+ORG &400
+.objectType                 SKIP MAX_OBJECT_COUNT \ object type (bits 0,1), animation (bits 2..4), enemy action (bits 6..7)
+.objectState                SKIP MAX_OBJECT_COUNT \ high nibble holds common render flags, bottom nibble holds object specific information
+.objectXLo                  SKIP MAX_OBJECT_COUNT \ object's top left position
+.objectXHi                  SKIP MAX_OBJECT_COUNT
+.objectYLo                  SKIP MAX_OBJECT_COUNT
+.objectYHi                  SKIP MAX_OBJECT_COUNT
+.objectSpriteIndex          SKIP MAX_OBJECT_COUNT \ sprite index, or -1 (draw blank)
+.objectFrameCounter         SKIP MAX_OBJECT_COUNT \ frame counter used to time animation durations
+.objectFrameCallbackLo      SKIP MAX_OBJECT_COUNT \ frame callback, called every frame
+.objectFrameCallbackHi      SKIP MAX_OBJECT_COUNT 
+
+\ array holding object indices, in draw order
+.objectDrawOrder            SKIP MAX_OBJECT_COUNT   
+
+\
+\ entry point
+\
+ORG &1100
+.start
+{
+    LDX #&FF : TXS \ reset stack
+
+    JSR titles
+    JSR initializeLevel
+    JSR showLevel
+    
+    .gameLoop
+        JSR waitForVSync
+        INC frameCount
+        JSR inflictK9Damage
+        JSR scrollScreen
+        JSR drawObjects
+        JSR drawLaser
+        JSR refreshGameBar
+        JSR debugTileGridFlags
+        JSR refreshObjectDrawOrder
+        JSR keyboardInputHandlers
+        JSR enemyAI
+        JSR updateObjects
+        JSR updateSoundEffects
+        JMP gameLoop
+}
+
+\
+\ includes...
+\
+
+INCLUDE "utils.6502"
+INCLUDE "sound.6502"
+INCLUDE "scroll.6502"
+INCLUDE "draw.6502"
+INCLUDE "k9.6502"
+INCLUDE "enemy.6502"
+INCLUDE "elevator.6502"
+INCLUDE "door.6502"
+INCLUDE "tilegrid.6502"
+
+\
+\ primary interrupt request routine
+\
+.irq
+{
+    \ vsync irq occupied?
+    LDA &FE4D 
+    AND #2
+    BNE vsync_irq
+
+    \ pass sound timer irq to MOS, which processes sounds using this timer
+    JMP (mosIRQ1V) \ implicit RTI
+
+.vsync_irq
+    STA &FE4D \ mark vsync interrupt as handled
+    
+    \ signal vsync
+    INC vsync
+
+    \ initiate sound timer (we want sounds to be processed just before v-sync occurs)
+    LDA #LO(SOUND_TIMER_LENTH) : STA &FE44
+    LDA #HI(SOUND_TIMER_LENTH) : STA &FE45
+
+    \ just return (we don't want MOS to process v-sync irqs)
+    LDA &FC
+    RTI
+}
+
+\
+\ showLevel
+\
+\ show level
+\
+.showLevel
+{
+    \ draw tile background
+    JSR drawTileBackground
+
+    \ wait for v-sync before switching palette
+    JSR waitForVSync
+
+    \ set level palette
+    JMP setLevelPalette \ implicit RTS
+}
+
+\
+\ keyboard input handlers
+\
+.keyboardInputHandlers
+{
+    \ scan keys populating top bits in keyTbl
+    JSR scanKeys
+
+    \ space key...
+    LDA keyTbl + KEY_SPACE
+    BPL nopress_space
+        \ laser inhibited?
+        LDA laserInhibited : BNE stopLaserSoundEffect
+
+        \ reset laser frame count?
+        LDA laserFrameCount : BNE skip_space
+        LDA #LASER_ON_FRAME_COUNT : STA laserFrameCount
+        BNE skip_space
+
+    .nopress_space       
+        \ clear inhibited flag
+        LDA #0 : STA laserInhibited
+
+        \ laser sound effect off
+        .stopLaserSoundEffect
+        JSR silenceLaserSoundEffect
+    .skip_space
+
+    \ 'W' key...
+    LDA keyTbl + KEY_W
+    BPL nopress_w
+        LDA #LO(DIRECTION_UP)
+        JSR k9MoveVertically
+    .nopress_w
+
+    \ 'S' key...
+    LDA keyTbl + KEY_S
+    BPL nopress_s
+        LDA #LO(DIRECTION_DOWN)
+        JSR k9MoveVertically
+    .nopress_s
+
+    \ 'A' key...
+    LDA keyTbl + KEY_A
+    BPL nopress_a
+        JMP k9MoveLeft \ implicit RTS
+    .nopress_a
+
+    \ 'G' key...
+    LDY #3
+
+    LDA keyTbl + KEY_G
+    BPL nopress_g
+        DEY
+    .nopress_g
+
+    \ 'O' key...
+    LDA keyTbl + KEY_O
+    BPL nopress_o
+        DEY
+    .nopress_o
+
+    \ 'D' key...
+    LDA keyTbl + KEY_D
+    BPL nopress_d
+        CPY #1 : BNE skip
+            STY godMode \ set god mode!
+        .skip
+
+        JMP k9MoveRight \ implicit RTS
+    .nopress_d
+
+    \ 'R' key...
+    LDA keyTbl + KEY_R
+    BPL nopress_r
+        JMP reloadLevel \ implicit RTS
+    .nopress_r
+
+    \ test god mode keys?
+    LDA godMode : BNE godModeKeyboardInputHandlers \ implicit RTS
+
+    RTS
+}
+
+\
+\ god mode keyboard input handlers
+\
+.godModeKeyboardInputHandlers
+{
+    \ check reload level keys (1..LEVEL_COUNT)
+    LDX #LEVEL_COUNT
+    .loop
+        LDA keyTbl + KEY_1 - 1, X
+        BPL nopress
+            TXA
+            JMP loadLevel \ implicit RTS
+        .nopress
+        DEX
+        BNE loop
+
+    \ don't process arrow keys if scroll counter is odd
+    LDA scrollCounter : AND #1 : BNE return
+
+    \ left arrow key...
+    LDA keyTbl + KEY_LEFT
+    BPL nopress_left
+        LDA #LO(DIRECTION_LEFT)
+        BNE scroll
+    .nopress_left
+
+    \ right arrow key...
+    LDA keyTbl + KEY_RIGHT
+    BPL nopress_right
+        LDA #LO(DIRECTION_RIGHT)
+        BNE scroll
+    .nopress_right
+
+    \ up arrow key...
+    LDA keyTbl + KEY_UP
+    BPL nopress_up
+        LDA #LO(DIRECTION_UP)
+        BNE scroll
+    .nopress_up
+
+    \ down arrow key...
+    LDA keyTbl + KEY_DOWN
+    BPL return
+        LDA #LO(DIRECTION_DOWN)
+        \ fall through...
+
+.scroll
+    STA scrollDirection
+    LDA #2 : STA scrollCounter
+
+.return
+    RTS
+}
+
+\
+\ draw game objects
+\
+.drawObjects
+{
+    \ draw objects, in draw order (except descending objects)
+    LDA #0 : STA outerIndex
+    .loop
+        LDY outerIndex
+        LDX objectDrawOrder, Y
+        LDA objectState, X : BPL skipDraw \ redraw flag clear?
+
+            \ to avoid rendering artifacts we draw descending elevators and 
+            \ their passengers in reverse order
+            AND #OBJECT_STATE_FLAGS_DESCENDING : BEQ notDescending
+
+                \ is the object an elevator?
+                LDA objectType, X
+                AND #OBJECT_TYPE_MASK
+                CMP #OBJECT_TYPE_ELEVATOR : BNE skipDraw
+
+                \ get elevator's passenger index
+                LDA objectState, X
+                AND #ELEVATOR_STATE_PASSENGER_MASK
+                PHA \ --> passenger index
+
+                \ draw elevator
+                JSR clearRedrawFlag
+                JSR drawObject
+
+                \ draw elevator's passenger
+                PLA \ <-- passenger index
+                TAX
+            .notDescending
+
+            \ draw object
+            JSR clearRedrawFlag
+            JSR drawObject
+
+            \ render enemy health bar
+            LDA objectType, X
+            AND #OBJECT_TYPE_MASK
+            CMP #OBJECT_TYPE_ENEMY : BNE skipDraw
+                JSR drawEnemyHealthBar
+
+        .skipDraw
+
+        INC outerIndex 
+        LDA outerIndex
+        CMP objectCount
+        BNE loop
+
+    RTS
+}
+
+\
+\ draw k9's laser
+\
+.drawLaser
+{
+    \ draw K9's laser
+    LDA laserFrameCount
+    BEQ skip
+        DEC laserFrameCount
+        CMP #LASER_ON_FRAME_COUNT : BNE else
+            JMP drawLaserOn \ implicit RTS
+        .else
+        CMP #LASER_OFF_FRAME_COUNT : BNE skip
+            JMP drawLaserOff \ implicit RTS
+    .skip
+
+    RTS
+}
+
+\
+\ update game objects
+\
+.updateObjects
+{
+    LDA #0 : STA outerIndex
+    .loop
+        LDX outerIndex
+
+        \ cache extents
+        JSR cacheObjectExtents
+
+        \ JSR (objectFrameCallback, X)
+        LDA objectFrameCallbackLo, X : STA jsr_inst+1
+        LDA objectFrameCallbackHi, X : STA jsr_inst+2
+        .jsr_inst JSR &0000
+
+        INC outerIndex
+        LDA outerIndex
+        CMP objectCount
+        BNE loop
+
+    RTS
+}
+
+\
+\ getObjectDirection(X register)
+\
+\ params:
+\   X register   Object index
+\
+\ returns:
+\  accumulator   -1 (left), 0 (none), 1 (right)
+\  Y register    0 (ANIMATE_LOOK_LEFT) .. 5 (ANIMATE_TURN_RIGHT_TO_LEFT)
+\
+.getObjectDirection
+{
+    LDA objectType, X
+    AND #ANIMATE_MASK
+    LSR A : LSR A
+    TAY
+    LDA objectDirectionTbl, Y
+    RTS
+
+.objectDirectionTbl
+    EQUB LO(-1), 1
+    EQUB LO(-1), 1
+    EQUB 0, 0
+}
+
+\
+\ cacheObjectExtents(X register)
+\
+\ cache object's width, widthMinusOne, height, and heightMinusOne
+\
+\ params:
+\   X register   Object index
+\
+.cacheObjectExtents
+{
+    LDA objectType, X
+    AND #OBJECT_TYPE_MASK
+    TAY
+
+    LDA objectTypeWidths, Y
+    STA width
+    SEC 
+    SBC #1
+    STA widthMinusOne
+
+    LDA objectTypeHeights, Y
+    STA height
+    SBC #1
+    STA heightMinusOne
+
+    RTS
+
+.^objectTypeWidths
+    EQUB K9_SPRITE_WIDTH, ENEMY_SPRITE_WIDTH, ELEVATOR_SPRITE_WIDTH, DOOR_SPRITE_WIDTH
+
+.^objectTypeHeights
+    EQUB K9_SPRITE_HEIGHT, ENEMY_SPRITE_HEIGHT, ELEVATOR_SPRITE_HEIGHT, DOOR_SPRITE_HEIGHT
+}
+
+\
+\ refreshObjectDrawOrder()
+\
+\ resort the objectDrawOrder array every 32 frames, using a bubble sort
+\
+.refreshObjectDrawOrder
+{
+    \ update every 32 frames, offset by 8
+    LDA frameCount
+    AND #&1F
+    CMP #8
+    BEQ sortObjectDrawOrder
+    RTS
+}
+
+\
+\ sortObjectDrawOrder()
+\
+\ Sorts the objectDrawOrder array using a bubble sort
+\
+.sortObjectDrawOrder
+{
+    \ outerCount = objectCount
+    LDA objectCount : STA outerCount
+
+    .outerLoop
+        \ innerCount, count = 1
+        LDA #1
+        STA count
+        STA innerCount
+
+        .innerLoop
+
+            \ X, Y = adjacent object indices
+            LDY innerCount
+            LDX objectDrawOrder-1, Y
+            LDA objectDrawOrder, Y  
+            TAY
+
+            \ if (objectY[X] > objectY[Y] swap
+            LDA objectYLo, Y
+            CMP objectYLo, X
+            LDA objectYHi, Y
+            SBC objectYHi, X
+            BCS noswap
+
+                \ swap adjacent indices
+                TYA
+                LDY innerCount
+                STA objectDrawOrder-1, Y
+                TXA
+                STA objectDrawOrder, Y
+
+                \ count = innerCount
+                STY count
+
+            .noswap
+
+            \ innerCount++
+            INC innerCount
+
+            \ loop while innerCount < outerCount
+            LDA innerCount
+            CMP outerCount
+            BNE innerLoop
+
+        \ outerCount = count
+        LDA count : STA outerCount
+
+        \ loop while outerCount != 1
+        CMP #1
+        BNE outerLoop
+
+    RTS
+}
+
+\
+\ refresh game bar
+\
+.refreshGameBar
+{
+    \ update gamebar every 8 frames, offset by 2
+    LDA frameCount
+    AND #7
+    CMP #2
+    BNE rts_0
+
+    \ replenish god-mode health and keys
+    LDA godMode : BEQ skip
+        LDA #16 : STA healthHi
+        LDA #255 : STA healthLo
+        LDA #MAX_KEY_COUNT : STA keyCount
+    .skip
+
+    \ draw the game bar
+    JMP drawGameBar \ implicit RTS
+}
+
+\
+\ inflictK9Damage()
+\ 
+\ inflict damange on K9
+\
+.inflictK9Damage
+{
+    \ process every 8 frames, offset by 6
+    LDA frameCount
+    AND #7
+    CMP #6
+    BNE rts_0
+
+    \ damageCount > 0?
+    LDA k9DamageCounter
+    BEQ rts_0
+
+    \ decrement damage counter
+    DEC k9DamageCounter
+
+    \ toggle palettes
+    AND #1
+    BNE odd
+    .even
+        \ sound effect
+        LDA #SOUND_EFFECT_PAIN
+        JSR soundEffect
+
+        JSR setBlackPalette
+        JMP end
+    .odd
+        JSR setLevelPalette
+    .end
+
+    \ inflict damage on K9
+    LDA healthLo
+    SEC 
+    SBC enemyWeaponStrength
+    STA healthLo
+    LDA healthHi
+    SBC #0
+    STA healthHi
+    BEQ levelIncomplete\ implicit RTS
+    BCC levelIncomplete\ implicit RTS
+
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\ 
+.rts_0 
+{
+    RTS
+}
+
+\
+\ frameCallback_IntermittentRedraw(X register)
+\
+\ frame callback that sets the redraw flag every 8 frames, offset by the object index
+\
+\ params:
+\   X register   Object index
+\
+.frameCallback_IntermittentRedraw
+{
+    TXA
+    CLC
+    ADC frameCount
+    AND #7
+    BNE rts_0
+
+    \ fall through to set redraw flag
+}
+
+\
+\ setRedrawFlag(X register)
+\
+\ params:
+\   X register   Object index 
+\
+.setRedrawFlag
+{
+    LDA objectState, X
+    ORA #OBJECT_STATE_FLAGS_REDRAW
+    STA objectState, X
+    RTS
+}
+
+\
+\ clearRedrawFlag(X register)
+\
+\ params:
+\   X register   Object index 
+\
+.clearRedrawFlag
+{
+    LDA objectState, X
+    AND #LO(NOT(OBJECT_STATE_FLAGS_REDRAW))
+    STA objectState, X
+    RTS
+}
+
+\
+\ roundFourObjectPosition(X register, flags)
+\
+\ round an object's horizontal position to the nearst multiple of four, clearing
+\ the right tile's flags if it was vacated. Code assumes the object is 24 pixels wide.
+\
+\ params:
+\   X register   Object index 
+\   flags        Tile grid flags to clear vacated tile flags
+\
+.roundFourObjectPosition
+{
+    \ round object's X coord to nearest multiple of four, remembering previous value
+    LDA objectXLo, X
+    STA temp
+    AND #&FC
+    STA objectXLo, X
+
+    \ clear vacated tile flags (if position was the 9th, 10th, or 11th pixel in a tile)
+    LDA temp
+    AND #&F
+    CMP #9 : BCC rts_0
+    CMP #12 : BCS rts_0
+    JMP clearObjectRightTileFlags \ implicit RTS
+}
+
+\
+\ levelEndPreamble
+\ 
+.levelEndPreamble
+{
+    \ wait for v-sync
+    JSR waitForVSync
+
+    \ switch to mode 7
+    JSR setMode7
+
+    \ silence sound effects
+    JMP silenseSoundEffects \ implicit RTS
+}
+
+\
+\ levelIncomplete()
+\
+.levelIncomplete
+{
+    \ preamble
+    JSR levelEndPreamble
+
+    \ sound effect
+    LDA #SOUND_EFFECT_DIED
+    JSR soundEffect
+
+    \ print text
+    LDX #LO(k9DiedText)
+    LDY #HI(k9DiedText)
+    JSR printMode7Text
+
+    JSR waitForSpaceKeyPress
+
+    \ reload level
+    JMP reloadLevel \ implicit RTS
+
+.k9DiedText
+    EQUS 13, 7
+    EQUS 141, "        K9's battery is flat!", 13, 1
+    EQUS 13, 1
+    EQUS 141, "Your failed helping K9 find the TARDIS", 13, 1
+    EQUS 13, 5
+    EQUS 134, "<< Press", 133, "space", 134, "key to restart level >>", 0, 0
+}
+
+\
+\ levelComplete()
+\
+.levelComplete
+{
+    \ preamble
+    JSR levelEndPreamble
+
+    \ sound effect
+    LDA #SOUND_EFFECT_LEVEL_COMPLETE
+    JSR soundEffect
+
+    \ game completed?
+    LDA level
+    CMP #LEVEL_COUNT
+    BEQ gameComplete
+
+    \ print level complete text
+    LDX #LO(levelCompleteText)
+    LDY #HI(levelCompleteText)
+    JSR printMode7Text
+
+    JSR waitForSpaceKeyPress
+
+    \ load next level
+    INC level
+    LDA level
+    JMP loadLevel \ implicit RTS
+
+.gameComplete
+    \ print game completed text
+    LDX #LO(gameCompleteText)
+    LDY #HI(gameCompleteText)
+    JSR printMode7Text
+
+    \ loop forever
+    .forever NOP : JMP forever
+
+.levelCompleteText
+    EQUS 13, 7
+    EQUS 141, "     Congrats! You've saved K9!", 13, 1
+    EQUS 13, 1
+    EQUS 141, "  Are you ready for the next level?", 13, 1
+    EQUS 13, 5
+    EQUS 134, "  << Press", 133, "space", 134, "key to continue >>", 0, 0
+
+.gameCompleteText
+    EQUS 13, 7
+    EQUS 141, "           Congratulations!", 13, 1
+    EQUS 13, 5
+    EQUS 141, "     You have completed the game!", 13, 1, 0
+}
+
+\
+\ reloadLevel(A)
+\
+.reloadLevel
+{
+    \ silence sound effects
+    JSR silenseSoundEffects
+
+    LDA level
+    \ fall through...
+}
+
+\
+\ loadLevel(A)
+\
+\ Loads a level named level1..levelN.  The routine saves and restores pages 
+\ &17, and &18, which DFS uses as workspace.
+\ 
+\ params:
+\   A (accumulator)  Level number (1..N)
+\
+
+ASSERT (HI(P%) > &18) \ ensure loadLevel is assembled after &18FF
+
+MACRO COPY_PAGE toAddr, fromAddr 
+{
+    LDX #0
+    .loop
+        LDA fromAddr, X
+        STA toAddr, X
+        INX
+        BNE loop
+}
+ENDMACRO
+
+MACRO COPY_CLEAR_PAGE toAddr, fromAddr 
+{
+    LDX #0
+    .loop
+        LDA fromAddr, X
+        STA toAddr, X
+        LDA #0
+        STA fromAddr, X
+        INX
+        BNE loop
+}
+ENDMACRO
+
+.loadLevel
+{
+    STA level \ store level
+
+    \ update filename level number
+    CLC
+    ADC #'0'
+    STA filename+5
+
+    \ set black palette
+    JSR setBlackPalette
+
+    \ backup code which resides in DFS workspaces, clearing memory
+    COPY_CLEAR_PAGE loadLevelPageBackup1, &1700 
+    COPY_CLEAR_PAGE loadLevelPageBackup2, &1800
+
+    \ switch to DFS
+    LDX #LO(cmdDISK)
+    LDY #HI(cmdDISK)
+    JSR oscli
+
+    \ load level file
+    LDX #LO(osfileBlock)
+    LDY #HI(osfileBlock)
+    LDA #&FF  
+    JSR osfile
+
+    \ restore code
+    COPY_PAGE &1700, loadLevelPageBackup1
+    COPY_PAGE &1800, loadLevelPageBackup2  
+
+    \ initialize level
+    JSR initializeLevel
+
+    \ show level
+    JMP showLevel \ implicit RTS
+
+.cmdDISK
+    EQUS "DISK", 13
+
+.filename
+    EQUS "level1", 13
+
+.osfileBlock
+    EQUW filename, levelLoadAddr, 0, 0
+    EQUW 0, 0, 0  \ +6 zero bytes from vduCommands below
+}
+
+\
+\ setMode7()
+\
+\ switch to mode 7 (with no blinking cursor)
+\
+{
+.vduCommands \ declared in reverse order
+    EQUB 0, 0, 0
+    EQUB 0, 0, 0
+    EQUB 32, 10, 0, 23  \ set 6845 register R10 = 32
+    EQUB 7, 22          \ set mode 7
+
+.^setMode7
+    LDY #11
+    .loop
+        LDA vduCommands, Y
+        JSR oswrch
+        DEY
+        BPL loop
+    RTS
+}
+
+.lastCodeAddr \ last code address
+
+\
+\ reserve space for data area (populated during titles and level initialization)
+\
+ORG k9Atlas3
+SKIP (levelLoadAddr - k9Atlas3)
+
+\
+\ embed 'level1' in binary (replaced on level load/reload)
+\
+ORG levelLoadAddr
+INCBIN "level1.dat"     \ level data (palette, tile types, tiles, tile grid etc)
+
+.levelSpriteDataLoaded
+INCBIN "level1.atl"     \ level atlas sprite data (enemies, elevators, doors)
+
+.levelCode
+INCLUDE "level.6502"    \ packaged level code
+
+.levelEnd
+
+\
+\ titles (code run during startup)
+\
+INCLUDE "titles.6502"
+
+\
+\ music (code run during startup)
+\
+INCLUDE "music.6502"
+
+\
+\ Page backups (see loadLevel)
+\
+.loadLevelPageBackup1 SKIP 256
+.loadLevelPageBackup2 SKIP 256
+
+GUARD &7C00 \ Guard mode 7 screen memory
+
+.end
+
+\
+\ program --> SSD
+\
+SAVE "program", start, end
+
+\
+\ level 1 --> SSD
+\
+CLEAR levelLoadAddr, levelCode
+
+ORG levelLoadAddr
+INCBIN "level1.dat"     \ level data (palette, tile grid, tiles etc)
+INCBIN "level1.atl"     \ level atlas sprite data (enemies, elevators, doors)
+\INCLUDE "level.6502"   \ packaged level code (INCLUDE statement is unnecessary)
+
+SAVE "level1", levelLoadAddr, levelEnd
+
+\
+\ level 2 --> SSD
+\
+CLEAR levelLoadAddr, levelCode
+
+ORG levelLoadAddr
+INCBIN "level2.dat"     \ level data (palette, tile grid, tiles etc)
+INCBIN "level2.atl"     \ level atlas sprite data (enemies, elevators, doors)
+\INCLUDE "level.6502"   \ packaged level code (INCLUDE statement is unnecessary)
+
+SAVE "level2", levelLoadAddr, levelEnd
+
+\
+\ level 3 --> SSD
+\
+CLEAR levelLoadAddr, levelCode
+
+ORG levelLoadAddr
+INCBIN "level3.dat"     \ level data (palette, tile grid, tiles etc)
+INCBIN "level3.atl"     \ level atlas sprite data (enemies, elevators, doors)
+\INCLUDE "level.6502"   \ packaged level code (INCLUDE statement is unnecessary)
+
+SAVE "level3", levelLoadAddr, levelEnd
+
+\
+\ Levels 4..9 can optionally be added here (LEVEL_COUNT will also need updating)
+\
+
+\ Report unused memory
+PRINT "Unused zero-page bytes: ", (zeroPageMOS - lastZeroPageAddr)
+PRINT "Unused code bytes: ", (k9Atlas3 - lastCodeAddr)

@@ -1,0 +1,1095 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ Enemy behavior depends on the current 'action' state, which can be: ACTION_LOOK, ACTION_PACE, 
+\ or ACTION_PURSUE_LEFT/RIGHT/UP/DOWN.  The 'action' is stored in the top 3-bits of objectType[]
+\
+\ The action states are defined as follows:
+\
+\   ACTION_LOOK
+\   - Enemy is motionless, looking in a direction.
+\
+\   ACTION_PACE
+\   - Enemy paces slowly left and right, turning if it encounters a wall.
+\
+\   ACTION_PURSUE_LEFT, ACTION_PURSUE_RIGHT
+\   - Enemies move quickly left or right.
+\   - If enemy hits a wall, action changes to ACTION_PURSUE_UP or ACTION_PURSUE_DOWN.
+\
+\   ACTION_PURSUE_UP, ACTION_PURSUE_DOWN
+\   - Enemies move quickly left or right, looking for an elevator to ride up or down.
+\   - If enemy hits a wall, action toggles between ACTION_PURSUE_UP and ACTION_PURSUE_DOWN.
+\   - Enemies wait if the elevator it wants to ascend or descend is not clear to move.
+\   
+\ Common enemy behaviors
+\   - If enemy does not have sufficient health to move or use weapon, action is set to ACTION_LOOK
+\   - Enemies slow down when their health is low.
+\   - If k9 is in sight, or enemy is lasered, mode is promoted to PURSUE_LEFT or PURSUE_RIGHT.
+\   - If enemy is lasered from behind, enemy turns.
+\   - If enemy is obstructed by something (not a wall), it waits for the obstruction to clear, or turns after three seconds.
+\   - If k9 is within weapons range, enemy fires weapon.  Enemies don't move when using weapon.
+\   - If enemy sees k9 take an elevator up or down, action mode is changed to PURSUE_UP or PURSUE_DOWN.
+\   - If enemy elevator stops, enemy looks for k9 and turns if not seen.  If K9 still not seen, will try to descend/ascend again.
+\   - If k9 is not seen by any enemy for 10 seconds, all ACTION_PURSUE_... actions are demoted to ACTION_PACE.
+\
+
+\
+\ Enemy routines
+\
+
+\
+\ enemyEndAllPursuit
+\
+\ evaluate whether to end all enemy pursuit
+\
+.enemyEndAllPursuit
+{
+    \ check whether enemies should end pursuit
+    LDA endPursuitCounter : BEQ skip1
+    DEC endPursuitCounter : BNE skip1
+        \ end all enemy pursuit
+        LDX enemyCount
+        .loop
+            LDA objectType, X : BPL skip2
+                AND #LO(NOT(ACTION_MASK))
+                ORA #ACTION_PACE
+                STA objectType, X 
+            .skip2
+
+            DEX
+            BNE loop
+
+        \ silence sound effect
+        JMP silencePursuitSoundEffect \ implicit RTS
+    .skip1
+    RTS
+}
+
+\
+\ enemyAI
+\
+\ performs enemy AI logic
+\
+.enemyAI
+{
+    \ evaluate whether to end all pursuit every sixteen frames
+    LDA frameCount
+    AND #&0F
+    BEQ enemyEndAllPursuit
+
+    \ evaluate what action an individual enemy should take every sixteen frames
+    CMP enemyCount
+    BEQ then
+    BCS return
+    .then
+    TAX \ -> enemy index
+
+    \ is the enemy destroyed?
+    LDA objectState, X
+    AND #ENEMY_STATE_HEALTH_MASK : BEQ return
+
+    \ does enemy have enough health to pursue K9?
+    CMP #ENEMY_WEAPON_THRESHOLD : BCS skip1
+        \ action = ACTION_LOOK
+        LDA objectType, X
+        AND #LO(NOT(ACTION_MASK))
+        STA objectType, X
+
+        \ silense pursuit
+        JSR silencePursuitSoundEffect
+        JMP stopFiring
+    .skip1
+    
+    \ is enemy ascending or descending?
+    LDA objectState, X
+    AND #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING)
+    BNE stopFiring
+
+    \ determine if K9 is in sight (distance returned in accumulator)
+    JSR getObjectDirection \ A = -1 (left), 0 (none), 1 (right)
+    BEQ stopFiring \ enemy turning
+
+    STA direction
+    JSR queryK9InSight
+    BEQ stopFiring \ not in sight
+
+    \
+    \ K9 is in sight!
+    \
+
+    STA temp \ --> distance
+
+    \ set action to ACTION_PURSUE_...
+    LDA objectState \ <-- K9 state
+    AND #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING) : BEQ else
+        \ set enemy action to ACTION_PURSUE_UP or ACTION_PURSUE_DOWN
+        ASL A : ASL A \ carry set -> ACTION_PURSUE_DOWN, carry clear -> ACTION_PURSUE_UP
+        LDA objectType, X
+        AND #LO(NOT(ACTION_MASK))
+        ORA #ACTION_PURSUE_UP 
+        BCC skip2
+            ORA #ACTION_PURSUE_DOWN
+        .skip2
+        BNE endif
+    .else
+        \ set enemy action to ACTION_PURSUE_LEFT or ACTION_PURSUE_RIGHT
+        LDA objectType, X
+        AND #ANIMATE_MASK
+        LSR A : LSR A
+        TAY \ -> animation (0..5)
+        LDA objectType, X
+        AND #LO(NOT(ACTION_MASK))
+        ORA pursueActionTbl, Y
+        BPL stopFiring \ enemy is turning
+    .endif
+    STA objectType, X
+
+    \ reset end pursuit counter (used to end all enemy pursuit of K9)
+    LDA #ENEMY_END_PURSUIT_COUNTER
+    STA endPursuitCounter
+
+    \ sound effect
+    JSR pursuitSoundEffect
+    
+    \ k9 within weapon range?
+    LDA temp \ <-- distance
+    CMP #ENEMY_WEAPON_RANGE
+    BCS stopFiring
+
+    \ set damage counter (processed in inflictK9Damage)
+    LDA #ENEMY_WEAPON_DAMAGE_COUNTER
+    STA k9DamageCounter
+
+    \ set enemy 'firing' flag
+    LDA objectState, X
+    ORA #ENEMY_STATE_FLAGS_FIRING
+    BNE saveAndExit
+
+.stopFiring
+    \ clear firing flag
+    LDA objectState, X
+    AND #LO(NOT(ENEMY_STATE_FLAGS_FIRING))
+
+.saveAndExit
+    STA objectState, X
+
+.return
+    RTS
+
+.pursueActionTbl 
+    EQUB ACTION_PURSUE_LEFT, ACTION_PURSUE_RIGHT \ look
+    EQUB ACTION_PURSUE_LEFT, ACTION_PURSUE_RIGHT \ move
+    EQUB 0, 0                                    \ turn
+}
+
+\
+\ enemyLaserHit(X register)
+\
+\ enemy hit with laser
+\
+\ params:
+\   X register   Enemy index
+\
+.enemyLaserHit
+{
+    \ reduce enemy health
+    LDA enemyHealthLo
+    SEC
+    SBC laserStrength
+    STA enemyHealthLo
+
+    LDA objectState, X
+    AND #ENEMY_STATE_HEALTH_MASK
+    SBC #0
+    STA temp \ --> remaining health
+
+    \ update state
+    LDA objectState, X
+    AND #(OBJECT_STATE_FLAGS_MASK OR ENEMY_STATE_FLAGS_FIRING)
+    ORA temp \ <-- remaining health
+    ORA #(OBJECT_STATE_FLAGS_LASERED OR OBJECT_STATE_FLAGS_REDRAW)
+    STA objectState, X
+
+    \ enemy destroyed?
+    LDA temp \ <-- remaining health
+    BNE skip1
+
+        \ erase sprite
+        LDA #&FF : STA objectSpriteIndex, X
+
+        \ stop laser
+        INC laserInhibited
+
+        \ set frame callback so it just returns
+        LDA #LO(return) : STA objectFrameCallbackLo, X
+        LDA #HI(return) : STA objectFrameCallbackHi, X
+
+        \ clear inside tile flags
+        JSR cacheObjectExtents
+        LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+        JSR clearObjectInsideTileFlags 
+
+        \ end pursuit sound effect?
+        JMP silencePursuitSoundEffect \ implicit RTS
+    .skip1
+
+    \ enemy have sufficient remaining health to pursue or use weapon?
+    LDA temp \ <-- remaining health
+    CMP #ENEMY_WEAPON_THRESHOLD : BCS skip2
+        \ action = ACTION_LOOK
+        LDA objectType, X
+        AND #LO(NOT(ACTION_MASK))
+        STA objectType, X
+        RTS
+    .skip2
+    
+    \ is enemy lasered from behind? (check if K9 and enemy are facing in same direction)
+    JSR getObjectDirection
+    STA direction
+
+    STX temp \ X --> temp
+    LDX #0
+    JSR getObjectDirection
+    LDX temp \ X <-- temp
+
+    CMP direction
+    BNE return
+
+    \ turn...
+    LDA #ANIMATE_TURN_RIGHT_TO_LEFT
+    BIT direction : BPL skip3
+        LDA #ANIMATE_TURN_LEFT_TO_RIGHT
+    .skip3
+    JMP enemyAnimate \ implicit RTS
+
+.return
+    RTS
+}
+
+\
+\ enemyElevatorStop()
+\ 
+\ determine what action to take when elevator stops
+\
+\ params:
+\   X register   Enemy index
+\
+.enemyElevatorStop
+{
+    \ look for K9
+    JSR getObjectDirection
+    BEQ return \ enemy turning so just return
+
+    STA direction
+    JSR queryK9InSight
+    BEQ skip1
+        \ K9 is seen, pursue k9
+        JSR setPursueLeftOrRight
+
+        LDA #ANIMATE_MOVE_LEFT
+        BIT direction : BMI skip2
+            LDA #ANIMATE_MOVE_RIGHT
+        .skip2
+        JMP enemyAnimate \ implicit RTS
+    .skip1
+
+    \ look in the other direction
+    LDA direction
+    EOR #&FE
+    STA direction
+
+    JSR queryK9InSight
+    BEQ skip3
+        \ K9 is seen, turn and pursue k9
+        JSR setPursueLeftOrRight
+
+        LDA #ANIMATE_TURN_RIGHT_TO_LEFT
+        BIT direction : BMI skip4
+            LDA #ANIMATE_TURN_LEFT_TO_RIGHT
+        .skip4
+        JMP enemyAnimate \ implicit RTS
+    .skip3
+
+    \ try to move vertically
+    JMP enemyPursueUpOrDown \ implicit RTS
+
+.setPursueLeftOrRight
+    LDA objectType, X
+    AND #LO(NOT(ACTION_MASK))
+    ORA #ACTION_PURSUE_LEFT
+    BIT direction : BMI skip5
+        ORA #ACTION_PURSUE_RIGHT
+    .skip5
+    STA objectType, X
+
+.return   
+    RTS
+}
+
+\
+\ queryK9InSight(X register, direction)
+\
+\ Returns zero if k9 is not seen, otherwise the number of tiles to K9
+\
+\ params:
+\   X register   Enemy index
+\   direction    -1 (left direction), 1 (right direction)
+\
+\ modifies:
+\   getObjectTileGridAddr: tileGridAddr, temp, Y
+\
+.queryK9InSight
+{
+    \ get tile grid address
+    LDA #0
+    BIT direction : BMI skip
+        LDA #(ENEMY_SPRITE_WIDTH-1)
+    .skip
+    STA offsetX
+
+    LDA #(ENEMY_SPRITE_HEIGHT-1) : STA offsetY
+    JSR getObjectTileGridAddr
+
+    \ iterate of the tiles, until something is hit
+    LDY #0
+    LDA #ENEMY_LOOK_RANGE : STA count
+    BIT direction : BPL lookRightLoop
+
+    .lookLeftLoop
+        \ tileGridAddr -= 1
+        LDA tileGridAddr
+        BNE noborrow
+            DEC tileGridAddr+1
+        .noborrow
+        DEC tileGridAddr
+
+        LDA (tileGridAddr), Y
+        AND #(TILE_GRID_FLAGS_K9 OR TILE_GRID_FLAGS_OPAQUE)
+        BNE seeSomething
+
+        DEC count
+        BNE lookLeftLoop
+
+    BEQ seeNothing
+
+    .lookRightLoop
+        INY
+        LDA (tileGridAddr), Y
+        AND #(TILE_GRID_FLAGS_K9 OR TILE_GRID_FLAGS_OPAQUE)
+        BNE seeSomething
+
+        DEC count
+        BNE lookRightLoop
+
+.seeNothing
+    LDA #0
+    RTS
+    
+.seeSomething
+    AND #TILE_GRID_FLAGS_K9 \ see K9?
+    BEQ seeNothing
+    LDA #(ENEMY_LOOK_RANGE + 1)
+    SEC
+    SBC count
+    RTS
+}
+
+\
+\ setPursueVerticalAction(X register)
+\
+\ params:
+\   A = current action
+\   X = enemy index 
+\
+.setPursueVerticalAction
+{
+    CMP #ACTION_PURSUE_UP : BNE else1
+        \ up -> down
+        LDA #ACTION_PURSUE_DOWN
+        BNE updateAction
+    .else1
+    CMP #ACTION_PURSUE_DOWN : BNE else2
+        \ down -> up
+        LDA #ACTION_PURSUE_UP
+        BNE updateAction
+    .else2 \ ACTION_PURSUE_LEFT or ACTION_PURSUE_RIGHT
+        \ K9 above or below enemy?
+        LDA objectXHi
+        CMP objectXHi, X
+        BCC k9Below : BNE k9Below
+        LDA objectXLo
+        CMP objectXLo, X
+        BCC k9Below
+        .k9above
+            LDA #ACTION_PURSUE_UP
+            BNE updateAction
+        .k9Below
+            LDA #ACTION_PURSUE_DOWN
+            \ fall through...
+
+.updateAction
+    STA temp
+    LDA objectType, X
+    AND #LO(NOT(ACTION_MASK))
+    ORA temp
+    STA objectType, X
+    RTS
+}
+
+\
+\ enemyFrameCallback_TurnLeftToRight(X register) - animation frame callback
+\
+\ params:
+\   X = enemy index 
+\
+.enemyFrameCallback_TurnLeftToRight
+{
+    \ decrement frame counter 
+    DEC objectFrameCounter, X
+    BNE return
+
+    \ reset frame counter
+    LDA #FRAME_COUNT_ENEMY_TURN
+    STA objectFrameCounter, X
+
+    \ set redraw flag
+    JSR setRedrawFlag
+
+    \ advance keyframe
+    LDA objectSpriteIndex, X
+    CMP #(SPRITE_INDEX_ENEMY_LEFT + 1) : BNE else1
+        LDA #(SPRITE_INDEX_ENEMY_TURN + 2): STA objectSpriteIndex, X
+        RTS
+    .else1
+    CMP #SPRITE_INDEX_ENEMY_TURN : BCC endif
+    CMP #(SPRITE_INDEX_ENEMY_TURN + 3) : BCS endif
+        DEC objectSpriteIndex, X
+        LDA objectSpriteIndex, X
+        CMP #(SPRITE_INDEX_ENEMY_TURN - 1) : BNE return
+            LDA #(SPRITE_INDEX_ENEMY_RIGHT + 1): STA objectSpriteIndex, X
+        RTS
+    .endif
+
+    \ at end of animation...
+
+    \ select next animation
+    LDA objectType, X
+    AND #ACTION_MASK : BEQ else2 \ if (action != ACTION_LOOK)
+        BPL skip \ if (action == ACTION_PURSUE...)
+            CMP #ACTION_PURSUE_RIGHT : BEQ skip \ if (action != ACTION_PURSE_RIGHT)
+                JSR setPursueVerticalAction
+        .skip
+        LDA #ANIMATE_MOVE_RIGHT
+        BNE endif2
+    .else2
+        LDA #ANIMATE_LOOK_RIGHT
+    .endif2
+    JMP enemyAnimate \ implicit RTS
+
+.return
+    RTS
+}
+
+\
+\ enemyFrameCallback_TurnRightToLeft(X register) - animation frame callback
+\
+\ params:
+\   X = enemy index
+\
+.enemyFrameCallback_TurnRightToLeft
+{
+    \ decrement frame counter
+    DEC objectFrameCounter, X
+    BNE return
+
+    \ reset frame counter
+    LDA #FRAME_COUNT_ENEMY_TURN
+    STA objectFrameCounter, X
+
+    \ set redraw flag
+    JSR setRedrawFlag
+
+    \ advance keyframe
+    LDA objectSpriteIndex, X
+    CMP #(SPRITE_INDEX_ENEMY_RIGHT + 1) : BNE else1
+        LDA #SPRITE_INDEX_ENEMY_TURN: STA objectSpriteIndex, X
+        RTS
+    .else1
+    CMP #SPRITE_INDEX_ENEMY_TURN : BCC endif
+    CMP #(SPRITE_INDEX_ENEMY_TURN + 3) : BCS endif
+        INC objectSpriteIndex, X
+        LDA objectSpriteIndex, X
+        CMP #(SPRITE_INDEX_ENEMY_TURN + 3) : BNE return
+            LDA #(SPRITE_INDEX_ENEMY_LEFT + 1): STA objectSpriteIndex, X
+        RTS
+    .endif
+
+    \ at end of animation...
+
+    \ select next animation
+    LDA objectType, X
+    AND #ACTION_MASK : BEQ else2 \ if (action != ACTION_LOOK)
+        BPL skip \ if (action == ACTION_PURSUE...)
+            CMP #ACTION_PURSUE_LEFT : BEQ skip \ if (action != ACTION_PURSE_LEFT)
+                JSR setPursueVerticalAction
+        .skip
+        LDA #ANIMATE_MOVE_LEFT
+        BNE endif2
+    .else2
+        LDA #ANIMATE_LOOK_LEFT
+    .endif2
+    JMP enemyAnimate \ implicit RTS
+
+.return
+    RTS
+}
+
+\
+\ canEnemyMove helper
+\
+.canEnemyMove
+{
+    LDA objectState, X
+    AND #(ENEMY_STATE_FLAGS_FIRING OR OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING)
+    RTS
+}
+
+\
+\ enemyFrameCallback_LookLeft(X register) - animation frame callback
+\
+\ params:
+\   X = enemy index
+\
+.enemyFrameCallback_LookLeft
+{
+    \ switch animation if action != ACTION_LOOK
+    LDA objectType, X 
+    AND #ACTION_MASK : BEQ endif
+
+        \ can enemy move?
+        JSR canEnemyMove
+        BNE endif
+
+        LDA objectXLo, X
+        AND #&F
+        CMP #4 : BNE else
+            \ can we pursue K9 up or down, doing so if we can
+            JSR enemyPursueUpOrDown
+            BEQ endif
+            BNE moveLeft
+        .else
+        CMP #0 : BNE moveLeft
+            \ can we move to the left at a tile boundary, doing so if we can
+            LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+            JSR querySetObjectLeftTileGridFlags : BEQ moveLeft
+
+            \ otherwise decrement frame counter, turning if this reaches zero
+            DEC objectFrameCounter, X : BNE endif
+                LDA #ANIMATE_TURN_LEFT_TO_RIGHT
+                JMP enemyAnimate \ implicit RTS
+
+        .moveLeft
+            \ move left
+            LDA #ANIMATE_MOVE_LEFT
+            JMP enemyAnimate \ implicit RTS
+    .endif
+
+    \ set redraw flag intermittently
+    JMP frameCallback_IntermittentRedraw \ implicit RTS
+}
+
+\
+\ enemyFrameCallback_LookRight(X register) - animation frame callback
+\
+\ params:
+\   X = enemy index
+\
+.enemyFrameCallback_LookRight
+{
+    \ switch animation if action != ACTION_LOOK
+    LDA objectType, X 
+    AND #ACTION_MASK : BEQ endif
+
+        \ can enemy move?
+        JSR canEnemyMove
+        BNE endif
+
+        LDA objectXLo, X
+        AND #&F
+        CMP #4 : BNE else
+            \ can we pursue k9 up or down, doing so if we can
+            JSR enemyPursueUpOrDown
+            BEQ endif
+            BNE moveRight
+        .else
+        CMP #8 : BNE moveRight
+            \ can we move to the right at a tile boundary, doing so if we can
+            LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+            JSR querySetObjectRightTileGridFlags : BEQ moveRight
+
+            \ otherwise decrement frame counter, turning if this reaches zero
+            DEC objectFrameCounter, X : BNE endif
+                LDA #ANIMATE_TURN_RIGHT_TO_LEFT
+                JMP enemyAnimate \ implicit RTS
+
+        .moveRight
+            \ move right
+            LDA #ANIMATE_MOVE_RIGHT
+            JMP enemyAnimate \ implicit RTS
+    .endif
+
+    \ set redraw flag intermittently
+    JMP frameCallback_IntermittentRedraw \ implicit RTS
+}
+
+\
+\ moveForwardSlowly(X register)
+\
+\ params:
+\   X = enemy index
+\
+\ Result:
+\   accumulator zero (success), non-zero (failure)
+\
+.moveForwardSlowly
+{
+    \ move slowly if health < ENEMY_SPRINT_THRESHOLD
+    LDA objectState, X
+    AND #ENEMY_STATE_HEALTH_MASK
+    CMP #ENEMY_SPRINT_THRESHOLD
+    BCC moveSlowly
+
+    \ move slowly if action != ACTION_PURSUE
+    LDA objectType, X
+    BPL moveSlowly
+
+    \ return success
+    LDA #0 
+    RTS
+
+.moveSlowly
+    \ return true/false every other frame
+    TXA
+    CLC
+    ADC frameCount
+    AND #1
+    RTS
+}
+
+\
+\ enemyPursueUpOrDown(X register)
+\
+\ params:
+\   X = enemy index
+\
+\ Result:
+\   accumulator zero (riding elevator), non-zero (not riding elevator)
+\
+.enemyPursueUpOrDown
+{
+    LDA objectType, X
+    AND #ACTION_MASK 
+    CMP #ACTION_PURSUE_UP : BNE else
+        LDA #LO(DIRECTION_UP)
+        BNE ride
+    .else
+    CMP #ACTION_PURSUE_DOWN : BNE endif
+        LDA #LO(DIRECTION_DOWN)
+        BNE ride
+    .endif
+
+    \ failure
+    LDA #1
+    RTS
+
+.ride
+    STA direction
+    JSR rideElevator
+    BNE skip1
+        \ if the enemy is on an elevator which can't move we need to reset 
+        \ the end pursuit counter to ensure that the pursuit continues
+        LDA objectState, X
+        AND #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING)
+        BNE skip2
+            LDA #ENEMY_END_PURSUIT_COUNTER
+            STA endPursuitCounter
+        .skip2
+        LDA #0 \ pass on success
+    .skip1
+    RTS
+}
+
+\
+\ enemyFrameCallback_MoveLeft(X register) - animation frame callback
+\
+\ params:
+\   X = enemy index
+\
+.enemyFrameCallback_MoveLeft
+{
+    \ move forward slowly?
+    JSR moveForwardSlowly
+    BNE return
+
+    \ increment frame counter
+    INC objectFrameCounter, X
+
+    \ decrement enemyX
+    LDA objectXLo, X
+    SEC
+    SBC #1
+    BCS skip1
+        DEC objectXHi, X
+    .skip1
+    STA objectXLo, X
+
+    \ set keyframe
+    AND #3
+    CLC
+    ADC #SPRITE_INDEX_ENEMY_LEFT
+    STA objectSpriteIndex, X
+
+    \ set redraw flag
+    JSR setRedrawFlag
+
+    \ continue animation?
+    LDA objectXLo, X
+    AND #3
+    BNE return 
+
+    \ at end of animation...
+
+    \ clear vacated tile flags
+    LDA objectXLo, X
+    AND #&F 
+    CMP #8 : BNE skip2
+        LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+        JSR clearObjectRightTileFlags
+    .skip2
+
+    \ can enemy move?
+    JSR canEnemyMove
+    BNE lookLeft
+
+    \ select next animation...
+    LDA objectType, X
+    AND #ACTION_MASK : BEQ lookLeft \ if (action != ACTION_LOOK)
+    
+        LDA objectXLo, X
+        AND #&F
+        CMP #4 : BNE else
+            \ can we pursue K9 up or down, doing so if we can
+            JSR enemyPursueUpOrDown
+            BNE moveLeft
+            BEQ lookLeft
+
+        .else
+        CMP #0 : BNE moveLeft
+            \ can we move to the left at a tile boundary, doing so if we can
+            LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+            JSR querySetObjectLeftTileGridFlags : BEQ moveLeft
+
+            \ otherwise turn or wait
+            CMP #TILE_TYPE_SPACE : BEQ lookLeft
+
+            \ turn left to right
+            LDA #ANIMATE_TURN_LEFT_TO_RIGHT
+            BNE enemyAnimate \ implicit RTS
+
+        .moveLeft
+            \ move left
+            LDA #ANIMATE_MOVE_LEFT
+            BNE enemyAnimate \ implicit RTS
+
+        .lookLeft
+            \ look left
+            LDA #ANIMATE_LOOK_LEFT
+            BEQ enemyAnimate \ implicit RTS
+.return
+        RTS
+}
+
+\
+\ enemyFrameCallback_MoveRight(X register) - animation frame callback
+\
+\ params:
+\   X = enemy index
+\
+.enemyFrameCallback_MoveRight
+{
+    \ move forward slowly?
+    JSR moveForwardSlowly
+    BNE return
+
+    \ increment frame counter
+    INC objectFrameCounter, X
+
+    \ increment enemyX
+    LDA objectXLo, X
+    CLC
+    ADC #1
+    BCC skip1
+        INC objectXHi, X
+    .skip1
+    STA objectXLo, X
+
+    \ set keyframe
+    AND #3
+    CLC
+    ADC #SPRITE_INDEX_ENEMY_RIGHT
+    STA objectSpriteIndex, X
+
+    \ set redraw flag
+    JSR setRedrawFlag
+
+    \ continue animation?
+    LDA objectXLo, X
+    AND #3
+    BNE return
+
+    \ at end of animation...
+
+    \ clear vacated tile flags
+    LDA objectXLo, X
+    AND #&F : BNE skip2
+        LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+        JSR clearObjectLeftTileFlags
+    .skip2
+    
+    \ can enemy move?
+    JSR canEnemyMove
+    BNE lookRight
+    
+    \ select next animation...
+    LDA objectType, X
+    AND #ACTION_MASK : BEQ lookRight \ if (action != ACTION_LOOK)
+        LDA objectXLo, X
+        AND #&F
+        CMP #4 : BNE else
+            \ can we pursue K9 up or down, doing so if we can
+            JSR enemyPursueUpOrDown
+            BNE moveRight
+            BEQ lookRight
+
+        .else
+        CMP #8 : BNE moveRight
+            \ can we move to the right at a tile boundary, doing so if we can
+            LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY): STA flags
+            JSR querySetObjectRightTileGridFlags : BEQ moveRight
+
+            \ otherwise turn or wait
+            CMP #TILE_TYPE_SPACE : BEQ lookRight
+
+            \ turn right to left
+            LDA #ANIMATE_TURN_RIGHT_TO_LEFT
+            BNE enemyAnimate \ implicit RTS
+
+        .moveRight
+            \ move right
+            LDA #ANIMATE_MOVE_RIGHT
+            BNE enemyAnimate \ implicit RTS
+
+        .lookRight 
+            \ look right
+            LDA #ANIMATE_LOOK_RIGHT
+            BNE enemyAnimate \ implicit RTS
+
+.return
+    RTS
+}
+
+\
+\ enemyAnimate(A, X)
+\
+\ params:
+\   A = ANIMATE_LOOK_LEFT etc.
+\   X = enemy index
+\
+.enemyAnimate
+{
+    PHA \ --> new animation
+
+    \ if we were at the start of a move animation which set the
+    \ left or right tile flags, we need to clear these
+    LDA objectFrameCounter, X : BNE endif
+        LDA objectXLo, X
+        AND #&F
+        TAY
+        LDA objectType, X
+        AND #ANIMATE_MASK
+        CMP #ANIMATE_MOVE_LEFT : BNE else
+            TYA : BNE endif
+                JSR clearObjectLeftTileFlags
+            JMP endif
+        .else
+        CMP #ANIMATE_MOVE_RIGHT : BNE endif
+            TYA : CMP #8 : BNE endif
+                JSR clearObjectRightTileFlags
+    .endif
+
+    \ temp = new animation
+    PLA
+    AND #ANIMATE_MASK
+    STA temp
+
+    \ set animation properties
+    LSR A : LSR A
+    TAY
+    LDA spriteIndexTbl, Y : STA objectSpriteIndex, X
+    LDA frameCountTbl, Y : STA objectFrameCounter, X
+    LDA frameCallbackLoTbl, Y : STA objectFrameCallbackLo, X
+    LDA frameCallbackHiTbl, Y : STA objectFrameCallbackHi, X
+
+    \ update objectType animation
+    LDA objectType, X
+    AND #LO(NOT(ANIMATE_MASK))
+    ORA temp
+    STA objectType, X
+
+    \ if turning, round position to nearist multiple of four
+    \ ensuring that right tile flags are cleared if needed
+    AND #ANIMATE_MASK
+    CMP #ANIMATE_TURN_LEFT_TO_RIGHT : BEQ then1
+    CMP #ANIMATE_TURN_RIGHT_TO_LEFT : BNE endif1
+    .then1
+        LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+        JSR roundFourObjectPosition \ implicit RTS
+    .endif1
+    RTS
+
+.spriteIndexTbl
+    EQUB SPRITE_INDEX_ENEMY_LEFT, SPRITE_INDEX_ENEMY_RIGHT         \ look
+    EQUB SPRITE_INDEX_ENEMY_LEFT, SPRITE_INDEX_ENEMY_RIGHT         \ move
+    EQUB SPRITE_INDEX_ENEMY_LEFT + 1, SPRITE_INDEX_ENEMY_RIGHT + 1 \ turn
+
+.frameCountTbl
+    EQUB FRAME_COUNT_ENEMY_WAIT, FRAME_COUNT_ENEMY_WAIT            \ look
+    EQUB 0, 0                                                      \ move
+    EQUB FRAME_COUNT_ENEMY_TURN, FRAME_COUNT_ENEMY_TURN            \ turn
+         
+.frameCallbackLoTbl
+    EQUB LO(enemyFrameCallback_LookLeft), LO(enemyFrameCallback_LookRight)              \ look
+    EQUB LO(enemyFrameCallback_MoveLeft), LO(enemyFrameCallback_MoveRight)              \ move
+    EQUB LO(enemyFrameCallback_TurnLeftToRight), LO(enemyFrameCallback_TurnRightToLeft) \ turn
+
+.frameCallbackHiTbl
+    EQUB HI(enemyFrameCallback_LookLeft), HI(enemyFrameCallback_LookRight)              \ look
+    EQUB HI(enemyFrameCallback_MoveLeft), HI(enemyFrameCallback_MoveRight)              \ move
+    EQUB HI(enemyFrameCallback_TurnLeftToRight), HI(enemyFrameCallback_TurnRightToLeft) \ turn
+}
+
+\
+\ enemyHitTest(leftLo, topLo)
+\
+\ returns the index of the enemy hit in X register, or zero if 'not found'
+\
+\ params:
+\   leftLo, topLo Screen position
+\
+\ modifies:
+\   leftLo/Hi, topLo/Hi, rightLo/Hi, bottomLo/Hi, index
+\
+.enemyHitTest
+{
+    \ left = leftLo + scrnLeft
+    LDA leftLo
+    CLC
+    ADC scrnLeftLo
+    STA leftLo
+    LDA #0
+    ADC scrnLeftHi
+    STA leftHi
+
+    \ top = topLo + scrnTop
+    LDA topLo
+    CLC
+    ADC scrnTopLo
+    STA topLo
+    LDA #0
+    ADC scrnTopHi
+    STA topHi
+
+    \ right = left - (ENEMY_SPRITE_WIDTH - 1)
+    LDA leftLo
+    SEC
+    SBC #(ENEMY_SPRITE_WIDTH - 1)
+    STA rightLo
+    LDA leftHi
+    SBC #0
+    STA rightHi
+
+    \ bottom = top - (ENEMY_SPRITE_HEIGHT - 1)
+    LDA topLo
+    SEC
+    SBC #(ENEMY_SPRITE_HEIGHT - 1)
+    STA bottomLo
+    LDA topHi
+    SBC #0
+    STA bottomHi
+
+    \ iterate over all enemies looking for an intersection
+    LDA enemyCount : STA index
+
+    \ check last found first
+    LDX enemyHitTestLastFound
+    BEQ skip1
+        INC index
+        JMP checkLastFound
+    .skip1
+
+    .loop
+        LDX index
+
+        .checkLastFound
+
+        \ if (health == 0) continue
+        LDA objectState, X
+        AND #ENEMY_STATE_HEALTH_MASK
+        BEQ continue
+
+        \ if (left < objectX) continue
+        LDA leftLo
+        CMP objectXLo, X
+        LDA leftHi
+        SBC objectXHi, X
+        BCC continue
+
+        \ if (top < objectY) continue
+        LDA topLo
+        CMP objectYLo, X
+        LDA topHi
+        SBC objectYHi, X
+        BCC continue
+
+        \ if (right > objectX) continue
+        LDA objectXLo, X
+        CMP rightLo
+        LDA objectXHi, X
+        SBC rightHi
+        BCC continue
+
+        \ if (bottom > objectY) continue, otherwise found!
+        LDA objectYLo, X
+        CMP bottomLo
+        LDA objectYHi, X
+        SBC bottomHi
+        BCS found
+
+        .continue
+        DEC index
+        BNE loop
+
+    \ enemy not found!
+    DEX
+    RTS
+
+    .found
+    CPX enemyHitTestLastFound : BEQ skip2
+        \ update last found and reset enemy health (low-byte)
+        STX enemyHitTestLastFound
+        LDA #&FF : STA enemyHealthLo
+    .skip2
+    RTS
+}
+
+\ end file

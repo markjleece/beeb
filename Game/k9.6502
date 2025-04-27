@@ -1,0 +1,449 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ K9 routines
+\
+
+\
+\ k9MoveLeft()
+\
+\ invoked by key press handler
+\
+.k9MoveLeft
+{
+    \ auto scroll screen
+    LDA scrollCounter : AND #1 : BNE noscroll
+        LDA objectXLo
+        SEC 
+        SBC scrnLeftLo
+        CMP #AUTO_SCROLL_THRESHOLD : BCS noscroll
+            LDA #LO(DIRECTION_LEFT) : STA scrollDirection
+            LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
+    .noscroll
+
+    \ cache k9's extents
+    LDX #0
+    JSR cacheObjectExtents
+
+    \ select animation
+    LDA objectType
+    AND #ANIMATE_MASK
+
+    BNE else \ if (A == ANIMATE_LOOK_LEFT)
+        LDA objectState : AND #(OBJECT_STATE_FLAGS_DESCENDING OR OBJECT_STATE_FLAGS_ASCENDING) : BNE rts_1
+            LDA #ANIMATE_MOVE_LEFT
+            JMP k9Animate \ implicit RTS
+    .else
+        CMP #ANIMATE_LOOK_RIGHT : BEQ then
+        CMP #ANIMATE_MOVE_RIGHT : BEQ then
+        CMP #ANIMATE_TURN_LEFT_TO_RIGHT : BNE rts_1
+        .then
+            LDA #ANIMATE_TURN_RIGHT_TO_LEFT
+            JMP k9Animate \ implicit RTS
+}
+
+\
+\ k9MoveRight()
+\
+\ invoked by key press handler
+\
+.k9MoveRight
+{
+    \ auto scroll screen
+    LDA scrollCounter : AND #1 : BNE noscroll
+        LDA objectXLo
+        SEC 
+        SBC scrnLeftLo
+        CMP #(255 - AUTO_SCROLL_THRESHOLD) : BCC noscroll
+            LDA #LO(DIRECTION_RIGHT) : STA scrollDirection
+            LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
+    .noscroll
+
+    \ cache k9's extents
+    LDX #0
+    JSR cacheObjectExtents
+
+    \ select animation
+    LDA objectType
+    AND #ANIMATE_MASK
+    
+    BEQ then \ if (A == ANIMATE_LOOK_LEFT) then
+    CMP #ANIMATE_MOVE_LEFT : BEQ then
+    CMP #ANIMATE_TURN_RIGHT_TO_LEFT: BNE else
+    .then
+        LDA #ANIMATE_TURN_LEFT_TO_RIGHT
+        JMP k9Animate \ implicit RTS
+    .else
+    CMP #ANIMATE_LOOK_RIGHT : BNE rts_1
+        LDA objectState : AND #(OBJECT_STATE_FLAGS_DESCENDING OR OBJECT_STATE_FLAGS_ASCENDING) : BNE rts_1
+            LDA #ANIMATE_MOVE_RIGHT
+            JMP k9Animate \ implicit RTS
+}
+    
+\
+\ commom RTS
+\
+.rts_1
+{
+    RTS
+}
+
+\
+\ k9MoveVertically(direction)
+\
+\ invoked by key press handler
+
+\ params:
+\   Accumalator     DIRECTION_UP or DIRECTION_DOWN
+\
+\ result`
+\   A = 0 (success), 1 (failure)
+\
+.k9MoveVertically
+{
+    \ save direction
+    STA direction
+
+    \ is K9 already ascending/descending?
+    LDA objectState : AND #(OBJECT_STATE_FLAGS_DESCENDING OR OBJECT_STATE_FLAGS_ASCENDING) : BNE rts_1
+
+    \ cache object extents
+    LDX #0 \ K9 is zero index
+    JSR cacheObjectExtents
+
+    \ ride elevator
+    JMP rideElevator \ implicit RTS
+}
+
+\
+\ k9FrameCallback_MoveLeft - animation frame callback
+\
+.k9FrameCallback_MoveLeft
+{
+    \ decrement objectX
+    LDA objectXLo
+    SEC
+    SBC #1
+    BCS skip1
+        DEC objectXHi
+    .skip1
+    STA objectXLo
+
+    \ set keyframe
+    AND #3
+    CLC
+    ADC #SPRITE_INDEX_K9_LEFT
+    STA objectSpriteIndex
+
+    \ set redraw flag
+    JSR setRedrawFlag
+
+    \ continue animation?
+    LDA objectXLo
+    AND #3
+    BNE rts_2
+
+    \ clear vacated tile flags
+    LDA objectXLo
+    AND #&F
+    CMP #8 : BNE skip2
+        LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
+        JSR clearObjectRightTileFlags
+    .skip2
+
+    \ look left when animation completes
+    LDA #ANIMATE_LOOK_LEFT \ is zero
+    BEQ k9Animate \ implicit RTS
+}
+
+\
+\ k9FrameCallback_MoveRight - animation frame callback
+\
+.k9FrameCallback_MoveRight
+{
+    \ increment k9X
+    LDA objectXLo
+    CLC
+    ADC #1
+    BCC skip1
+        INC objectXHi
+    .skip1
+    STA objectXLo
+
+    \ set keyframe
+    AND #3
+    CLC
+    ADC #SPRITE_INDEX_K9_RIGHT
+    STA objectSpriteIndex
+
+    \ set redraw flag
+    JSR setRedrawFlag
+
+    \ continue animation?
+    LDA objectXLo
+    AND #3
+    BNE rts_2
+
+    \ clear vacated tile flags
+    LDA objectXLo
+    AND #&F
+    BNE skip2
+        LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
+        JSR clearObjectLeftTileFlags
+    .skip2
+
+    \ look right when animation completes
+    LDA #ANIMATE_LOOK_RIGHT
+    BNE k9Animate \ implicit RTS
+}
+
+\
+\ k9FrameCallback_TurnLeftToRight - animation frame callback
+\
+.k9FrameCallback_TurnLeftToRight
+{
+    \ common preamble
+    JSR k9TurnCallbackPreamble
+    BNE rts_2
+
+    \ advance keyframe
+    DEC objectSpriteIndex
+
+    \ continue animation?
+    LDA objectSpriteIndex
+    CMP #(SPRITE_INDEX_K9_TURN - 1) : BNE rts_2
+
+    \ look right when animation completes
+    LDA #ANIMATE_LOOK_RIGHT
+    BNE k9Animate \ implicit RTS
+}
+
+\
+\ k9FrameCallback_TurnRightToLeft - animation frame callback
+\
+.k9FrameCallback_TurnRightToLeft
+{
+    \ common preamble
+    JSR k9TurnCallbackPreamble
+    BNE rts_2
+
+    \ advance keyframe
+    INC objectSpriteIndex
+
+    \ continue animation?
+    LDA objectSpriteIndex
+    CMP #(SPRITE_INDEX_K9_TURN + 3) : BNE rts_2
+
+    \ look left when animation completes
+    LDA #ANIMATE_LOOK_LEFT \ is zero
+    BEQ k9Animate \ implicit RTS
+}
+
+\
+\ k9TurnCallbackPreamble()
+\
+\ Common functionality in k9FrameCallback_TurnLeftToRight & k9FrameCallback_TurnRightToLeft
+\
+.k9TurnCallbackPreamble
+{
+    \ decrement frame counter
+    DEC objectFrameCounter
+    BNE rts_2
+
+    \ reset frame counter
+    LDA #FRAME_COUNT_K9_TURN
+    STA objectFrameCounter
+
+    \ set redraw flag
+    JSR setRedrawFlag
+
+    \ sound effect
+    JSR moveSoundEffect
+
+    \ return success
+    LDA #0
+
+    \ fall throught to RTS
+}
+
+\
+\ common RTS
+\
+.rts_2
+{
+    RTS
+}
+
+\
+\ k9Animate(A)
+\
+\ Params
+\   A = ANIMATE_LOOK_LEFT etc.
+\
+.k9Animate
+{
+    AND #LO(NOT(OBJECT_TYPE_MASK)) \ ensure type is OBJECT_TYPE_K9
+    STA objectType
+
+    LDX #0 \ ensure X is zero (k9 is the first object)
+
+    \ initialize animation
+    AND #ANIMATE_MASK
+    STA temp \ --> animation
+    LSR A : LSR A
+    TAY
+
+    \ set sprite index
+    LDA spriteIndexTbl, Y : STA objectSpriteIndex
+
+    \ set frame callback
+    LDA frameCallbackLoTbl, Y : STA objectFrameCallbackLo
+    LDA frameCallbackHiTbl, Y : STA objectFrameCallbackHi
+
+    \ additional properties
+    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
+
+    LDA temp \ <-- animation
+    CMP #ANIMATE_TURN_LEFT_TO_RIGHT : BEQ then
+    CMP #ANIMATE_TURN_RIGHT_TO_LEFT : BNE else1
+    .then
+
+        \ set frame counter
+        LDA #FRAME_COUNT_K9_TURN : STA objectFrameCounter
+
+        \ round K9's position to the nearest multiple of four, clearing
+        \ the tile to the right if it was vacated with flags
+        JSR roundFourObjectPosition
+
+        \ clear door locked sound effect flag   
+        LDA #0 : STA doorLockedSoundEffectOn
+
+        \ sound effect
+        JMP moveSoundEffect \ implicit RTS
+
+    .else1
+    CMP #ANIMATE_MOVE_LEFT : BNE else2
+
+        \ if next to left tile...
+        LDA objectXLo
+        AND #&F
+        BNE skip2
+
+            \ can we move left?
+            JSR querySetObjectLeftTileGridFlags
+            BEQ skip2
+
+            \ blocked, so determine next action, defaulting to looking left
+            LDX #ANIMATE_LOOK_LEFT
+            BEQ nextAction
+        .skip2
+
+        \ sound effect
+        JMP moveSoundEffect \ implicit RTS
+
+    .else2
+    CMP #ANIMATE_MOVE_RIGHT : BNE rts_2
+
+        \ if next to right tile...
+        LDA objectXLo
+        AND #&F
+        CMP #8 : BNE skip3
+
+            \ can we move right?
+            JSR querySetObjectRightTileGridFlags
+            BEQ skip3
+
+            \ blocked, so determine next action, defaulting to looking right
+            LDX #ANIMATE_LOOK_RIGHT
+            BNE nextAction
+        .skip3
+
+        \ sound effect
+        JMP moveSoundEffect \ implicit RTS
+
+.nextAction
+    \ determine next action based on adjacent type-type (in accumulator)
+    CMP #TILE_TYPE_JEWEL : BEQ k9CollectJewel \ implicit RTS
+    CMP #TILE_TYPE_KEY : BEQ k9CollectKey \ implicit RTS
+    CMP #TILE_TYPE_EXIT : BNE notExit
+        JMP levelComplete \ implicit RTS
+    .notExit
+    CMP #TILE_TYPE_DOOR : BNE notDoor
+        JSR doorLockedSoundEffect
+    .notDoor
+    TXA \ <-- ANIMATE_LOOK_LEFT or ANIMATE_LOOK_RIGHT
+    JMP k9Animate \ explcit RTS
+
+.spriteIndexTbl
+    EQUB SPRITE_INDEX_K9_LEFT, SPRITE_INDEX_K9_RIGHT    \ look
+    EQUB SPRITE_INDEX_K9_LEFT, SPRITE_INDEX_K9_RIGHT    \ move
+    EQUB SPRITE_INDEX_K9_TURN + 2, SPRITE_INDEX_K9_TURN \ turn
+        
+.frameCallbackLoTbl
+    EQUB LO(frameCallback_IntermittentRedraw), LO(frameCallback_IntermittentRedraw) \ look
+    EQUB LO(k9FrameCallback_MoveLeft), LO(k9FrameCallback_MoveRight)                \ move
+    EQUB LO(k9FrameCallback_TurnLeftToRight), LO(k9FrameCallback_TurnRightToLeft)   \ turn
+
+.frameCallbackHiTbl
+    EQUB HI(frameCallback_IntermittentRedraw), HI(frameCallback_IntermittentRedraw) \ look
+    EQUB HI(k9FrameCallback_MoveLeft), HI(k9FrameCallback_MoveRight)                \ move
+    EQUB HI(k9FrameCallback_TurnLeftToRight), HI(k9FrameCallback_TurnRightToLeft)   \ turn
+}
+
+\
+\ k9CollectJewel()
+\
+.k9CollectJewel
+{
+    \ increase health
+    LDA healthLo
+    CLC
+    ADC jewelHealthGainLo
+    STA healthLo
+    LDA healthHi
+    ADC jewelHealthGainHi
+    CMP #MAX_HEALTH_HI : BCC maxHealth
+        LDA #MAX_HEALTH_HI
+    .maxHealth
+    STA healthHi
+
+    \ sound effect
+    JSR keyJewelSoundEffect
+
+    \ clear tile
+    JMP k9ClearTile \ implicit RTS
+}
+
+\
+\ k9CollectKey()
+\
+.k9CollectKey
+{
+    \ increase key count
+    LDA keyCount : CMP #MAX_KEY_COUNT : BCS maxKeyCount
+        INC keyCount
+    .maxKeyCount
+
+    \ sound effect
+    JSR keyJewelSoundEffect
+
+    \ fall through to k9ClearTile
+}
+
+\
+\ k9ClearTile
+\
+.k9ClearTile
+{
+    \ convert tile to space (occupied by k9)
+    LDY #0
+    LDA #(TILE_GRID_FLAGS_K9 OR TILE_GRID_FLAGS_OPAQUE)
+    STA (tileGridAddr), Y
+
+    \ draw blank tile
+    LDA objectXLo : STA leftLo
+    LDA objectYLo : STA topLo
+    JMP drawBlankTile \ implicit RTS
+}
+
+\ end file

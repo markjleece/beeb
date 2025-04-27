@@ -1,0 +1,140 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ Door routines
+\
+
+\
+\ doorFrameCallback(X register) - animation frame callback
+\
+\ params:
+\   X register   Door index
+\
+\ modifies:
+\   self: dstAddr
+\   getObjectTileGridAddr: tileGridAddr, temp, Y
+\
+.doorFrameCallback
+{
+    \ process every eight frames
+    TXA
+    CLC
+    ADC frameCount
+    AND #7
+    BEQ skip1
+        RTS
+    .skip1
+
+    \ temp = union of left and right opaque/enemy flags
+    LDA #(DOOR_SPRITE_HEIGHT - 1) : STA offsetY
+    LDA #LO(-9) : STA offsetX
+    JSR getObjectTileGridAddr
+
+    LDY #0
+    LDA (tileGridAddr), Y
+    INY : INY
+    ORA (tileGridAddr), Y
+
+    AND #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY)
+    STA temp
+
+    \ is the door open?
+    LDA objectState, X
+    AND #DOOR_STATE_FLAGS_DOOR_OPEN
+
+    \ open / close door?
+    ASL A : ASL A : ASL A : ASL A \ shift so door-open and opaque flag aligns
+    EOR temp
+    AND #TILE_GRID_FLAGS_OPAQUE : BEQ endif1
+
+        \ open / close door
+        LDA objectState, X
+        AND #DOOR_STATE_FLAGS_DOOR_OPEN : BNE endif2
+
+            SEC \ clear unlocked flag
+
+            \ is k9 alone by a locked door?
+            LDA temp
+            AND #TILE_GRID_FLAGS_ENEMY : BNE endif3
+
+                \ is the door locked?
+                LDA objectState, X
+                AND #DOOR_STATE_FLAGS_DOOR_UNLOCKED : BNE endif2
+
+                    \ does K9 have a key?
+                    LDA keyCount : BEQ endif1
+
+                        \ use key and invoke sound effect
+                        DEC keyCount
+                        JSR keyJewelSoundEffect
+
+                        CLC \ set unlocked flag
+            .endif3
+
+            \ clear or set unlocked flag
+            LDA objectState, X
+            ORA #DOOR_STATE_FLAGS_DOOR_UNLOCKED \ set
+            BCC skip
+                EOR #DOOR_STATE_FLAGS_DOOR_UNLOCKED \ clear
+            .skip
+            STA objectState, X
+
+        .endif2
+
+        \ toggle door open flag, and set redraw flag
+        LDA objectState, X
+        EOR #DOOR_STATE_FLAGS_DOOR_OPEN
+        ORA #OBJECT_STATE_FLAGS_REDRAW
+        STA objectState, X
+    
+        \ toggle door opaque lower and upper flags
+        LDY #1
+        LDA (tileGridAddr), Y
+        EOR #TILE_GRID_FLAGS_OPAQUE
+        STA (tileGridAddr), Y
+
+        LDA tileGridAddr
+        SEC
+        SBC horzTileCount
+        STA dstAddr
+        LDA tileGridAddr+1
+        SBC #0
+        STA dstAddr+1
+
+        LDA (dstAddr), Y
+        EOR #TILE_GRID_FLAGS_OPAQUE
+        STA (dstAddr), Y
+    .endif1
+
+    \ set sprite index
+    LDA objectState, X
+    AND #DOOR_STATE_FLAGS_DOOR_OPEN : BNE else
+        \ set redraw flag
+        JSR setRedrawFlag
+       
+        \ next keyframe
+        LDA objectSpriteIndex, X
+        BMI resetIndex
+        CLC
+        ADC #1
+        CMP #(SPRITE_INDEX_DOOR + 4)
+        BNE endif
+        .resetIndex
+            LDA #SPRITE_INDEX_DOOR
+            BNE endif
+    .else
+        LDA #&FF \ blank
+    .endif
+    STA objectSpriteIndex, X
+
+    \ set redraw flag after scrolling?
+    LDA doorScrollRedrawCount
+    BEQ skip3
+        DEC doorScrollRedrawCount
+        JMP setRedrawFlag \ implicit RTS
+    .skip3
+
+    RTS
+}
+
+\ end file

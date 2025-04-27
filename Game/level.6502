@@ -1,0 +1,830 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ Game levels are stored on disc in files named: 'level1', 'level2' 'level3' etc.
+\ Each level file contains layout data, sprite data, and code (this file).
+\ Levels are loaded using the loadLevel routine defined in program.6502
+\ The loadLevel routine calls initializeLevel in this file to set up the level.
+\ Much of the loaded file data (including this code) is overwritten when the level starts.
+\
+\ A level file contains the following information:
+\  - Palette (levels can have their own distinct 4-color palette)
+\  - Tile definitions (types and pixel grids)
+\  - Tile grid (extents and data)
+\  - Sprite definitions (enemies, elevators, doors...)
+\  - Object descriptors
+\
+\ The first level is packaged with the game binary
+\
+
+\
+\ Level routines (packaged with level data)
+\
+
+\
+\ initialiseLevel()
+\
+\ initialise level after its been loaded
+\
+\ Note that this routine is packaged with each level and is overwritten
+\
+.initializeLevel
+{
+    JSR acquireNMImemory
+    JSR initializeLevelVariables
+    JSR initializeObjects
+    JSR relocateTileAddrTbl
+    JSR relocateSpriteAddrTbl
+    JSR relocateEnemyHealthBarTbls
+    JSR relocateSoundEffectData
+    JSR relocateLevelData
+    JSR relocateDrawObjectJumpTbls
+    JMP setCustomScreenMode \ implicit RTS
+}
+
+\
+\ Acquire NMI memory (&0D00-&0D5F)
+\
+.acquireNMImemory
+{
+    LDA #143 : JSR osbyte
+    LDA #12 : JSR osbyte
+    LDA #255 : JSR osbyte
+
+    STY &A0 \ NMI owner's zero page variables
+    LDA #&40 : STA &0D00 \ store RTI at &0D00
+    RTS
+}
+
+\
+\ initializeLevelVariables
+\
+\ initialise level variables
+\
+\ Note that this routine is packaged with each level and is overwritten
+\
+.initializeLevelVariables
+{
+    \ reset game variables
+    LDA #0
+    STA keyCount
+    STA frameCount
+    STA laserFrameCount
+    STA k9DamageCounter
+    STA endPursuitCounter
+    STA laserSoundEffectOn 
+    STA pursuitSoundEffectOn
+    STA doorLockedSoundEffectOn
+    STA enemyHitTestLastFound
+    STA doorScrollRedrawCount
+    STA inhibitMoveSoundEffect
+
+    LDA #12 : STA healthHi
+    LDA #&FF : STA healthLo : STA enemyHealthLo
+
+    \ make sure the space key is lifted
+    INC laserInhibited
+    
+    \ set level tile count extents
+    LDA levelHorzTileCountLoaded : STA horzTileCount
+    LDA levelVertTileCountLoaded : STA vertTileCount
+
+    \ set coefficients
+    LDA levelEnemyWeaponStrengthLoaded : STA enemyWeaponStrength
+    LDA levelLaserStrengthLoaded : STA laserStrength
+    LDA levelLaserHealthDrainLoaded : STA laserHealthDrain
+    LDA levelJewelHealthGainLoLoaded : STA jewelHealthGainLo
+    LDA levelJewelHealthGainHiLoaded : STA jewelHealthGainHi
+
+    \ patch BCC instuction in getObjectTileGridAddr (tilegrid.6502)
+    LDA horzTileCount
+    CMP #128 : BNE else1
+        LDA #0
+        BEQ endif
+    .else1
+    CMP #64 : BNE else2
+        LDA #3
+        BNE endif
+    .else2
+    CMP #32 : BNE else3
+        LDA #6
+        BNE endif
+    .else3
+    CMP #16 : BNE endif
+        LDA #9
+    .endif
+    STA bcc_inst+1
+
+    \ set scrolling limits
+    LDA horzTileCount
+    LSR A : LSR A : LSR A : LSR A
+    SEC 
+    SBC #1
+    STA scrnLeftHiMaxMinusOne
+
+    LDA vertTileCount
+    LSR A : LSR A : LSR A : LSR A
+    SEC
+    SBC #1
+    STA scrnTopHiMaxMinusOne
+    RTS
+}
+
+\
+\ set custom screen mode.  Mode 1, with 256 x 256 resolution
+\
+.setCustomScreenMode
+{
+    \ set up video 6845 CRTC
+    LDX #13
+    .loop
+	    STX &FE00
+	    LDA crtcRegs,X
+	    STA &FE01
+	    DEX
+	    BPL loop
+
+    \ set up video ULA
+    LDA #&D8
+	STA &FE20
+
+    \ set screen wrap to 16K
+    SEI
+    LDA #&0F : STA &FE42 \ set data direction register B (bits 0..3 write)
+	LDA #4 : STA &FE40   \ clear screen wraps bit 4
+	LDA #5 : STA &FE40   \ clear screen wraps bit 5
+    CLI
+
+    \ initialize screen address
+    LDA #LO(&4000 + &200) : STA scrnAddr
+    LDA #HI(&4000 + &200) : STA scrnAddr+1
+
+    \ initialize screen position
+    LDA #0
+    STA scrnTopLo
+    STA scrnTopHi
+    STA scrnLeftLo
+    LDA #1
+    STA scrnLeftHi
+
+    RTS
+
+.crtcRegs
+	EQUB 127			\ R0  horizontal total
+	EQUB 64				\ R1  horizontal displayed
+	EQUB 90             \ R2  horizontal position
+	EQUB 40				\ R3  sync width
+	EQUB 38				\ R4  vertical total
+	EQUB 0				\ R5  vertical total adjust
+	EQUB 32				\ R6  vertical displayed
+	EQUB 34				\ R7  vertical position
+	EQUB 0				\ R8  interlace
+	EQUB 7				\ R9  scanlines per row
+	EQUB 32				\ R10 cursor start
+	EQUB 8				\ R11 cursor end
+	EQUB HI(&4000/8)	\ R12 screen start address, high
+	EQUB LO(&4000/8)	\ R13 screen start address, low
+}
+
+\
+\ relocate tile address table
+\
+.relocateTileAddrTbl
+{
+    LDA #LO(tileAddrTblLocal) : STA srcAddr
+    LDA #HI(tileAddrTblLocal) : STA srcAddr+1
+
+    LDA #LO(tileAddrTbl) : STA dstAddr
+    LDA #HI(tileAddrTbl) : STA dstAddr+1
+
+    LDA #LO(64) : STA sizeLo
+    LDA #HI(64) : STA sizeHi
+
+    JMP memcpy \ implicit RTS
+
+.tileAddrTblLocal
+    FOR i, 0, 31
+        EQUW (levelTiles - 64 + (i * 64))
+    NEXT
+}
+
+\
+\ reloacate sprite address table
+\
+.relocateSpriteAddrTbl
+{
+    LDA #LO(spriteAddrTblLocal) : STA srcAddr
+    LDA #HI(spriteAddrTblLocal) : STA srcAddr+1
+
+    LDA #LO(spriteAddrTbl) : STA dstAddr
+    LDA #HI(spriteAddrTbl) : STA dstAddr+1
+
+    LDA #LO(64) : STA sizeLo
+    LDA #HI(64) : STA sizeHi
+
+    JMP memcpy \ implicit RTS
+
+.spriteAddrTblLocal
+    \ 11 enemy sprites
+    EQUW enemyAtlas1
+    EQUW enemyAtlas2
+
+    FOR addr, enemyAtlas3, enemyAtlas3 + ENEMY_SPRITE_SIZE, ENEMY_SPRITE_SIZE
+        EQUW addr
+    NEXT
+
+    FOR addr, enemyAtlas4, enemyAtlas4 + (4 * ENEMY_SPRITE_SIZE), ENEMY_SPRITE_SIZE
+        EQUW addr
+    NEXT
+
+    FOR addr, enemyAtlas5, enemyAtlas5 + ENEMY_SPRITE_SIZE, ENEMY_SPRITE_SIZE
+        EQUW addr
+    NEXT
+
+    \ 4 door sprites
+    EQUW doorAtlas1
+
+    FOR addr, doorAtlas2, doorAtlas2 + DOOR_SPRITE_SIZE, DOOR_SPRITE_SIZE
+        EQUW addr
+    NEXT
+
+    EQUW doorAtlas3
+
+    \ 4 elevator sprites
+    FOR addr, elevatorAtlas, elevatorAtlas + (3 * ELEVATOR_SPRITE_SIZE), ELEVATOR_SPRITE_SIZE
+        EQUW addr
+    NEXT
+
+    \ 11 k9 sprites
+    EQUW k9Atlas1
+    EQUW k9Atlas2
+
+    FOR addr, k9Atlas3, k9Atlas3 + (8 * K9_SPRITE_SIZE), K9_SPRITE_SIZE
+        EQUW addr
+    NEXT
+
+    \ 1 gamebar sprite
+    EQUW gamebarAtlas
+}
+
+\
+\ relocateEnemyHealthBarTbls()
+\
+\ relocate enemy health bar tables
+\
+.relocateEnemyHealthBarTbls
+{
+    \ sprite health bar table
+    LDA #LO(spriteHealthBarTblLocal) : STA srcAddr
+    LDA #HI(spriteHealthBarTblLocal) : STA srcAddr+1
+
+    LDA #LO(spriteHealthBarTbl) : STA dstAddr
+    LDA #HI(spriteHealthBarTbl) : STA dstAddr+1
+
+    LDA #LO(12) : STA sizeLo
+    LDA #HI(12) : STA sizeHi
+
+    JSR memcpy
+
+    \ sprite health bar table
+    LDA #LO(healthBarAtlasLocal) : STA srcAddr
+    LDA #HI(healthBarAtlasLocal) : STA srcAddr+1
+
+    LDA #LO(healthBarAtlas) : STA dstAddr
+    LDA #HI(healthBarAtlas) : STA dstAddr+1
+
+    LDA #LO(30) : STA sizeLo
+    LDA #HI(30) : STA sizeHi
+
+    JMP memcpy \ implicit RTS
+
+.spriteHealthBarTblLocal
+    EQUB &80, &86, &8C, &92, &06, &0C, &12, &18, &0C, &0C, &8C, &00
+
+.healthBarAtlasLocal
+    EQUB &7F, &00, &3F, &00, &1F, &00
+    EQUB &37, &88, &17, &88, &07, &88
+    EQUB &13, &CC, &03, &CC, &03, &4C
+    EQUB &01, &EE, &01, &6E, &01, &2E
+    EQUB &00, &7F, &00, &3F, &00, &1F
+}
+
+\
+\ relocateDrawObjectJumpTbls()
+\
+\ relocate drawObject jump tables
+\
+.relocateDrawObjectJumpTbls
+{
+    \ relocate tail jump table
+    LDA #LO(headJumpTbl) : STA srcAddr
+    LDA #HI(headJumpTbl) : STA srcAddr+1
+
+    LDA #LO(drawObject_headJumpTbl) : STA dstAddr
+    LDA #HI(drawObject_headJumpTbl) : STA dstAddr+1
+
+    LDA #LO(10) : STA sizeLo
+    LDA #HI(10) : STA sizeHi
+
+    JSR memcpy
+
+    \ relocate head jump table
+    LDA #LO(tailJumpTbl) : STA srcAddr
+    LDA #HI(tailJumpTbl) : STA srcAddr+1
+
+    LDA #LO(drawObject_tailJumpTbl) : STA dstAddr
+    LDA #HI(drawObject_tailJumpTbl) : STA dstAddr+1
+
+    JMP memcpy \ implicit RTS
+
+.headJumpTbl
+    EQUB 0, 5, 10, 15, 20, 25, 30, 35, 40, 0
+
+.tailJumpTbl
+    EQUB 40, 35, 30, 25, 20, 15, 10, 5, 0, 0
+}
+
+\
+\ relocateSoundEffectData
+\
+\ relocate sound effect data
+\
+.relocateSoundEffectData
+{
+    \ copy sound effect data
+    LDA #LO(soundEffectsLocal) : STA srcAddr
+    LDA #HI(soundEffectsLocal) : STA srcAddr+1
+
+    LDA #LO(soundEffects) : STA dstAddr
+    LDA #HI(soundEffects) : STA dstAddr+1
+
+    LDA #LO(44) : STA sizeLo
+    LDA #HI(44) : STA sizeHi
+
+    JMP memcpy \ implicit RTS
+
+.soundEffectsLocal
+    EQUB &10, &F1, &2C, &02 \ SOUND_EFFECT_PAIN 
+    EQUB &11, &01, &00, &01 \ SOUND_EFFECT_LASER_ON
+    EQUB &11, &00, &00, &00 \ SOUND_EFFECT_LASER_OFF
+    EQUB &11, &F1, &60, &01 \ SOUND_EFFECT_HEART_BEAT
+    EQUB &11, &F1, &60, &FF \ SOUND_EFFECT_DIED
+    EQUB &11, &02, &00, &05 \ SOUND_EFFECT_LEVEL_COMPLETE
+    EQUB &12, &02, &18, &03 \ SOUND_EFFECT_KEY_JEWEL
+    EQUB &12, &03, &28, &01 \ SOUND_EFFECT_DOOR_LOCKED
+    EQUB &12, &FF, &00, &01 \ SOUND_EFFECT_MOVE
+    EQUB &13, &04, &48, &01 \ SOUND_EFFECT_PURSUIT_ON
+    EQUB &13, &00, &00, &00 \ SOUND_EFFECT_PURSUIT_OFF
+}
+
+\
+\ relocateLevelData()
+\
+\ relocate level data
+\
+\ Note that this routine is packaged with each level and is overwritten
+\
+.relocateLevelData
+{
+    \
+    \ relocate palette
+    \
+    LDA #LO(levelPaletteLoaded) : STA srcAddr
+    LDA #HI(levelPaletteLoaded) : STA srcAddr+1
+
+    LDA #LO(levelPalette) : STA dstAddr
+    LDA #HI(levelPalette) : STA dstAddr+1
+
+    LDA #LO(16) : STA sizeLo
+    LDA #HI(16) : STA sizeHi
+
+    JSR memcpy
+
+    \
+    \ relocate tile types
+    \
+    LDA #LO(levelTileTypesLoaded) : STA srcAddr
+    LDA #HI(levelTileTypesLoaded) : STA srcAddr+1
+
+    LDA #LO(levelTileTypes) : STA dstAddr
+    LDA #HI(levelTileTypes) : STA dstAddr+1
+
+    LDA #LO(32) : STA sizeLo
+    LDA #HI(32) : STA sizeHi
+
+    JSR memcpy
+
+    \
+    \ relocate sprite data
+    \
+
+    \ first enemy sprite at enemyAtlas1
+    LDA #LO(levelSpriteDataLoaded) : STA srcAddr
+    LDA #HI(levelSpriteDataLoaded) : STA srcAddr+1
+
+    LDA #LO(enemyAtlas1) : STA dstAddr
+    LDA #HI(enemyAtlas1) : STA dstAddr+1
+
+    LDA #LO(ENEMY_SPRITE_SIZE) : STA sizeLo
+    LDA #HI(ENEMY_SPRITE_SIZE) : STA sizeHi
+
+    JSR memcpy
+
+    \ next enemy sprite at enemyAtlas2
+    srcAddr1 = levelSpriteDataLoaded + ENEMY_SPRITE_SIZE
+
+    LDA #LO(srcAddr1) : STA srcAddr
+    LDA #HI(srcAddr1) : STA srcAddr+1
+
+    LDA #LO(enemyAtlas2) : STA dstAddr
+    LDA #HI(enemyAtlas2) : STA dstAddr+1
+
+    JSR memcpy
+
+    \ next two enemy sprite at enemyAtlas3
+    srcAddr2 = srcAddr1 + ENEMY_SPRITE_SIZE
+
+    LDA #LO(srcAddr2) : STA srcAddr
+    LDA #HI(srcAddr2) : STA srcAddr+1
+
+    LDA #LO(enemyAtlas3) : STA dstAddr
+    LDA #HI(enemyAtlas3) : STA dstAddr+1
+
+    LDA #LO(ENEMY_SPRITE_SIZE * 2) : STA sizeLo
+    LDA #HI(ENEMY_SPRITE_SIZE * 2) : STA sizeHi
+
+    JSR memcpy
+
+    \ next five enemy sprites at enemyAtlas4
+    srcAddr3 = srcAddr2 + (ENEMY_SPRITE_SIZE * 2)
+
+    LDA #LO(srcAddr3) : STA srcAddr
+    LDA #HI(srcAddr3) : STA srcAddr+1
+
+    LDA #LO(enemyAtlas4) : STA dstAddr
+    LDA #HI(enemyAtlas4) : STA dstAddr+1
+
+    LDA #LO(ENEMY_SPRITE_SIZE * 5) : STA sizeLo
+    LDA #HI(ENEMY_SPRITE_SIZE * 5) : STA sizeHi
+
+    JSR memcpy
+
+    \ ...remaining two sprites at enemyAtlas5
+    srcAddr4 = srcAddr3 + (ENEMY_SPRITE_SIZE * 5)
+
+    LDA #LO(srcAddr4) : STA srcAddr
+    LDA #HI(srcAddr4) : STA srcAddr+1
+
+    LDA #LO(enemyAtlas5) : STA dstAddr
+    LDA #HI(enemyAtlas5) : STA dstAddr+1
+
+    LDA #LO(ENEMY_SPRITE_SIZE * 2) : STA sizeLo
+    LDA #HI(ENEMY_SPRITE_SIZE * 2) : STA sizeHi
+
+    JSR memcpy
+
+    \ first door sprite at doorAtlas1
+    srcAddr5 = srcAddr4 + (ENEMY_SPRITE_SIZE * 2)
+
+    LDA #LO(srcAddr5) : STA srcAddr
+    LDA #HI(srcAddr5) : STA srcAddr+1
+
+    LDA #LO(doorAtlas1) : STA dstAddr
+    LDA #HI(doorAtlas1) : STA dstAddr+1
+
+    LDA #LO(DOOR_SPRITE_SIZE) : STA sizeLo
+    LDA #HI(DOOR_SPRITE_SIZE) : STA sizeHi
+
+    JSR memcpy
+
+    \ next two door sprite at doorAtlas2
+    srcAddr6 = srcAddr5 + DOOR_SPRITE_SIZE
+
+    LDA #LO(srcAddr6) : STA srcAddr
+    LDA #HI(srcAddr6) : STA srcAddr+1
+
+    LDA #LO(doorAtlas2) : STA dstAddr
+    LDA #HI(doorAtlas2) : STA dstAddr+1
+
+    LDA #LO(DOOR_SPRITE_SIZE * 2) : STA sizeLo
+    LDA #HI(DOOR_SPRITE_SIZE * 2) : STA sizeHi
+
+    JSR memcpy
+
+    \ last door sprite at doorAtlas3    
+    srcAddr7 = srcAddr6 + (DOOR_SPRITE_SIZE * 2)
+
+    LDA #LO(srcAddr7) : STA srcAddr
+    LDA #HI(srcAddr7) : STA srcAddr+1
+
+    LDA #LO(doorAtlas3) : STA dstAddr
+    LDA #HI(doorAtlas3) : STA dstAddr+1
+
+    LDA #LO(DOOR_SPRITE_SIZE) : STA sizeLo
+    LDA #HI(DOOR_SPRITE_SIZE) : STA sizeHi
+
+    JSR memcpy
+
+    \ four elevator sprites at elevatorAtlas
+    srcAddr8 = srcAddr7 + DOOR_SPRITE_SIZE
+
+    LDA #LO(srcAddr8): STA srcAddr
+    LDA #HI(srcAddr8): STA srcAddr+1
+
+    LDA #LO(elevatorAtlas) : STA dstAddr
+    LDA #HI(elevatorAtlas) : STA dstAddr+1
+
+    LDA #LO(ELEVATOR_SPRITE_SIZE * 4) : STA sizeLo
+    LDA #HI(ELEVATOR_SPRITE_SIZE * 4) : STA sizeHi
+
+    JSR memcpy
+
+    \ first k9 sprite at k9Atlas1
+    srcAddr9 = srcAddr8 + (ELEVATOR_SPRITE_SIZE * 4)
+
+    LDA #LO(srcAddr9) : STA srcAddr
+    LDA #HI(srcAddr9) : STA srcAddr+1
+
+    LDA #LO(k9Atlas1) : STA dstAddr
+    LDA #HI(k9Atlas1) : STA dstAddr+1
+
+    LDA #LO(K9_SPRITE_SIZE) : STA sizeLo
+    LDA #HI(K9_SPRITE_SIZE) : STA sizeHi
+
+    JSR memcpy
+
+    \ next k9 sprite at k9Atlas2
+    srcAddr10 = srcAddr9 + K9_SPRITE_SIZE
+
+    LDA #LO(srcAddr10) : STA srcAddr
+    LDA #HI(srcAddr10) : STA srcAddr+1
+
+    LDA #LO(k9Atlas2) : STA dstAddr
+    LDA #HI(k9Atlas2) : STA dstAddr+1
+
+    JSR memcpy
+
+    \ remaining nine k9 sprite at k9Atlas3
+    srcAddr11 = srcAddr10 + K9_SPRITE_SIZE
+
+    LDA #LO(srcAddr11) : STA srcAddr
+    LDA #HI(srcAddr11) : STA srcAddr+1
+
+    LDA #LO(k9Atlas3) : STA dstAddr
+    LDA #HI(k9Atlas3) : STA dstAddr+1
+
+    LDA #LO(K9_SPRITE_SIZE * 9) : STA sizeLo
+    LDA #HI(K9_SPRITE_SIZE * 9) : STA sizeHi
+
+    JSR memcpy
+
+    \ gamebar sprites at gamebarAtlas
+    srcAddr12 = srcAddr11 + (K9_SPRITE_SIZE * 9)
+
+    LDA #LO(srcAddr12) : STA srcAddr
+    LDA #HI(srcAddr12) : STA srcAddr+1
+
+    LDA #LO(gamebarAtlas) : STA dstAddr
+    LDA #HI(gamebarAtlas) : STA dstAddr+1
+
+    LDA #LO(GAMEBAR_SPRITE_SIZE) : STA sizeLo
+    LDA #HI(GAMEBAR_SPRITE_SIZE) : STA sizeHi
+
+    JMP memcpy \ implicit RTS
+}
+
+\
+\ initialize objects
+\
+\ Note that this routine is packaged with each level and is overwritten
+\
+.initializeObjects
+{
+    \ initialize counts (incremented below)
+    LDA #0
+    STA enemyCount
+    STA elevatorCount
+    STA doorCount
+
+    STA index \ levelObjectsLoaded index
+    LDX #0    \ game object index
+    .loop1
+        LDY index
+
+        \ zero state
+        LDA #0 : STA objectState, X
+
+        \ objectX = (posX * 16)
+        LDA levelObjectsLoaded, Y
+        INY
+        STA temp
+
+        ASL A : ASL A : ASL A : ASL A
+        STA objectXLo, X
+
+        LDA temp
+        LSR A : LSR A : LSR A : LSR A
+        STA objectXHi, X
+        
+        \ objectY = (posY * 16)
+        LDA levelObjectsLoaded, Y
+        INY
+        STA temp
+
+        ASL A : ASL A : ASL A : ASL A
+        STA objectYLo, X
+
+        LDA temp
+        LSR A : LSR A : LSR A : LSR A
+        STA objectYHi, X
+
+        \ objectType = animation | type
+        LDA levelObjectsLoaded, Y
+        STA objectType, X
+
+        \ unknown type?
+        BPL skip
+            JMP loop_exit
+        .skip
+        
+        AND #OBJECT_TYPE_MASK \ extract type
+        BNE else_1 \ implicit CMP #OBJECT_TYPE_K9
+            \
+            \ k9 specific properties
+            \
+
+            \ animation
+            LDA objectType, X
+            AND #ANIMATE_MASK
+            JSR k9Animate
+
+            \ set tile flags
+            LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
+            BNE endif
+
+        .else_1
+        CMP #OBJECT_TYPE_ENEMY : BNE else_2
+            \
+            \ enemy specific properties
+            \
+
+            \ increment count
+            INC enemyCount
+
+            \ set enemy health
+            LDA objectState, X
+            ORA #ENEMY_STATE_HEALTH_MASK
+            STA objectState, X
+
+            \ action 
+            LDA objectType, X
+            AND #ANIMATE_MASK
+            BEQ endif2 \ if (A == ANIMATE_LOOK_LEFT)
+            CMP #ANIMATE_LOOK_RIGHT : BEQ endif2
+                ORA #(ACTION_PACE OR OBJECT_TYPE_ENEMY)
+                STA objectType, X
+            .endif2
+
+            \ animation
+            AND #ANIMATE_MASK
+            JSR enemyAnimate
+
+            \ set tile flags
+            LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+            BNE endif
+
+        .else_2
+        CMP #OBJECT_TYPE_ELEVATOR : BNE else_3
+            \
+            \ elevator specific properties
+            \
+
+            \ increment count
+            INC elevatorCount
+
+            \ sprite index
+            TXA
+            AND #3
+            CLC
+            ADC #SPRITE_INDEX_ELEVATOR
+            STA objectSpriteIndex, X
+
+            \ callback
+            LDA #HI(elevatorFrameCallback) : STA objectFrameCallbackHi, X
+            LDA #LO(elevatorFrameCallback) : STA objectFrameCallbackLo, X
+
+            \ set tile flags
+            LDA #TILE_GRID_FLAGS_OPAQUE : STA flags
+            BNE endif
+
+        .else_3
+        CMP #OBJECT_TYPE_DOOR : BNE endif
+            \
+            \ elevator specific properties
+            \
+
+            \ increment count
+            INC doorCount
+
+            \ objectX += 8
+            LDA objectXLo, X
+            CLC
+            ADC #8
+            STA objectXLo, X
+
+            \ sprite index
+            TXA
+            AND #3
+            CLC
+            ADC #SPRITE_INDEX_DOOR
+            STA objectSpriteIndex, X
+
+            \ callback
+            LDA #HI(doorFrameCallback) : STA objectFrameCallbackHi, X
+            LDA #LO(doorFrameCallback) : STA objectFrameCallbackLo, X
+
+            \ set tile flags
+            LDA #TILE_GRID_FLAGS_OPAQUE : STA flags
+        .endif
+
+        JSR cacheObjectExtents
+        JSR setObjectInsideTileFlags
+
+        \ set redraw flag
+        JSR setRedrawFlag
+
+        \ index += 3
+        LDA index
+        CLC
+        ADC #3
+        STA index
+
+        \ loop?
+        INX
+        CPX #MAX_OBJECT_COUNT
+        BEQ loop_exit
+        JMP loop1
+
+    .loop_exit
+    STX objectCount
+
+    \ initialize object draw order array
+    DEX
+    .loop2
+        TXA
+        STA objectDrawOrder, X
+        DEX
+        BPL loop2
+
+    JMP sortObjectDrawOrder \ implicit RTS
+}
+
+\
+\ memcpy(dstAddr, srcAddr, sizeLo/Hi)
+\
+\ params:
+\   dstAddr     Destination address
+\   srcAddr     Source address
+\   sizeLo/Hi   Number of bytes to copy
+\
+\ Modifies:
+\   dstAddr, srcAddr
+\
+.memcpy
+{
+    \ copy page(s)
+    LDX sizeHi
+    BEQ skip1
+    .pageLoop
+        LDY #0
+        .innerloop
+            LDA (srcAddr),Y
+            STA (dstAddr),Y
+            INY
+            BNE innerloop
+
+        INC srcAddr+1
+        INC dstAddr+1
+
+        DEX
+        BNE pageLoop
+    .skip1
+
+    \ copy sub-page
+    LDX sizeLo
+    BEQ skip2
+
+    LDY #0
+    .loop
+        LDA (srcAddr),Y
+        STA (dstAddr),Y
+        INY
+
+        DEX
+        BNE loop
+    .skip2
+
+    RTS
+}
+
+\ end file

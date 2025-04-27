@@ -1,0 +1,236 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ Utility routines
+\
+
+\
+\ setBlackPalette()
+\
+.setBlackPalette
+{
+	LDY #15
+    .loop
+	    LDA blackPalette, Y
+	    STA &FE21
+	    DEY
+	    BPL loop
+    RTS
+}
+
+\
+\ setLevelPalette()
+\
+.setLevelPalette
+{
+	LDY #15
+    .loop
+	    LDA levelPalette, Y
+	    STA &FE21
+	    DEY
+	    BPL loop
+    RTS
+}
+
+\
+\ scanKey(A)
+\
+\ params:
+\   Accumulator     Key scan code
+\
+\ returns:
+\   Accumulator contains key scan code, bit 7 set if key pressed
+\
+.scanKey
+{
+    TAY \ --> key scan code
+
+    SEI \ disable interrupts
+
+    \ stop autoscan
+    LDA #%00000011
+    STA &FE40
+
+    \ set data direction
+    LDA #%01111111
+    STA &FE43
+
+    \ scan keyboard
+    STY &FE4F
+    LDY &FE4F
+    
+    \ restart autoscan
+    LDA #%00001011
+    STA &FE40
+
+    CLI \ reenable interrupts
+
+    TYA \ <-- key scan code (bit 7 set if key is down)
+    
+    RTS
+}
+
+\
+\ waitForSpaceKeyPress
+\
+\ waits for the space key to be pressed
+\
+.waitForSpaceKeyPress
+{
+    \ wait for release
+    .releaseLoop
+    	LDA #&62 \ space key scan code
+        JSR scanKey
+        BMI releaseLoop
+
+    \ wait for press
+    .pressLoop
+        JSR scanKey
+        BPL pressLoop
+    RTS
+}
+
+\
+\ scanKeys
+\
+\ scans keys KEY_A..KEY_9 populating top bit of keyTbl
+\
+.scanKeys
+{
+    \ scan keys
+    LDX #20
+    .loop
+        \ read scan code, masking out top bit
+        LDA keyTbl, X
+        AND #&7F
+
+        \ scan key
+        JSR scanKey
+
+        \ write scan code back, with top bit set if key is down
+        STA keyTbl, X
+
+        DEX
+        BPL loop
+    RTS
+
+\ key table containing key scan codes. The top bit is set if the key is down
+.^keyTbl 
+    EQUB &41, &32, &21, &51, &53, &36, &33
+    EQUB &62, &39, &29, &19, &79, &30, &31
+    EQUB &11, &12, &13, &34, &24, &15, &26
+}
+
+\
+\ printMode7Text(dstAddr text)
+\
+\ outputs text in mode 7
+\
+\ text spans are terminated with a repeat count (0..9). The text is terminated by an additional zero.
+\
+\ params:
+\   X register  Text address (low-byte)
+\   Y register  Text address (high-byte)
+\
+\ modifies: 
+\   dstAddr
+\
+.printMode7Text
+{
+    STX dstAddr
+    STY dstAddr+1
+
+    .nextSpan
+        LDX #0
+
+    .repeatSpan
+        LDY #0
+
+    .loop
+        LDA (dstAddr), Y
+        CMP #9
+        BCC decodeRepeatCount
+
+        JSR osasci
+        INY
+        BNE loop
+    
+    .decodeRepeatCount
+        \ repeat span?
+        CPX #0 : BNE skip
+            TAX
+            INX
+        .skip
+        DEX
+        BNE repeatSpan
+    
+        \ is terminated with additional zero?
+        INY
+        LDA (dstAddr), Y
+        BEQ return
+
+        \ dstAddr += Y
+        TYA
+        CLC
+        ADC dstAddr
+        STA dstAddr
+        BCC nocarry
+            INC dstAddr+1
+        .nocarry
+        JMP nextSpan
+
+.return
+    RTS
+}
+
+\
+\ waitForVSync()
+\
+\ wait for v-sync signal from IRQ
+\
+.waitForVSync
+{
+    .loop
+        LDA vsync
+        BEQ loop
+
+    LDA #0
+    STA vsync
+    RTS
+}
+
+\
+\ waitTenths(A)
+\
+\ params:
+\   A (accumulator)    Number of tenths of a second to pause
+\
+\ modifies X, Y, temp
+\
+IF DEBUG_WAIT_TENTHS = 1
+.waitTenths
+{
+    STA temp
+
+    .tenthsLoop
+     
+    LDX #155
+    .outerLoop
+    
+    LDY #255
+    .innerLoop
+
+    DEY
+    BNE innerLoop
+
+    DEX
+    BNE outerLoop
+
+    DEC temp
+    BNE tenthsLoop
+
+    RTS
+}
+ENDIF
+
+\ end file

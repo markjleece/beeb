@@ -1,0 +1,619 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ Elevator routines
+\
+
+\
+\ rideElevator(X register, direction)
+\
+\ entry point for K9 or an enemy to ride an elevator.  The routine first checks
+\ whether k9/enemy is on an elevator and it is clear to move.  It then sets up and 
+\ initiates motion.
+\
+\ returns success if K9 or enemy is on an elevator that can move in the direction 
+\ specified, irrespective of whether the elevator is clear to move or not
+\
+\ params:
+\   X register  Object index (K9/enemy)
+\   direction   DIRECTION_UP or DIRECTION_DOWN
+\
+\ result
+\   A = zero (success), non-zero (failure)
+\
+.rideElevator
+{
+    \ check if passed object is standing on an elevator (sets tileGridAddr)
+    JSR queryOnElevator : BEQ endif
+        LDA direction
+        BMI autoScrollUp \ implicit RTS
+        BPL autoScrollDown \ implicit RTS
+    .endif
+
+    \ save object index
+    STX temp \ --> k9/enemy index
+
+    \ find the elevator tile above or below (updates tileGridAddr)
+    JSR findNextElevator : BNE failure
+
+    \ find elevator that passed object is on (result index returned in X)
+    JSR findObjectsElevator : CPX #0 : BEQ failure
+
+    \ queries and sets the destination elevator as occuplied (passenger is going to occupy it)
+    JSR querySetElevatorTileOccupied : BNE success
+
+    \ store elevator starting position in the frame counter (we need to put it somewhere)
+    LDA objectYLo, X
+    AND #&F0
+    ORA objectYHi, X
+    STA objectFrameCounter, X
+
+    \ set elevator passenger index
+    LDA objectState, X
+    AND #LO(NOT(ELEVATOR_STATE_PASSENGER_MASK))
+    ORA temp \ <-- k9/enemy index
+    STA objectState, X
+
+    \ set elevator ascending/ascending flags
+    JSR setObjectVerticalFlags
+
+    \ set elevator callback
+    LDA #LO(elevatorFrameCallback_Ascend)
+    BIT direction : BMI skip2
+        LDA #LO(elevatorFrameCallback_Descend)
+    .skip2
+    STA objectFrameCallbackLo, X
+
+    LDA #HI(elevatorFrameCallback_Ascend)
+    BIT direction : BMI skip3
+        LDA #HI(elevatorFrameCallback_Descend)
+    .skip3
+    STA objectFrameCallbackHi, X
+
+    LDX temp \ <-- k9/enemy index
+
+    \ if K9 is the passenger, play sound effect
+    BNE skip
+        JSR moveSoundEffect
+    .skip
+
+    \ set K9/enemy ascending/ascending flags
+    JSR setObjectVerticalFlags
+
+.success
+    LDX temp \ restore X
+    LDA #0
+    RTS
+
+.failure
+    LDX temp \ restore X
+    LDA #1
+    RTS
+}
+
+\
+\ autoScrollUp(X)
+\
+\ auto scrolls up if K9 is at or beyond the scroll threshold
+\
+\ always returns zero flag clear
+\
+\ params:
+\    X register  game object index
+\
+.autoScrollUp
+{
+    CPX #0 : BNE noscroll \ is K9?
+    LDA scrollCounter : AND #1 : BNE noscroll \ if scrollCounter is even
+        LDA objectYLo
+        SEC 
+        SBC scrnTopLo
+        CMP #AUTO_SCROLL_THRESHOLD : BEQ then : BCS noscroll
+        .then
+            LDA #LO(DIRECTION_UP) : STA scrollDirection
+            LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
+    .noscroll
+    RTS
+}
+
+\
+\ autoScrollDowm(X)
+\
+\ auto scrolls down if K9 is at or beyond the scroll threshold
+\
+\ always returns zero flag clear
+\
+\ params:
+\    X register  game object index
+\
+.autoScrollDown
+{
+    CPX #0 : BNE noscroll \ is K9?
+    LDA scrollCounter : AND #1 : BNE noscroll \ if scrollCounter is even
+        LDA objectYLo
+        SEC 
+        SBC scrnTopLo
+        CMP #(255 - AUTO_SCROLL_THRESHOLD) : BCC noscroll
+            LDA #LO(DIRECTION_DOWN) : STA scrollDirection
+            LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
+    .noscroll
+    RTS
+}
+
+\
+\ setObjectVerticalFlags(X register)
+\
+\ set object state's ascending/descending flags helper
+\
+\ params:
+\   X register   Object index
+\   direction    DIRECTION_UP or DIRECTION_DOWN
+\
+.setObjectVerticalFlags
+{
+    LDA objectState, X
+    AND #LO(NOT(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING))
+    BIT direction : BMI else
+        ORA #(OBJECT_STATE_FLAGS_DESCENDING OR OBJECT_STATE_FLAGS_REDRAW)
+        BNE endif
+    .else
+        ORA #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_REDRAW)
+    .endif
+    STA objectState, X
+    RTS
+}
+
+\
+\ elevatorNextKeyframe(X register)
+\
+\ next keyframe helper
+\
+\ params:
+\   X register  Elevator index
+\
+.elevatorNextKeyframe
+{
+    LDA objectSpriteIndex, X
+    CLC
+    ADC #1
+    CMP #SPRITE_INDEX_ELEVATOR + 4
+    BNE skip
+        LDA #SPRITE_INDEX_ELEVATOR
+    .skip
+    STA objectSpriteIndex, X
+    RTS
+}
+
+\
+\ elevatorFrameCallback(X register) - animation frame callback
+\
+\ frame callback for a static (non moving) elevator
+\
+\ params:
+\   X register   Elevator index
+\
+.elevatorFrameCallback
+{
+    \ switch keyframe every 8 frames
+    TXA
+    CLC
+    ADC frameCount
+    AND #7
+    BNE return
+
+    \ next keyframe
+    JSR elevatorNextKeyframe
+
+    \ set redraw flag
+    JMP setRedrawFlag \ implicit RTS
+
+.return
+    RTS
+}
+
+\
+\ elevatorMoveObjectUp(X register)
+\
+\ move object up helper
+\
+\ params:
+\   X register      Object index
+\
+.elevatorMoveObjectUp
+{
+    \ move object up
+    LDA objectYLo, X
+    BNE skip1
+        DEC objectYHi, X
+    .skip1
+    DEC objectYLo, X
+
+    \ set elevator redraw flag
+    JMP setRedrawFlag \ implicit RTS
+}
+
+\
+\ elevatorFrameCallback_Ascend(X register)
+\
+\ frame callback for an ascending elevator
+\
+\ params:
+\   X register   Elevator index
+\
+.elevatorFrameCallback_Ascend
+{
+    \ update keyframe every eight frames
+    LDA frameCount : AND #7 : BNE dontUpdateKeyframe
+        JSR elevatorNextKeyframe
+    .dontUpdateKeyframe
+
+    \ move elevator up
+    JSR elevatorMoveObjectUp
+
+    STX temp \ --> elevator index
+
+    \ X <-- passenger index
+    LDA objectState, X
+    AND #ELEVATOR_STATE_PASSENGER_MASK
+    TAX
+
+    \ if K9 is the passenger, play sound effect every four frames
+    BNE skip
+        LDA frameCount : AND #3 : BNE skip
+        JSR moveSoundEffect
+    .skip
+
+    \ move passenger up
+    JSR elevatorMoveObjectUp
+
+    \ auto scroll screen (if passenger is K9)?
+    JSR autoScrollUp
+    
+    LDX temp \ <-- elevator index
+
+    \ have we reached the next floor?
+    JMP queryStopElevator \ implicit RTS
+}
+
+\
+\ elevatorMoveObjectDown(X register)
+\
+\ move object down helper
+\
+\ params:
+\   X register   Elevator index
+\
+.elevatorMoveObjectDown
+{
+    \ move object down
+    INC objectYLo, X
+    BNE skip1
+        INC objectYHi, X
+    .skip1
+
+    \ set elevator redraw flag
+    JMP setRedrawFlag \ implicit RTS
+}
+
+\
+\ elevatorFrameCallback_Descend(X register)
+\
+\ frame callback for an descending elevator
+\
+\ params:
+\   X register   Elevator index
+\
+.elevatorFrameCallback_Descend
+{
+    \ update keyframe every eight frames
+    LDA frameCount : AND #7 : BNE dontUpdateKeyframe
+        JSR elevatorNextKeyframe
+    .dontUpdateKeyframe
+
+    \ move elevator down
+    JSR elevatorMoveObjectDown
+
+    STX temp \ --> elevator index
+
+    \ X <-- passenger index
+    LDA objectState, X
+    AND #ELEVATOR_STATE_PASSENGER_MASK
+    TAX
+
+    \ if K9 is the passenger, play sound effect every four frames
+    BNE skip
+        LDA frameCount : AND #3 : BNE skip
+        JSR moveSoundEffect
+    .skip
+
+    \ move passenger down
+    JSR elevatorMoveObjectDown
+
+    \ auto scroll screen (if passenger is K9)?
+    JSR autoScrollDown
+
+    LDX temp \ <-- elevator index
+
+    \ have we reached the next floor?
+    \ fall through to queryStopElevator
+}
+
+\
+\ queryStopElevator(X register)
+\
+\ check if the elevator has reached a floor, and if so stops
+\
+\ params:
+\   X register   Elevator index
+\
+.queryStopElevator
+{
+    \ check if elevator location aligns with a tile
+    LDA objectYLo, X : AND #&0F : BNE notEnd
+
+    \ check if tile at aligned position is an elevator
+    LDA #0 : STA offsetX : STA offsetY
+    JSR getObjectTileGridValue
+    AND #TILE_GRID_INDEX_MASK
+    TAY
+    LDA levelTileTypes, Y
+    CMP #TILE_TYPE_ELEVATOR : BNE notEnd
+
+    \ yeah, we've reached the end!
+    LDA #HI(elevatorStopFrameCallback) : STA objectFrameCallbackHi, X
+    LDA #LO(elevatorStopFrameCallback) : STA objectFrameCallbackLo, X
+
+    .notEnd
+    RTS
+}
+
+\
+\ queryOnElevator(X register)
+\
+\ returns if K9/enemy is on a static elevator
+\
+\ params:
+\   X register   Object index 
+\
+\ Zero flag set if object is on an elevator, otherwise cleared
+\
+.queryOnElevator
+{
+    \ test right tile under object
+    LDA widthMinusOne : STA offsetX
+    LDA height : STA offsetY
+
+    JSR getObjectTileGridValue
+    AND #TILE_GRID_INDEX_MASK
+    TAY
+    LDA levelTileTypes, Y
+    CMP #TILE_TYPE_ELEVATOR : BNE return
+
+    \ test left tile under K9
+    LDA #0 : STA offsetX
+    
+    JSR getObjectTileGridValue
+    AND #TILE_GRID_INDEX_MASK
+    TAY
+    LDA levelTileTypes, Y
+    CMP #TILE_TYPE_ELEVATOR
+
+.return
+    RTS
+}
+
+\
+\ findNextElevator()
+\
+\ find the next platfrom in the direction specified, either above or below
+\
+\ params:
+\   direction       DIRECTION_UP or DIRECTION_DOWN
+\   tileGridAddr    Current elevator location
+\
+\ modifies:
+\   A (accumulator) 0 (success) or 1 (failure)
+\   tileGridAddr    moved to elevator above or below
+\
+.findNextElevator
+{
+    .loop
+        LDA direction : BPL else
+            \ tileGridAddr -= horzTileCount
+            JSR tileGridAddr_sub_horzTileCount
+
+            \ bounds check
+            LDA tileGridAddr+1
+            CMP #HI(levelTileGrid) : BCC failure
+            BCS endif
+        .else
+            \ tileGridAddr += horzTileCount
+            JSR tileGridAddr_add_horzTileCount
+
+            \ bounds check
+            LDA tileGridAddr+1
+            CMP #HI(levelTileGrid + LEVEL_TILE_GRID_SIZE + &100) : BCS failure
+        .endif
+
+        \ loop while tile is space
+        LDY #0
+        LDA (tileGridAddr), Y
+        AND #TILE_GRID_INDEX_MASK
+        TAY
+        LDA levelTileTypes, Y
+        CMP #TILE_TYPE_SPACE
+        BEQ loop
+
+    \ is tile an elevator?
+    CMP #TILE_TYPE_ELEVATOR
+    BNE failure
+
+    \ success
+    LDA #0
+    RTS
+
+    .failure
+    LDA #1
+    RTS
+}
+
+\
+\ querySetElevatorTileOccupied()
+\
+\ checks whether elevator is occupied, setting the occupied flags if is isn't
+\
+\ Accumulator set to zero if successful, otherwise non-zero
+\
+\ params:
+\   tileGridAddr  Elevator location
+\
+.querySetElevatorTileOccupied
+{
+    \ tileGridAddr -= horzTileCount
+    JSR tileGridAddr_sub_horzTileCount
+
+    \ bounds check
+    LDA tileGridAddr+1
+    CMP #HI(levelTileGrid) : BCC failure
+
+    \ left tile unoccupied?
+    LDY #0
+    LDA (tileGridAddr), Y
+    AND #TILE_GRID_FLAGS_OPAQUE
+    BNE failure
+
+    \ right tile unoccupied?
+    INY
+    LDA (tileGridAddr), Y
+    AND #TILE_GRID_FLAGS_OPAQUE
+    BNE failure
+
+    \ set right tile
+    LDA #TILE_GRID_FLAGS_OPAQUE
+    ORA (tileGridAddr), Y
+    STA (tileGridAddr), Y
+
+    \ set left tile
+    DEY
+    LDA #TILE_GRID_FLAGS_OPAQUE
+    ORA (tileGridAddr), Y
+    STA (tileGridAddr), Y
+
+    \ success
+    LDA #0
+    RTS
+
+    .failure
+    LDA #1
+    RTS
+}
+
+\
+\ findObjectsElevator(X register)
+\
+\ returns the elevator index that the passed object is on. The index is returned in he 
+\ X register, where zero denotes 'not found'
+\
+\ params:
+\   X register      Object index
+\
+\ modifies:
+\   leftLo/Hi, topLo/Hi, index, count
+\
+.findObjectsElevator
+{
+    \ store object's position (rounded to the nearest tile) in left & top
+    LDA objectXLo, X : AND #&F0 : STA leftLo
+    LDA objectXHi, X : STA leftHi
+
+    LDA objectYLo, X : CLC : ADC height : AND #&F0 : STA topLo
+    LDA objectYHi, X : STA topHi
+
+    \ iterate over all elevators looking for a positional match (elevators come after K9 and enemies)
+    LDA enemyCount : STA index
+    ADC elevatorCount : STA count
+
+    .loop
+        INC index
+        LDX index
+        
+        LDA objectXLo, X : AND #&F0 \ round to nearest tile
+        CMP leftLo : BNE next
+        LDA objectYLo, X : AND #&F0 \ round to nearest tile
+        CMP topLo : BNE next
+        LDA objectXHi, X
+        CMP leftHi : BNE next
+        LDA objectYHi, X
+        CMP topHi : BNE next
+
+        \ elevator found!
+        RTS
+
+        .next
+        DEC count
+        BNE loop
+
+    \ elevator not found
+    LDX #0
+    RTS
+}
+
+\
+\ elevatorStopFrameCallback(X register)
+\
+\ elevator frame callback, called when elevator stops moving
+\
+\ params:
+\   X register   Elevator index
+\
+.elevatorStopFrameCallback
+{
+    \ get elevator passenger index, pushing this on stack
+    LDA objectState, X
+    AND #ELEVATOR_STATE_PASSENGER_MASK
+    PHA \ --> passenger index
+    
+    \ clear passenger's ascending/descending flags
+    TAY
+    LDA objectState, Y
+    AND #LO(NOT(OBJECT_STATE_FLAGS_DESCENDING OR OBJECT_STATE_FLAGS_ASCENDING))
+    STA objectState, Y
+
+    \ clear elevators's ascending/descending flags, and passenger index
+    LDA objectState, X
+    AND #LO(NOT(OBJECT_STATE_FLAGS_DESCENDING OR OBJECT_STATE_FLAGS_ASCENDING OR ELEVATOR_STATE_PASSENGER_MASK))
+    STA objectState, X
+
+    \ restore elevator position (stored in frame counter)
+    LDA objectFrameCounter, X : AND #&F0 : STA objectYLo, X
+    LDA objectFrameCounter, X : AND #&0F : STA objectYHi, X
+    LDA #0 : LDA objectFrameCounter, X
+
+    \ mark tiles above elevator (original position) as unoccupied
+    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9 OR TILE_GRID_FLAGS_ENEMY) : STA flags
+    JSR clearObjectTileFlagsAbove
+
+    \ restore callback
+    LDA #HI(elevatorFrameCallback) : STA objectFrameCallbackHi, X
+    LDA #LO(elevatorFrameCallback) : STA objectFrameCallbackLo, X
+
+    \ set passenger tile flags
+    PLA \ <-- passenger index
+    TAX
+    JSR cacheObjectExtents
+    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9)
+    CPX #0 : BEQ skip
+        LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY)
+    .skip
+    STA flags
+    JSR setObjectInsideTileFlags
+
+    \ if passenger is an enemy, determine what to do next
+    CPX #0 : BEQ return
+    JMP enemyElevatorStop \ implicit RTS
+    
+.return
+    RTS
+}
+
+\ end file

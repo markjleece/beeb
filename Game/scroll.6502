@@ -1,0 +1,248 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ Scrolling routines
+\
+
+\
+\ scrollUp
+\
+.scrollUp
+{
+    \ if (scrnTop == 0) return
+    LDA scrnTopLo : BNE skip1
+    LDA scrnTopHi : BNE skip1
+        RTS
+    .skip1
+
+    \ scrnTop -= 8
+    LDA scrnTopLo
+    SEC
+    SBC #8
+    STA scrnTopLo
+    BCS skip2
+        DEC scrnTopHi
+    .skip2
+         
+    \ scrnAddr -= 512
+    LDA scrnAddr+1
+    SEC
+    SBC #2
+    STA scrnAddr+1
+    CLC
+
+    \ update screen
+    JMP scrollVertUpdateScreen \ implicit RTS
+}
+
+\
+\ scrollDown
+\
+.scrollDown
+{
+    \ if (scrnTop >= scrnTopMax - 1) return
+    LDA scrnTopHi : CMP scrnTopHiMaxMinusOne : BCC skip1
+        RTS
+    .skip1
+
+    \ scrnTop += 8
+    LDA scrnTopLo
+    CLC
+    ADC #8
+    STA scrnTopLo
+    BCC skip2
+        INC scrnTopHi
+    .skip2
+
+    \ scrnAddr += 512
+    LDA scrnAddr+1
+    CLC
+    ADC #2
+    STA scrnAddr+1
+
+    \ fall through to update screen
+}
+
+\
+\ vertical scroll update screen helper
+\
+.scrollVertUpdateScreen
+{
+    \ update hardware
+    JSR updateScreenPosition
+
+    \ draw game bar
+    JSR drawGameBar
+
+    \ draw tile strip
+    JMP drawHorzTileScrollStrip \ implicit RTS
+}
+
+\
+\ scrollScreen()
+\
+\ scroll screen entry point
+\
+.scrollScreen
+{
+    LDA scrollCounter : BEQ noscroll
+        DEC scrollCounter
+
+        BNE skip
+            \ doorScrollRedrawCount = doorCount (used to redraw doors after scrolling)
+            LDA doorCount : STA doorScrollRedrawCount
+        .skip
+
+        LDA scrollDirection
+
+        CMP #LO(DIRECTION_LEFT)
+        BEQ scrollLeft \ implicit RTS
+
+        CMP #LO(DIRECTION_RIGHT)
+        BEQ scrollRight \ implicit RTS
+
+        CMP #LO(DIRECTION_UP)
+        BEQ scrollUp \ implicit RTS
+        
+        CMP #LO(DIRECTION_DOWN)
+        BEQ scrollDown \ implicit RTS
+
+    .noscroll
+    RTS
+}
+
+\
+\ scrollLeftUpdateVariables
+\
+.scrollLeftUpdateVariables
+{
+    \ scrnLeft -= 8
+    LDA scrnLeftLo
+    SEC
+    SBC #8
+    STA scrnLeftLo
+    BCS skip2
+        DEC scrnLeftHi
+    .skip2
+         
+    \ scrnAddr -= 16
+    LDA scrnAddr
+    SEC
+    SBC #16
+    STA scrnAddr
+    BCS skip3
+        DEC scrnAddr+1
+    .skip3
+
+    RTS
+}
+
+\
+\ scrollLeft
+\
+.scrollLeft
+{
+    \ if (scrnLeft == 0) return
+    LDA scrnLeftLo : BNE skip1
+    LDA scrnLeftHi : BNE skip1
+        RTS
+    .skip1
+
+    \ scrnLeft -= 8, scrnAddr -= 16
+    JSR scrollLeftUpdateVariables
+
+    \ update screen
+    JMP scrollHorzUpdateScreen \ implicit RTS
+}
+
+\
+\ scrollRight
+\
+.scrollRight
+{
+    \ if (scrnLeft >= scrnLeftMax - 1) return
+    LDA scrnLeftHi : CMP scrnLeftHiMaxMinusOne : BCC skip1
+        RTS
+    .skip1
+
+    \ scrnLeft += 8
+    LDA scrnLeftLo
+    CLC
+    ADC #8
+    STA scrnLeftLo
+    BCC skip2
+        INC scrnLeftHi
+    .skip2
+
+    \ scrnAddr += 16
+    LDA scrnAddr
+    CLC
+    ADC #16
+    STA scrnAddr
+    BCC skip3
+        INC scrnAddr+1
+    .skip3
+
+    \ draw tile character left of the gamebar
+    JSR drawTileLeftOfGamebar
+
+    \ fall through to update screen
+}
+
+\
+\ horizontal scroll update screen
+\
+.scrollHorzUpdateScreen
+{
+    \ update hardware
+    JSR updateScreenPosition
+
+    \ draw game bar
+    JSR drawGameBar
+
+    \ draw tile strip
+    JMP drawVertTileScrollStrip \ implicit RTS
+}
+
+\
+\ updateScreenPosition(scrnAddr)
+\
+\ Modifies: scrnAddr, srcAddr
+\
+.updateScreenPosition
+{
+    \ ensure scrnAddr is a valid screen address
+    LDA scrnAddr+1 : BPL elseif \ if (scrnAddr >= &8000)
+        SEC     
+        SBC #&40 \ scrnAddr -= &4000
+        BNE endif
+    .elseif
+    CMP #HI(&4000) : BCS endif \ else if (scrnAddr < &4000)
+        ADC #&40 \ scrnAddr += &4000
+    .endif
+    STA scrnAddr+1
+
+    \ srcAddr = scrnAddr / 8
+    LDA scrnAddr : STA srcAddr
+    LDA scrnAddr+1 : STA srcAddr+1
+
+    LSR srcAddr+1 : ROR srcAddr
+    LSR srcAddr+1 : ROR srcAddr
+    LSR srcAddr+1 : ROR srcAddr
+
+    \ Set 6845 CRTC: R13 screen start address, low
+    LDA #13
+	STA &FE00
+    LDA srcAddr
+	STA &FE01
+
+    \ Set 6845 CRTC: R12 with screen start address, high
+    LDA #12
+	STA &FE00
+    LDA srcAddr+1
+	STA &FE01
+
+    RTS
+}
+
+\ end file
