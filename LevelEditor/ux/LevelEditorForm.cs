@@ -967,15 +967,15 @@ namespace DaleksLevelEditor
         private void helpButton_Click(object sender, EventArgs e)
         {
             MessageBox.Show(
-                "The main panel shows the design of the level. It shows an arrangement of eight pages, each containing a grid of tiles.\n\n" +
+                "The main panel shows the design of the level. Its layout can be modified by using the 'Select Layout' button.\n\n" +
                 "Tiles can be set by first selecting a tile from the left palette, and then clicking and draging within the main panel.\n\n" +
-                "The current draw mode (freeform, line, rectangle) effects how the tiles are drawn when dragging the mouse.\n\n" +
+                "The current draw mode (freeform, line, rectangle) effects how tiles are drawn when dragging the mouse.\n\n" +
                 "The left panel shows a palette of 32 tiles, plus six 'object' tiles which can be used to place K9 and enemies.\n\n" +
                 "The background tile is implicitly selected when the right mouse button is used.\n\n" +
                 "Tiles can be edited by double clicking on them within the left palette. The background tile and object tiles cannot be edited.\n\n" +
                 "Tiles also have a type, which effects their behavior within the game.\n\n" +
-                "The arrangement of pages can be modified using the 'Edit Page Grid' button.\n\n" +
-                "The four color palette can be modified using the 'Edit Palette' button.",
+                "The four color palette can be modified using the 'Edit Palette' button.\n\n" +
+                "The 'Edit Coefficients' button can be used to modify the relative strengths of K9, enemies, and Jewels.",
                 "Help", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
