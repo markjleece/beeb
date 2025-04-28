@@ -1,5 +1,5 @@
 ﻿// This file is Copyright © 2025 - Mark John Leece - All rights reserved
-namespace DaleksLevelEditor.ux
+namespace LevelEditor.ux
 {
     partial class EditPaletteDialog
     {

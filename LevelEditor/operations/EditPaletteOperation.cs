@@ -1,7 +1,7 @@
 // This file is Copyright © 2025 - Mark John Leece - All rights reserved
-using DaleksLevelEditor.ux;
+using LevelEditor.ux;
 
-namespace DaleksLevelEditor
+namespace LevelEditor
 {
     class EditPaletteOperation : Operation
     {

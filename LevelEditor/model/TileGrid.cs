@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 
-namespace DaleksLevelEditor
+namespace LevelEditor
 {
     class TileGrid
     {

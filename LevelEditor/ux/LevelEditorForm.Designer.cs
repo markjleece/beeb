@@ -1,7 +1,7 @@
 ﻿// This file is Copyright © 2025 - Mark John Leece - All rights reserved
 using System.Windows.Forms;
 
-namespace DaleksLevelEditor
+namespace LevelEditor
 {
     partial class LevelEditorForm
     {

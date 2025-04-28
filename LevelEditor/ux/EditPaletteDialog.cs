@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace DaleksLevelEditor.ux
+namespace LevelEditor.ux
 {
     public partial class EditPaletteDialog : Form
     {
