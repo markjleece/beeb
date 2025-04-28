@@ -52,11 +52,11 @@ This project is used to convert a type-0 MIDI file (Doctor Who titles music) int
 ## Other files
 | File name | Description |
 |---|---|
-| **Development.docx** | Provides details on the design and development of the game, which may be of interest |
-| **memory.xlsx** | Used to determine the memory locations of sprite assets and other program data |
-| **music.sib** | A Sibelius music score containing the Doctor Who tune and arrangement by Ron Grainer & Delia Derbyshire |
-| **music.midi** | A type-0 MIDI file created using Sibelius |
-| **programs.mmd** | A multi-disc image that can be copied to a micro-sd card and used to play the game on a Beeb which has MMFS Turbo support. Note that building the solution does not update the mmd file |
-| **game\titles.bin** | Titles screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format |
-| **game\instructions.bin** | Instructions screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format ||---|---|
+| development.docx | Provides details on the design and development of the game, which may be of interest |
+| memory.xlsx | Used to determine the memory locations of sprite assets and other program data |
+| music.sib | A Sibelius music score containing the Doctor Who tune and arrangement by Ron Grainer & Delia Derbyshire |
+| music.midi | A type-0 MIDI file created using Sibelius |
+| programs.mmd | A multi-disc image that can be copied to a micro-sd card and used to play the game on a Beeb which has MMFS Turbo support. Note that building the solution does not update the mmd file |
+| game\titles.bin | Titles screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format |
+| game\instructions.bin | Instructions screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format ||---|---|
 
