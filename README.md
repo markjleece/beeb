@@ -30,9 +30,9 @@ This project contains a Windows Forms based level editor, that allows levels to 
 3. Rebuild All
 
 ### To add a new level:
-1. Using the editor, create a new level file named **level\<N\>.dat** in the game folder, where **N** is the next level number in the range **1..9**. An existing level can be used as a template by copying, renaming, and opening it.
+1. Using the editor, create a new level file named **level\<N\>.dat** in the **game** folder, where **N** is the next level number in the range **1..9**. An existing level can be used as a template by copying, renaming, and opening it.
 2. Create new sprite images for the level, by copying an existing **game/level\<N\>** folder, renaming it, and editing the image files within using paint.net, or other image editor. Note that the assets must use the same colors as is defined in the new level's palette.
-3. Update the **MaxLevel** constant in **BMPConverter/program.cs**, rebuild BMPConverter, and run it.  A new **level\<N\>.alt** sprite atlas file should be generated in the **game** folder.
+3. Update the **LevelCount** constant in **BMPConverter/program.cs**, rebuild BMPConverter, and run it.  A new **level\<N\>.alt** sprite atlas file should be generated in the **game** folder.
 4. Update the **LEVEL_COUNT** constant in **game/program.6502**.
 5. Package the new level by adding a new **'level N --> SSD'** section at the bottom of **game/program.6502**.
 6. Rebuild All
@@ -42,7 +42,7 @@ This project is used to convert 32-bit BMP sprite atlas assets (created in paint
 
 The app should be run after any BMP sprite atlas file changes are made, followed by a rebuild of the **Game** project; so the new level sprite atlas files are repackaged with the game.
 
-Each level's BMP assets are held in a folder named **'game\assets\level\<N\>'**, where **N** is the level number.  The **MaxLevel** constant in **program.cs** defines the number of levels that are converted.
+Each level's BMP assets are held in a folder named **'game\assets\level\<N\>'**, where **N** is the level number.  The **LevelCount** constant in **program.cs** defines the number of levels that are converted.
 
 Note that the colors used within the BMP asset files must be a close match to the colors defined in the associated level's palette.  The converter will report errors if it can't match the colors.
 
@@ -52,11 +52,11 @@ This project is used to convert a type-0 MIDI file (Doctor Who titles music) int
 ## Other files
 | File name | Description |
 |---|---|
-| Development.docx | Provides details on the development of the game, which may be of interest |
-| memory.xlsx | Used to determine the memory locations of sprite assets and other program data |
-| music.sib | A Sibelius music score containing the Doctor Who tune and arrangement by Ron Grainer & Delia Derbyshire |
-| music.midi | A type-0 MIDI file created using Sibelius |
-| programs.mmd | A multi-disc image that can be copied to a micro-sd card and used to play the game on a Beeb which has MMFS Turbo support. Note that building the solution does not update the mmd file |
-| game\titles.bin | Titles screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format |
-| game\instructions.bin | Instructions screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format ||---|---|
+| **Development.docx** | Provides details on the design and development of the game, which may be of interest |
+| **memory.xlsx** | Used to determine the memory locations of sprite assets and other program data |
+| **music.sib** | A Sibelius music score containing the Doctor Who tune and arrangement by Ron Grainer & Delia Derbyshire |
+| **music.midi** | A type-0 MIDI file created using Sibelius |
+| **programs.mmd** | A multi-disc image that can be copied to a micro-sd card and used to play the game on a Beeb which has MMFS Turbo support. Note that building the solution does not update the mmd file |
+| **game\titles.bin** | Titles screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format |
+| **game\instructions.bin** | Instructions screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format ||---|---|
 
