@@ -12,7 +12,8 @@ namespace MIDIConverter
             GeneratePitchTable();
 
             // convert MIDI file
-            ConvertMIDIFile("C:\\Dev\\Beeb\\music.mid", "C:\\Dev\\Beeb\\Dalek\\music.dat");
+            string solutionFolder = GetSolutionFolder();
+            ConvertMIDIFile(solutionFolder + "\\music.mid", solutionFolder + "\\Game\\music.dat");
         }
 
         private static void GeneratePitchTable()
@@ -540,5 +541,15 @@ namespace MIDIConverter
 
         private const int LowerCPitch = 48-27;
         private const int Unassigned = -1;
+
+        static private string GetSolutionFolder()
+        {
+            var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
+            while (directory != null && directory.GetFiles("*.sln").Length == 0)
+            {
+                directory = directory.Parent;
+            }
+            return (directory != null) ? directory.FullName : string.Empty;
+        }
     }
 }

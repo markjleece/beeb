@@ -21,7 +21,7 @@ namespace BMPConverter
     internal class Program
     {
         const char LevelCount = '3';
-        private static string folderPath = "c:\\dev\\Beeb\\Dalek\\";
+        private static string folderPath = GetSolutionFolder() + "\\Game\\";
         private static string assetsFolderPath = folderPath + "assets\\level{0}\\";
 
         static void Main(string[] args)
@@ -79,8 +79,15 @@ namespace BMPConverter
         {
             Color[] palette = new Color[4];
 
-            // read palette data from level file (first 16 bytes)
+            // read palette data from level file
             FileStream fileStream = File.OpenRead(folderPath + $"level{level}.dat");
+
+            // seek to palette location
+            const int paletteOffset = 31 * 64 /*tiles*/ + 2048 /*tile-grid*/ + 2 /*extents*/ + 32 /*tile-types*/;
+            if (fileStream.Seek(paletteOffset, SeekOrigin.Begin) != paletteOffset)
+            {
+                throw new Exception("palette seek failed");
+            }
 
             byte[] paletteData = new byte[16];
             fileStream.ReadExactly(paletteData);
@@ -181,7 +188,7 @@ namespace BMPConverter
                     for (int i = 0; i < 4; i++)
                     {
                         int rgba = bitmapData[idx + i];
-                        byte bbcLogicalColor = RGBAtoLogicalColor(rgba, redMask, greenMask, blueMask, redShift, greenShift, blueShift, palette);
+                            byte bbcLogicalColor = RGBAtoLogicalColor(rgba, redMask, greenMask, blueMask, redShift, greenShift, blueShift, palette);
                         bbcScreenByte |= bbcScreenBits[i][bbcLogicalColor];
                     }
 
@@ -271,6 +278,16 @@ namespace BMPConverter
             Magenta = 5,
             Cyan = 6,
             White = 7
+        }
+
+        static private string GetSolutionFolder()
+        {
+            var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
+            while (directory != null && directory.GetFiles("*.sln").Length == 0)
+            {
+                directory = directory.Parent;
+            }
+            return (directory != null) ? directory.FullName : string.Empty;
         }
     }
 }
