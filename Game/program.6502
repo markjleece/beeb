@@ -1342,13 +1342,13 @@ INCLUDE "sample.6502"
 \ embed 'level1' in binary (replaced on level load/reload)
 \
 ORG levelLoadAddr
-INCBIN "level1.dat"     \ level data (palette, tile types, tiles, tile grid etc)
+INCBIN "data\\level1.dat" \ level data (palette, tile types, tiles, tile grid etc)
 
 .levelSpriteDataLoaded
-INCBIN "level1.atl"     \ level atlas sprite data (enemies, elevators, doors)
+INCBIN "data\\level1.atl" \ level atlas sprite data (enemies, elevators, doors)
 
 .levelCode
-INCLUDE "level.6502"    \ packaged level code
+INCLUDE "level.6502" \ packaged level code
 
 .levelEnd
 
@@ -1382,7 +1382,7 @@ SAVE "program", start, end
 \
 ORG &8000
 .pcmData
-INCBIN "pcm.dat"
+INCBIN "data\\pcm.dat"
 
 SAVE "pcm1", &8000, &8CA0
 SAVE "pcm2", &8CA0, &9940
@@ -1396,8 +1396,8 @@ SAVE "pcm5", &B280, &BF20
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "level1.dat"     \ level data (palette, tile grid, tiles etc)
-INCBIN "level1.atl"     \ level atlas sprite data (enemies, elevators, doors)
+INCBIN "data\\level1.dat"     \ level data (palette, tile grid, tiles etc)
+INCBIN "data\\level1.atl"     \ level atlas sprite data (enemies, elevators, doors)
 \INCLUDE "level.6502"   \ packaged level code (INCLUDE statement is unnecessary)
 
 SAVE "level1", levelLoadAddr, levelEnd
@@ -1408,8 +1408,8 @@ SAVE "level1", levelLoadAddr, levelEnd
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "level2.dat"     \ level data (palette, tile grid, tiles etc)
-INCBIN "level2.atl"     \ level atlas sprite data (enemies, elevators, doors)
+INCBIN "data\\level2.dat"     \ level data (palette, tile grid, tiles etc)
+INCBIN "data\\level2.atl"     \ level atlas sprite data (enemies, elevators, doors)
 \INCLUDE "level.6502"   \ packaged level code (INCLUDE statement is unnecessary)
 
 SAVE "level2", levelLoadAddr, levelEnd
@@ -1420,8 +1420,8 @@ SAVE "level2", levelLoadAddr, levelEnd
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "level3.dat"     \ level data (palette, tile grid, tiles etc)
-INCBIN "level3.atl"     \ level atlas sprite data (enemies, elevators, doors)
+INCBIN "data\\level3.dat"     \ level data (palette, tile grid, tiles etc)
+INCBIN "data\\level3.atl"     \ level atlas sprite data (enemies, elevators, doors)
 \INCLUDE "level.6502"   \ packaged level code (INCLUDE statement is unnecessary)
 
 SAVE "level3", levelLoadAddr, levelEnd

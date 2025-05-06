@@ -13,7 +13,7 @@ namespace MIDIConverter
 
             // convert MIDI file
             string solutionFolder = GetSolutionFolder();
-            ConvertMIDIFile(solutionFolder + "\\music.mid", solutionFolder + "\\Game\\music.dat");
+            ConvertMIDIFile(solutionFolder + "\\game\\assets\\music\\music.mid", solutionFolder + "\\Game\\data\\music.dat");
         }
 
         private static void GeneratePitchTable()

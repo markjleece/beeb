@@ -21,8 +21,8 @@ namespace BMPConverter
     internal class Program
     {
         const char LevelCount = '3';
-        private static string folderPath = GetSolutionFolder() + "\\Game\\";
-        private static string assetsFolderPath = folderPath + "assets\\level{0}\\";
+        private static string assetsFolderPath = GetSolutionFolder() + "\\Game\\assets\\level{0}\\";
+        private static string dataFolderPath = GetSolutionFolder() + "\\Game\\data\\";
 
         static void Main(string[] args)
         {
@@ -32,7 +32,7 @@ namespace BMPConverter
                 {
                     Color[] palette = ReadLevelPalette(level);
 
-                    using (FileStream fs = File.OpenWrite(folderPath + $"level{level}.atl"))
+                    using (FileStream fs = File.OpenWrite(dataFolderPath + $"level{level}.atl"))
                     {
                         string folderPath = string.Format(assetsFolderPath, level);
                         byte[] data;
@@ -80,7 +80,7 @@ namespace BMPConverter
             Color[] palette = new Color[4];
 
             // read palette data from level file
-            FileStream fileStream = File.OpenRead(folderPath + $"level{level}.dat");
+            FileStream fileStream = File.OpenRead(dataFolderPath + $"level{level}.dat");
 
             // seek to palette location
             const int paletteOffset = 31 * 64 /*tiles*/ + 2048 /*tile-grid*/ + 2 /*extents*/ + 32 /*tile-types*/;

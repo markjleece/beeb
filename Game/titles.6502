@@ -142,7 +142,7 @@ ENDMACRO
     JMP memcpy \ implicit RTS
 
 .titles
-INCBIN "titles.bin"
+INCBIN "data\\titles.bin"
 }
 
 \
@@ -166,7 +166,7 @@ INCBIN "titles.bin"
     JMP memcpy \ implicit RTS
 
 .instructions
-INCBIN "instructions.bin"
+INCBIN "data\\instructions.bin"
 }
 
 

@@ -10,11 +10,11 @@ namespace WAVConverter
         static void Main(string[] args)
         {
             // extract and encode the PCM data from the following WAV files
-            string solutionFolder = GetSolutionFolder();
+            string samplesFolder = GetSolutionFolder() + "\\game\\assets\\samples\\";
             byte[][] pcmDataSamples = [
-                ExtractAndEncodePCMData(solutionFolder + "\\exterminate.wav"),
-                ExtractAndEncodePCMData(solutionFolder + "\\groan.wav"),
-                ExtractAndEncodePCMData(solutionFolder + "\\weapon.wav")];
+                ExtractAndEncodePCMData(samplesFolder + "exterminate.wav"),
+                ExtractAndEncodePCMData(samplesFolder + "groan.wav"),
+                ExtractAndEncodePCMData(samplesFolder + "weapon.wav")];
 
             // stack the encoded data at page boundaries
             byte[] pcmData = new byte[fileSize];
@@ -35,7 +35,7 @@ namespace WAVConverter
             }
 
             // write PCM data
-            WritePCMData(pcmData, GetSolutionFolder() + "\\game\\pcm.dat");
+            WritePCMData(pcmData, GetSolutionFolder() + "\\game\\data\\pcm.dat");
 
             // write address tables (copied to sound.6502)
             Console.WriteLine($".pcmDataStartAddrLoTbl EQUB &{LO(startIndices[0]):X2}, &{LO(startIndices[1]):X2}, &{LO(startIndices[2]):X2}");
