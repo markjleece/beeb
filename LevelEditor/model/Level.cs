@@ -9,7 +9,7 @@ namespace LevelEditor
         internal Palette Palette;
         internal TileGrid TileGrid;
         internal Tile[] Tiles;
-        internal Coefficients Coefficients;
+        internal Settings Settings;
 
         internal const int ObjectCount = 48;
         internal const int TileCount = 32;
@@ -19,7 +19,7 @@ namespace LevelEditor
         {
             FilePathName = string.Empty;
             Palette = new Palette();
-            Coefficients = new Coefficients();
+            Settings = new Settings();
             TileGrid = new TileGrid();
             Tiles = new Tile[TileCount];
             for (int i = 0; i < TileCount; i++)
@@ -35,7 +35,7 @@ namespace LevelEditor
             clone.FilePathName = FilePathName;
 
             clone.Palette = Palette.Clone();
-            clone.Coefficients = Coefficients.Clone();
+            clone.Settings = Settings.Clone();
             clone.TileGrid = TileGrid.Clone();
 
             for (int i = 0; i < TileCount; i++)
@@ -52,7 +52,7 @@ namespace LevelEditor
 
             FilePathName = other.FilePathName;
             Palette = other.Palette;
-            Coefficients = other.Coefficients;
+            Settings = other.Settings;
             TileGrid = other.TileGrid;
             Tiles = other.Tiles;
         }
@@ -85,8 +85,8 @@ namespace LevelEditor
             // 16 byte palette
             Palette.Read(fs);
 
-            // coefficients
-            Coefficients.Read(fs);
+            // 6 byte settings
+            Settings.Read(fs);
 
             // 48 x 3 byte objects
             Object[] objects = new Object[ObjectCount];
@@ -123,8 +123,8 @@ namespace LevelEditor
             // 16 byte palette
             Palette.Write(fs);
 
-            // coefficients
-            Coefficients.Write(fs);
+            // 6 byte settings
+            Settings.Write(fs);
 
             // 48 x 3 byte objects
             Object[] objects = CollectObjects();

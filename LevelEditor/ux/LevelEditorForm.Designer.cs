@@ -43,7 +43,7 @@ namespace LevelEditor
             undoButton = new ToolStripButton();
             redoButton = new ToolStripButton();
             toolStripSeparator3 = new ToolStripSeparator();
-            editCoefficientsButton = new ToolStripButton();
+            editSettingsButton = new ToolStripButton();
             selectLayoutButton = new ToolStripButton();
             editPaletteButton = new ToolStripButton();
             editTileButton = new ToolStripButton();
@@ -87,7 +87,7 @@ namespace LevelEditor
             // toolStrip
             // 
             toolStrip.ImageScalingSize = new Size(24, 24);
-            toolStrip.Items.AddRange(new ToolStripItem[] { newButton, openButton, saveButton, saveAsButton, toolStripSeparator1, undoButton, redoButton, toolStripSeparator3, editCoefficientsButton, selectLayoutButton, editPaletteButton, editTileButton, toolStripSeparator2, freeformModeButton, lineModeButton, rectModeButton, toolStripSeparator4, zoomInButton, zoomOutButton, helpButton });
+            toolStrip.Items.AddRange(new ToolStripItem[] { newButton, openButton, saveButton, saveAsButton, toolStripSeparator1, undoButton, redoButton, toolStripSeparator3, editSettingsButton, selectLayoutButton, editPaletteButton, editTileButton, toolStripSeparator2, freeformModeButton, lineModeButton, rectModeButton, toolStripSeparator4, zoomInButton, zoomOutButton, helpButton });
             toolStrip.Location = new Point(0, 0);
             toolStrip.Name = "toolStrip";
             toolStrip.Size = new Size(1885, 33);
@@ -167,16 +167,16 @@ namespace LevelEditor
             toolStripSeparator3.Name = "toolStripSeparator3";
             toolStripSeparator3.Size = new Size(6, 33);
             // 
-            // editCoefficientsButton
+            // editSettingsButton
             // 
-            editCoefficientsButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
-            editCoefficientsButton.Image = (Image)resources.GetObject("editCoefficientsButton.Image");
-            editCoefficientsButton.ImageTransparentColor = Color.Magenta;
-            editCoefficientsButton.Name = "editCoefficientsButton";
-            editCoefficientsButton.Size = new Size(34, 28);
-            editCoefficientsButton.Text = "Select Layout";
-            editCoefficientsButton.ToolTipText = "Edit Coefficients";
-            editCoefficientsButton.Click += editCoefficientsButton_Click;
+            editSettingsButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            editSettingsButton.Image = (Image)resources.GetObject("editSettingsButton.Image");
+            editSettingsButton.ImageTransparentColor = Color.Magenta;
+            editSettingsButton.Name = "editSettingsButton";
+            editSettingsButton.Size = new Size(34, 28);
+            editSettingsButton.Text = "Select Layout";
+            editSettingsButton.ToolTipText = "Edit Settings";
+            editSettingsButton.Click += editSettingsButton_Click;
             // 
             // selectLayoutButton
             // 
@@ -330,6 +330,6 @@ namespace LevelEditor
         private ToolStripButton zoomInButton;
         private ToolStripButton zoomOutButton;
         private ToolStripButton helpButton;
-        private ToolStripButton editCoefficientsButton;
+        private ToolStripButton editSettingsButton;
     }
 }

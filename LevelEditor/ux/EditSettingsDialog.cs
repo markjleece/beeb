@@ -11,9 +11,9 @@ using System.Windows.Forms;
 
 namespace LevelEditor.ux
 {
-    public partial class EditCoefficientsDialog : Form
+    public partial class EditSettingsDialog : Form
     {
-        internal EditCoefficientsDialog(Coefficients coefficients)
+        internal EditSettingsDialog(Settings coefficients)
         {
             Coefficients = coefficients;
             InitializeComponent();
@@ -40,6 +40,8 @@ namespace LevelEditor.ux
             jewelHealthGainComboBox.Items.Add("256 (normal)");
             jewelHealthGainComboBox.Items.Add("128 (low)");
             SetSelectedValue(jewelHealthGainComboBox, Coefficients.JewelHealthGain);
+
+            sampleBasedSoundCheckBox.Checked = (Coefficients.SampleBasedSounds != 0);
         }
 
         private void okButton_Click(object sender, EventArgs e)
@@ -48,7 +50,9 @@ namespace LevelEditor.ux
             Coefficients.LaserStrength = ToInteger(laserStrengthComboBox.SelectedItem);
             Coefficients.LaserHealthDrain = ToInteger(laserHealthDrainComboBox.SelectedItem);
             Coefficients.JewelHealthGain = ToInteger(jewelHealthGainComboBox.SelectedItem);
+            Coefficients.SampleBasedSounds = sampleBasedSoundCheckBox.Checked ? 1 : 0;
         }
+
         private static void SetSelectedValue(ComboBox comboBox, int value)
         {
             foreach (object item in comboBox.Items)
@@ -67,6 +71,6 @@ namespace LevelEditor.ux
             return Int32.Parse(((string)obj).Split(' ')[0]);
         }
 
-        private Coefficients Coefficients;
+        private Settings Coefficients;
     }
 }

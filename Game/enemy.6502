@@ -95,7 +95,7 @@
         AND #LO(NOT(ACTION_MASK))
         STA objectType, X
 
-        \ silense pursuit
+        \ silence pursuit
         JSR silencePursuitSoundEffect
         JMP stopFiring
     .skip1
@@ -157,8 +157,10 @@
     BCS stopFiring
 
     \ set damage counter (processed in inflictK9Damage)
-    LDA #ENEMY_WEAPON_DAMAGE_COUNTER
-    STA k9DamageCounter
+    LDA k9DamageCounter : BNE skip3
+        LDA #ENEMY_WEAPON_DAMAGE_COUNTER
+        STA k9DamageCounter
+    .skip3
 
     \ set enemy 'firing' flag
     LDA objectState, X
@@ -221,8 +223,8 @@
         INC laserInhibited
 
         \ set frame callback so it just returns
-        LDA #LO(return) : STA objectFrameCallbackLo, X
-        LDA #HI(return) : STA objectFrameCallbackHi, X
+        LDA #LO(rts_0) : STA objectFrameCallbackLo, X
+        LDA #HI(rts_0) : STA objectFrameCallbackHi, X
 
         \ clear inside tile flags
         JSR cacheObjectExtents
@@ -253,17 +255,17 @@
     LDX temp \ X <-- temp
 
     CMP direction
-    BNE return
-
-    \ turn...
-    LDA #ANIMATE_TURN_RIGHT_TO_LEFT
-    BIT direction : BPL skip3
-        LDA #ANIMATE_TURN_LEFT_TO_RIGHT
+    BNE skip3
+        \ turn...
+        LDA #ANIMATE_TURN_RIGHT_TO_LEFT
+        BIT direction : BPL skip4
+            LDA #ANIMATE_TURN_LEFT_TO_RIGHT
+        .skip4
+        JSR enemyAnimate
     .skip3
-    JMP enemyAnimate \ implicit RTS
 
-.return
-    RTS
+    \ sound groan (if sampling enabled)
+    JMP (soundVector_enemyLasered) \ implict RTS
 }
 
 \

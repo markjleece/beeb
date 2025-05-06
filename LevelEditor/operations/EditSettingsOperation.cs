@@ -3,18 +3,18 @@ using LevelEditor.ux;
 
 namespace LevelEditor
 {
-    class EditCoefficientsOperation : Operation
+    class EditSettingsOperation : Operation
     {
-        internal EditCoefficientsOperation(Level levelData)
+        internal EditSettingsOperation(Level levelData)
         {
             LevelData = levelData;
-            OldCoefficients = LevelData.Coefficients.Clone();
-            NewCoefficients = LevelData.Coefficients.Clone();
+            OldSettings = LevelData.Settings.Clone();
+            NewSettings = LevelData.Settings.Clone();
         }
 
         internal override bool Execute()
         {
-            EditCoefficientsDialog dialog = new EditCoefficientsDialog(NewCoefficients);
+            EditSettingsDialog dialog = new EditSettingsDialog(NewSettings);
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 Redo();
@@ -26,16 +26,16 @@ namespace LevelEditor
 
         internal override void Redo()
         {
-            LevelData.Coefficients = NewCoefficients;
+            LevelData.Settings = NewSettings;
         }
 
         internal override void Undo()
         {
-            LevelData.Coefficients = OldCoefficients;
+            LevelData.Settings = OldSettings;
         }
 
         Level LevelData;
-        Coefficients OldCoefficients;
-        Coefficients NewCoefficients;
+        Settings OldSettings;
+        Settings NewSettings;
     }
 }

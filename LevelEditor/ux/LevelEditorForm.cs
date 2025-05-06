@@ -178,9 +178,9 @@ namespace LevelEditor
             }
         }
 
-        private void editCoefficientsButton_Click(object sender, EventArgs e)
+        private void editSettingsButton_Click(object sender, EventArgs e)
         {
-            EditCoefficientsOperation op = new EditCoefficientsOperation(LevelData);
+            EditSettingsOperation op = new EditSettingsOperation(LevelData);
             if (UndoRedoHistory.Execute(op))
             {
                 ResetState(true/*resetView*/);
@@ -975,7 +975,7 @@ namespace LevelEditor
                 "Tiles can be edited by double clicking on them within the left palette. The background tile and object tiles cannot be edited.\n\n" +
                 "Tiles also have a type, which effects their behavior within the game.\n\n" +
                 "The four color palette can be modified using the 'Edit Palette' button.\n\n" +
-                "The 'Edit Coefficients' button can be used to modify the relative strengths of K9, enemies, and Jewels.",
+                "The 'Edit Settings' button can be used to modify the relative strengths of K9, enemies, and Jewels.",
                 "Help", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 

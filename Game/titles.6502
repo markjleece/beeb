@@ -14,6 +14,8 @@
     JSR resetOSVectors
     JSR showTitleScreen
     JSR initializeVariables
+    JSR initializeSidewaysRAM
+    JSR showTitleScreenPrompt
     JSR playMusic
     JSR waitForSpaceKeyPress
 
@@ -24,7 +26,8 @@
     JSR initializeInGameInterrupts
     JSR initializeEnvelopes
     JSR relocateBlackPalette
-    JMP setBlackPalette \ implicit RTS
+    JSR setBlackPalette
+    JMP initializeLevel \ implicit RTS
 }
 
 \
@@ -32,10 +35,10 @@
 \
 
 .envelopesLocal
-    EQUB 1, 1, 8, 4, -12, 4, 4, 4, 100, 0, 0, 0, 100, 100       \ SOUND_EFFECT_LASER_ON
-    EQUB 2, 1, 0, 100, 0, 3, 1, 40, 127, -1, -1, -5, 126, 126   \ SOUND_EFFECT_LEVEL_COMPLETE & SOUND_EFFECT_KEY_JEWEL
-    EQUB 3, 1, 0, -10, 0, 10, 1, 40, 126, -1, -5, -5, 126, 126  \ SOUND_EFFECT_DOOR_LOCKED
-    EQUB 4, 4, 6, -3, -3, 4, 2, 2, 0, 0, -1, 0, 63, 58          \ SOUND_EFFECT_PURSUIT_ON
+    EQUB 1, 1, 8, 4, -12, 4, 4, 4, 63, 0, 0, 0, 63, 63      \ SOUND_EFFECT_LASER_ON
+    EQUB 2, 1, 0, 100, 0, 3, 1, 40, 96, -1, -1, -5, 96, 96  \ SOUND_EFFECT_LEVEL_COMPLETE & SOUND_EFFECT_KEY_JEWEL
+    EQUB 3, 1, 0, -10, 0, 10, 1, 40, 96, -1, -5, -5, 96, 96 \ SOUND_EFFECT_DOOR_LOCKED
+    EQUB 4, 4, 6, -3, -3, 4, 2, 2, 0, 0, -1, 0, 63, 58      \ SOUND_EFFECT_PURSUIT_ON
 
 MACRO DEFINE_ENVELOPE index
     \ call OSWORD with A = 8 to set up sound envelope
@@ -102,24 +105,39 @@ ENDMACRO
 }
 
 \
-\ showTitleScreen()
+\ showTitleScreen() & showTitleScreenPrompt()
 \
 \ Note that this routine is overwritten
 \
 .showTitleScreen
 {
+    titlesMinusPromptSize = (1000 - 40)
+
     \ switch to mode 7
     JSR setMode7  
 
-    \ populate mode 7 screen memory
+    \ populate mode 7 screen memory (minus prompt line)
     LDA #LO(titles) : STA srcAddr
     LDA #HI(titles) : STA srcAddr+1
 
     LDA #LO(&7C00) : STA dstAddr
-    LDA #HI(&7C00): STA dstAddr+1
+    LDA #HI(&7C00) : STA dstAddr+1
 
-    LDA #LO(1000) : STA sizeLo
-    LDA #HI(1000) : STA sizeHi
+    LDA #LO(titlesMinusPromptSize) : STA sizeLo
+    LDA #HI(titlesMinusPromptSize) : STA sizeHi
+
+    JMP memcpy \ implicit RTS
+
+.^showTitleScreenPrompt
+    \ populate mode 7 screen memory (just the prompt line)
+    LDA #LO(titles + titlesMinusPromptSize) : STA srcAddr
+    LDA #HI(titles + titlesMinusPromptSize) : STA srcAddr+1
+
+    LDA #LO(&7C00 + titlesMinusPromptSize) : STA dstAddr
+    LDA #HI(&7C00 + titlesMinusPromptSize) : STA dstAddr+1
+
+    LDA #LO(40) : STA sizeLo
+    LDA #HI(40) : STA sizeHi
 
     JMP memcpy \ implicit RTS
 
@@ -234,9 +252,15 @@ INCBIN "instructions.bin"
     LDA IRQ1V : STA mosIRQ1V
     LDA IRQ1V+1 : STA mosIRQ1V+1
 
-    \ set IRQ1V vector to in-game interrupt IRQ
-    LDA #LO(irq) : STA IRQ1V
-    LDA #HI(irq) : STA IRQ1V+1
+    \ set IRQ1V vector to ingame interrupt IRQ
+    LDA sidewaysRAMBankNumber : BEQ else
+        LDA #LO(ingame_sample_irq) : STA IRQ1V
+        LDA #HI(ingame_sample_irq) : STA IRQ1V+1
+        JMP endif
+    .else
+        LDA #LO(ingame_irq) : STA IRQ1V
+        LDA #HI(ingame_irq) : STA IRQ1V+1
+    .endif
 
     \ disable System-VIA Timer2, CB1, CB2, and CA2 interrupts
     LDA #&7F
@@ -250,18 +274,172 @@ INCBIN "instructions.bin"
 	LDA #&0F
     STA &FE42
 
-    \ set Timer1 to one shot mode
+    \ set System-VIA Timer1 to one shot mode
 	LDA #0
     STA &FE4B
 
-    \ set default Timer1 length
+    \ set System-VIA Timer1 default length
     LDA #&FF
 	STA &FE44
     STA &FE45  
 
+    LDA sidewaysRAMBankNumber : BEQ skip
+        \ enable User-VIA Timer1 (used to play sampled sounds)
+	    LDA #&C0
+        STA &FE6E
+    
+        \ set User-VIA Timer1 to continous mode
+	    LDA #&40
+        STA &FE7B
+    
+        \ set User-VIA Timer1 length to 1/8000th second
+        LDA #LO(125) : STA &FE64
+        LDA #HI(125) : STA &FE65
+        LDA #LO(125 - 2) : STA &FE66
+        LDA #HI(125 - 2) : STA &FE67
+    .skip
+
     CLI \ reenable interrupts
 
     RTS
+}
+
+\
+\ initialize sideways RAM
+\
+.initializeSidewaysRAM
+{
+    \ get current bank
+    LDA &F4 : STA temp
+
+    LDX #15
+    STX sidewaysRAMBankNumber
+
+    .loop
+        \ page in bank 'X'
+        TXA
+        SEI
+        STA &F4 : STA &FE30 \ ROMSEL
+        CLI
+
+        \ if bank contains 16K of RAM, break
+        LDA #&FF : STA &8000 : STA &BFFF
+        LDA &8000 : AND &BFFF : CMP #&FF : BNE continue
+
+        LDA #0 : STA &8000 : STA &BFFF
+        LDA &8000 : ORA &BFFF : BEQ break
+
+        .continue
+        DEX
+        BNE loop
+
+    \ store bank number
+    .break
+    STX sidewaysRAMBankNumber
+
+    \ restore bank
+    LDA temp
+    SEI
+    STA &F4 : STA &FE30 \ ROMSEL
+    CLI
+
+    CPX #0 : BEQ skip
+        \ populate sideway RAM
+        JSR populateSidewaysRAM
+    .skip
+
+    RTS 
+}
+
+\
+\ populateSidewaysRAM()
+\
+\ populate sideway RAM with PCM data
+\
+ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
+
+.populateSidewaysRAM
+{
+    \ backup code which resides in DFS workspaces, clearing memory
+    COPY_CLEAR_PAGE loadLevelPageBackup1, &1700 
+    COPY_CLEAR_PAGE loadLevelPageBackup2, &1800
+
+    \ switch to DFS
+    LDX #LO(cmdDISK)
+    LDY #HI(cmdDISK)
+    JSR oscli
+
+    \ save current bank
+    LDA &F4 : STA temp
+
+    \ load pcm1..pcm5 files into sideways RAM
+    LDA #LO(&8000) : STA dstAddr
+    LDA #HI(&8000) : STA dstAddr+1
+
+    LDA #LO(&CA0) : STA sizeLo
+    LDA #HI(&CA0) : STA sizeHi
+
+    LDA #'1' : STA index
+
+    .loop
+        \ update filename
+        LDA index : STA filename+3
+
+        \ initialize osfile parameter block, as previous call modifies this
+        LDA #0
+        LDY #4
+        .innerLoop
+            STA osfileParamBlock, Y
+            INY
+            CPY #18
+            BNE innerLoop
+
+        LDA #LO(pcmDataLoadAddr) : STA osfileParamBlock+2
+        LDA #HI(pcmDataLoadAddr) : STA osfileParamBlock+3
+
+        \ invoke osfile
+        LDX #LO(osfileParamBlock)
+        LDY #HI(osfileParamBlock)
+        LDA #&FF  
+        JSR osfile
+
+        \ select sideways RAM
+        LDA sidewaysRAMBankNumber
+        SEI
+        STA &F4 : STA &FE30 \ ROMSEL
+        CLI
+
+        \ copy data to sideways RAM (we need to reset srcAddr)
+        LDA #LO(pcmDataLoadAddr) : STA srcAddr
+        LDA #HI(pcmDataLoadAddr) : STA srcAddr+1
+        JSR memcpy
+
+        \ restore bank
+        LDA temp
+        SEI
+        STA &F4 : STA &FE30 \ ROMSEL
+        CLI
+
+        \ loop while index < '6'
+        INC index
+        LDA index
+        CMP #'6'
+        BNE loop
+
+    \ restore code
+    COPY_PAGE &1700, loadLevelPageBackup1
+    COPY_PAGE &1800, loadLevelPageBackup2  
+
+    RTS
+
+.cmdDISK
+    EQUS "DISK", 13
+
+.filename
+    EQUS "pcmN", 13
+
+.osfileParamBlock
+    EQUW filename, 0, 0, 0, 0, 0, 0, 0, 0
 }
 
 \ end file

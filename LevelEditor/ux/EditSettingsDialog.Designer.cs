@@ -1,7 +1,7 @@
 ﻿// This file is Copyright © 2025 - Mark John Leece - All rights reserved
 namespace LevelEditor.ux
 {
-    partial class EditCoefficientsDialog
+    partial class EditSettingsDialog
     {
         /// <summary>
         /// Required designer variable.
@@ -39,6 +39,8 @@ namespace LevelEditor.ux
             jewelHealthGainComboBox = new ComboBox();
             okButton = new Button();
             cancelButton = new Button();
+            sampleBasedSoundCheckBox = new CheckBox();
+            label5 = new Label();
             SuspendLayout();
             // 
             // label1
@@ -54,7 +56,7 @@ namespace LevelEditor.ux
             // 
             enemyWeaponStrengthComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             enemyWeaponStrengthComboBox.FormattingEnabled = true;
-            enemyWeaponStrengthComboBox.Location = new Point(233, 12);
+            enemyWeaponStrengthComboBox.Location = new Point(260, 12);
             enemyWeaponStrengthComboBox.Name = "enemyWeaponStrengthComboBox";
             enemyWeaponStrengthComboBox.Size = new Size(226, 33);
             enemyWeaponStrengthComboBox.TabIndex = 1;
@@ -72,7 +74,7 @@ namespace LevelEditor.ux
             // 
             laserStrengthComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             laserStrengthComboBox.FormattingEnabled = true;
-            laserStrengthComboBox.Location = new Point(233, 51);
+            laserStrengthComboBox.Location = new Point(260, 51);
             laserStrengthComboBox.Name = "laserStrengthComboBox";
             laserStrengthComboBox.Size = new Size(226, 33);
             laserStrengthComboBox.TabIndex = 2;
@@ -90,7 +92,7 @@ namespace LevelEditor.ux
             // 
             laserHealthDrainComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             laserHealthDrainComboBox.FormattingEnabled = true;
-            laserHealthDrainComboBox.Location = new Point(233, 90);
+            laserHealthDrainComboBox.Location = new Point(260, 90);
             laserHealthDrainComboBox.Name = "laserHealthDrainComboBox";
             laserHealthDrainComboBox.Size = new Size(226, 33);
             laserHealthDrainComboBox.TabIndex = 3;
@@ -108,7 +110,7 @@ namespace LevelEditor.ux
             // 
             jewelHealthGainComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             jewelHealthGainComboBox.FormattingEnabled = true;
-            jewelHealthGainComboBox.Location = new Point(233, 129);
+            jewelHealthGainComboBox.Location = new Point(260, 129);
             jewelHealthGainComboBox.Name = "jewelHealthGainComboBox";
             jewelHealthGainComboBox.Size = new Size(226, 33);
             jewelHealthGainComboBox.TabIndex = 4;
@@ -116,7 +118,7 @@ namespace LevelEditor.ux
             // okButton
             // 
             okButton.DialogResult = DialogResult.OK;
-            okButton.Location = new Point(347, 180);
+            okButton.Location = new Point(374, 219);
             okButton.Name = "okButton";
             okButton.Size = new Size(112, 34);
             okButton.TabIndex = 5;
@@ -127,12 +129,30 @@ namespace LevelEditor.ux
             // cancelButton
             // 
             cancelButton.DialogResult = DialogResult.Cancel;
-            cancelButton.Location = new Point(229, 180);
+            cancelButton.Location = new Point(256, 219);
             cancelButton.Name = "cancelButton";
             cancelButton.Size = new Size(112, 34);
             cancelButton.TabIndex = 6;
             cancelButton.Text = "Cancel";
             cancelButton.UseVisualStyleBackColor = true;
+            // 
+            // sampleBasedSoundCheckBox
+            // 
+            sampleBasedSoundCheckBox.AutoSize = true;
+            sampleBasedSoundCheckBox.Location = new Point(15, 176);
+            sampleBasedSoundCheckBox.Name = "sampleBasedSoundCheckBox";
+            sampleBasedSoundCheckBox.Size = new Size(475, 29);
+            sampleBasedSoundCheckBox.TabIndex = 7;
+            sampleBasedSoundCheckBox.Text = "Enable sample-based sounds (uses 16K sideways RAM)";
+            sampleBasedSoundCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // label5
+            // 
+            label5.AutoSize = true;
+            label5.Location = new Point(173, 208);
+            label5.Name = "label5";
+            label5.Size = new Size(0, 25);
+            label5.TabIndex = 8;
             // 
             // EditCoefficientsDialog
             // 
@@ -140,7 +160,9 @@ namespace LevelEditor.ux
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = cancelButton;
-            ClientSize = new Size(471, 226);
+            ClientSize = new Size(498, 265);
+            Controls.Add(label5);
+            Controls.Add(sampleBasedSoundCheckBox);
             Controls.Add(cancelButton);
             Controls.Add(okButton);
             Controls.Add(jewelHealthGainComboBox);
@@ -152,7 +174,7 @@ namespace LevelEditor.ux
             Controls.Add(enemyWeaponStrengthComboBox);
             Controls.Add(label1);
             Name = "EditCoefficientsDialog";
-            Text = "Edit Coefficients";
+            Text = "Edit Settings";
             Load += EditCoefficients_Load;
             ResumeLayout(false);
             PerformLayout();
@@ -170,5 +192,7 @@ namespace LevelEditor.ux
         private ComboBox jewelHealthGainComboBox;
         private Button okButton;
         private Button cancelButton;
+        private CheckBox sampleBasedSoundCheckBox;
+        private Label label5;
     }
 }

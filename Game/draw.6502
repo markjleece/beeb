@@ -8,7 +8,7 @@
 \ debugTileGridFlags()
 \
 \ modifies:
-\   getScreenTileGridAddr: tileGridAddr, temp, Y
+\   getScreenTileGridAddr: tileGridAddr, offsetX, offsetY, temp, Y
 \
 .debugTileGridFlags
 {
@@ -21,7 +21,7 @@ ELSE
     \ topLo = scrnTopLo
     LDA scrnTopLo : STA topLo
 
-    \offsetX, offsetY = 15
+    \ offsetX, offsetY = 15
     LDA #15
     STA offsetX
     STA offsetY
@@ -83,7 +83,7 @@ ELSE
 
     RTS
 
-    SKIP 163 \ report same number of unsued code/data bytes
+    SKIP 125 \ report same number of unsued code/data bytes
 ENDIF
 }
 
@@ -109,16 +109,20 @@ ELSE
     .nowrap
     STA dstAddr+1
 
-    \
-    \ draw level icon 
-    \
-    LDY #15
-    .levelIconLoop
-        LDA gamebarAtlas, Y : STA (dstAddr), Y : DEY
-        BPL levelIconLoop
+    \ srcBaseAddr, srcAddr = spriteAddrTbl[SPRITE_INDEX_GAMEBAR]
+    LDA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)
+    STA srcBaseAddr
+    STA srcAddr
+    STA inst_LDA+1 \ set LDA instruction operand (low-byte) in drawDigit
+    
+    LDA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)+1
+    STA srcBaseAddr+1
+    STA srcAddr+1
+    STA inst_LDA+2 \ set LDA instruction operand (high-byte) in drawDigit
 
-    \ dstAddr += 16
-    JSR dstAddr_add_16
+    \ draw level icon
+    LDA #16
+    JSR copyBytes
 
     \
     \ draw level number
@@ -126,38 +130,20 @@ ELSE
     LDA level
     JSR drawDigit
 
-    \ dstAddr += 16
-    JSR dstAddr_add_16
+    \ draw heart icon
+    LDA #16
+    JSR copyBytes
 
-    \
-    \ draw heart icon 
-    \
-
-    \ draw character
-    LDY #15
-    .heartIconLoop1
-        LDA gamebarAtlas + 16, Y : STA (dstAddr), Y : DEY
-        BPL heartIconLoop1
-
-    \ dstAddr += 16
-    JSR dstAddr_add_16
-
-    \ draw half-character
-    LDY #7
-    .heartIconLoop2
-        LDA gamebarAtlas + 32, Y : STA (dstAddr), Y : DEY
-        BPL heartIconLoop2
-
-    \ dstAddr += 8
     LDA #8
-    JSR dstAddr_add
+    JSR copyBytes
 
     \
     \ draw health bar
     \
 
     \ 'XOR mask' = (keyColor == foreground) ? &FF : 0
-    LDA gamebarAtlas+59 \ peek key color
+    LDY #59
+    LDA (srcBaseAddr), Y \ peek key color
     ASL A
     LDA #0
     BCC skip2
@@ -182,7 +168,7 @@ ELSE
         LDY #0
 
         \ render header
-        LDA gamebarAtlas
+        LDA (srcBaseAddr), Y
         STA (dstAddr), Y : INY
         STA (dstAddr), Y : INY
 
@@ -213,11 +199,13 @@ ELSE
         STA (dstAddr), Y : INY
          
         \ render footer
-        LDA gamebarAtlas+7
+        INY
+        LDA (srcBaseAddr), Y
+        DEY
         STA (dstAddr), Y : INY
-        STA (dstAddr), Y : INY
+        STA (dstAddr), Y
 
-        \ dstAddr += 8
+        \ dstAddr += 8 (with wraparound)
         LDA #8
         JSR dstAddr_add
 
@@ -232,48 +220,53 @@ ELSE
         LDA count
         BNE healthBarLoop
 
-    \
     \ draw key icon
-    \
-
-    \ draw half-character
-    LDY #7
-    .keyIconLoop1
-        LDA gamebarAtlas + 40, Y : STA (dstAddr), Y : DEY
-        BPL keyIconLoop1
-
-    \ dstAddr += 8
     LDA #8
-    JSR dstAddr_add
+    JSR copyBytes
 
-    \ draw character
-    LDY #15
-    .keyIconLoop2
-        LDA gamebarAtlas + 48, Y : STA (dstAddr), Y : DEY
-        BPL keyIconLoop2
-
-    \ dstAddr += 16
-    JSR dstAddr_add_16
+    LDA #16
+    JSR copyBytes
 
     \ draw key count
     LDA keyCount
-    \ fall through
+
+    \ fall through to drawDigit
 
 .drawDigit
     ASL A : ASL A : ASL A : ASL A \ MUL 16
-    CLC 
-    ADC #LO(gamebarAtlas+64)
-    STA srcAddr
-    LDA #0
-    ADC #HI(gamebarAtlas+64)
-    STA srcAddr+1
-
+    CLC
+    ADC #(64+15)
+    TAX
     LDY #15
     .digitLoop
-        LDA (srcAddr), Y : STA (dstAddr), Y : DEY
+        .inst_LDA LDA &FFFF, X : DEX
+        STA (dstAddr), Y : DEY
         BPL digitLoop
 
-    RTS
+    LDA #16    
+    JMP dstAddr_add \ implicit RTS
+
+.copyBytes
+    TAX : TAY
+
+    \ copy bytes
+    DEY
+    .loop
+        LDA (srcAddr), Y : STA (dstAddr), Y : DEY
+        BPL loop
+
+    \ srcAddr += X
+    TXA
+    CLC
+    ADC srcAddr
+    STA srcAddr
+    BCC noCarry
+        INC srcAddr+1
+    .noCarry
+
+    \ dstAddr += X (with wraparound)
+    TXA
+    JMP dstAddr_add \ implicit RTS
 
 .lineTbl EQUB %11111111, %01110111, %00110011, %00010001
 
@@ -684,18 +677,8 @@ ENDIF
             BPL leftLoop
 
         \ dstAddr += 16
-        LDA dstAddr
-        ADC #16
-        STA dstAddr
-        BCC nocarry
-            INC dstAddr+1   
-            BPL nowrap2 \ if (dstAddr >= 0x8000) dstAddr -= 0x4000
-                LDA dstAddr+1
-                SBC #&40  
-                STA dstAddr+1
-            .nowrap2
-            CLC
-        .nocarry
+        LDA #16    
+        JSR dstAddr_add
 
         \ clear right character
         LDA #0
@@ -811,9 +794,9 @@ ENDIF
     SEC
     SBC laserHealthDrain
     STA healthLo
-    LDA healthHi
-    SBC #0
-    STA healthHi
+    BCS noborrow
+        DEC healthHi
+    .noborrow
 
     \ laser sound effect
     JSR laserSoundEffect
@@ -1193,17 +1176,16 @@ ENDIF
 \   stride          stride across sprite data (original height)
 \   eraseAbove      erase scanline above (false|true)
 \   eraseBelow      erase scanline below (false|true)
-\   lasered         whether to draw 'lasered' sprite (blue->white, black->red)
 \   srcBaseAddr     base address of sprite data (advanced every column)
 \   dstBaseAddr     base address of screen (advanced every column)
 \   srcAddr         address of sprite data (advanced drawing column)
 \   dstAddr         address of screen (advanced drawing column)
 \   outerCount      number of columns to draw
 \   headCount       number of head loop iterations
-\   tailCount       number of tail loop iterations
+\   temp            number of tail iterations
 \   count           number of head loop iterations
 \   innerCount      number of inner head loop iterations
-\   temp            holds topLo MOD 8
+\   offset          holds topLo MOD 8
 \
 
 .drawObject
@@ -1257,26 +1239,13 @@ ENDIF
 
     TXA : PHA \ save X register
 
-    \ lasered = objectState[X] & OBJECT_STATE_FLAGS_LASERED
-    LDA objectState, X
-    AND #OBJECT_STATE_FLAGS_LASERED
-    STA lasered
-
-    BEQ notLasered1
-        \ clear lasered flag and set redraw
-        LDA objectState, X
-        AND #LO(NOT(OBJECT_STATE_FLAGS_LASERED))
-        ORA #OBJECT_STATE_FLAGS_REDRAW
-        STA objectState, X
-    .notLasered1
-
     \ srcBaseAddr = spriteAddrTbl[index]
     LDA objectSpriteIndex, X : STA index
     ASL A
-    TAX
-    LDA spriteAddrTbl, X
+    TAY
+    LDA spriteAddrTbl, Y
     STA srcBaseAddr
-    LDA spriteAddrTbl+1, X
+    LDA spriteAddrTbl+1, Y
     STA srcBaseAddr+1
 
     \ clip left edge?
@@ -1289,7 +1258,7 @@ ENDIF
 
         \ srcBaseAddr += 'clipped width' / 4 * stride
         LSR A : LSR A
-        TAX
+        TAY
         LDA srcBaseAddr
         CLC
         .loop2
@@ -1298,7 +1267,7 @@ ENDIF
                 INC srcBaseAddr+1
                 CLC
             .nocarry5
-            DEX
+            DEY
             BNE loop2
         STA srcBaseAddr
 
@@ -1379,15 +1348,15 @@ ENDIF
     \ adjust source base address
     \ 
 
-    \ temp = top % 8 
+    \ offset = top % 8 
     LDA topLo
     AND #7
-    STA temp
+    STA offset
 
     \ srcBaseAddr -= (top % 8)
     LDA srcBaseAddr
     SEC
-    SBC temp \ (top % 8)
+    SBC offset \ (top % 8)
     BCS noborrow1
         DEC srcBaseAddr+1
     .noborrow1
@@ -1400,10 +1369,7 @@ ENDIF
     .noborrow2
     STA srcBaseAddr
 
-    \
     \ calc destination base address
-    \ 
-   
     JSR calcScreenDstBaseAddr
 
     \ outerCount = (left % 4 + width) / 4
@@ -1414,26 +1380,37 @@ ENDIF
     LSR A: LSR A
     STA outerCount
 
-    \ blank or lasered?
-    LDA index : BPL else
-        \ blank sprite
+    \ is lasered flag set? (save state in carry)
+    CLC
+    LDA objectState, X
+    AND #OBJECT_STATE_FLAGS_LASERED
+    BEQ endif10
+        \ clear lasered flag and set redraw
+        LDA objectState, X
+        AND #LO(NOT(OBJECT_STATE_FLAGS_LASERED))
+        ORA #OBJECT_STATE_FLAGS_REDRAW
+        STA objectState, X
+        SEC
+    .endif10
+
+    \ handle lasered and blank effects
+    LDA index : BMI else11 : BCC endif11
+        \ draw lasered sprite
+        JMP drawLaseredObject \ implicit RTS
+    .else11
+        \ draw blank sprite
         ASSERT(LO(zeroMemory32) == 0 AND HI(zeroMemory32) == 0)
         LDA #0
         STA srcBaseAddr
         STA srcBaseAddr+1
         STA stride
-        STA temp
-        BEQ endif
-    .else
-    LDA lasered : BEQ endif
-        \ lasered effect
-        JMP drawLaseredObject \ implicit RTS
-    .endif
+        STA offset
+    .endif11
     
     \
     \ calculate head loop count/jump offset, and tail jump offet
     \
-    LDA temp \ (top % 8)
+    LDA offset \ (top % 8)
     CLC
     ADC height
     CMP #9 : BCC else_10 \ sprite spans multiple character rows?
@@ -1446,7 +1423,7 @@ ENDIF
         STA headCount
 
         \ calculate and patch head jump instruction
-        LDA temp \ (top % 8)
+        LDA offset \ (top % 8)
         CLC
         ADC eraseAbove
         TAY
@@ -1485,7 +1462,7 @@ ENDIF
         JSR drawObjectUpdateSrcDstAddrs
 
         \ initialize indexer
-        LDY temp \ (top % 8)
+        LDY offset \ (top % 8)
 
         \ erase above?
         LDA eraseAbove : BEQ skipEraseAbove
@@ -1576,7 +1553,7 @@ ENDIF
     \
     \ calculate head loop count/jump offset, and tail jump offet
     \
-    LDA temp \ (top % 8)
+    LDA offset \ (top % 8)
     CLC
     ADC height
     CMP #9 : BCC else_10 \ sprite spans multiple character rows?
@@ -1591,7 +1568,7 @@ ENDIF
         \ head innermost count = 8 - (top % 8) - eraseAbove
         LDA #8
         SEC
-        SBC temp
+        SBC offset \ (top % 8)
         SEC
         SBC eraseAbove
         STA innerCount
@@ -1599,7 +1576,7 @@ ENDIF
         \ tail loop count = (height - eraseBelow) % 8 
         TXA
         AND #7
-        STA tailCount
+        STA temp \ --> tail count
 
         CLC
         BCC endif_10
@@ -1615,7 +1592,7 @@ ENDIF
         SBC eraseAbove
         SEC
         SBC eraseBelow
-        STA tailCount
+        STA temp \ --> tail count
     .endif_10
 
     \ finally, render the sprite
@@ -1624,7 +1601,7 @@ ENDIF
         JSR drawObjectUpdateSrcDstAddrs
 
         \ initialize indexer
-        LDY temp \ <-- (top % 8)
+        LDY offset \ <-- (top % 8)
 
         \ erase above
         LDA eraseAbove : BEQ skipEraseAbove
@@ -1686,7 +1663,8 @@ ENDIF
         .skipHeadLoop
 
         \ draw tail half character
-        LDX tailCount : BEQ skipTailLoop
+        LDX temp \ <-- tail count
+        BEQ skipTailLoop 
         .tailLoop
             LDA (srcAddr), Y
             STA mask
@@ -1879,19 +1857,6 @@ ENDIF
         CLC
     .nocarry2
     RTS
-}
-
-\
-\ dstAddr_add_16
-\
-\ dstAddr += 16
-\ if (dstAddr >= &8000) dstAddr -= &4000
-\
-.dstAddr_add_16
-{
-    LDA #16
-
-    \ fall through to dstAddr_add
 }
 
 \

@@ -4,6 +4,66 @@
 \ Sound routines (sound definitions are defined in titles.6502)
 \
 
+\
+\ sound effect vectors (set by initializeSound)
+\
+.soundVectors                       \ REGULAR                   SAMPLE-BASED 
+.soundVector_updatePursuit  SKIP 2  \ rts_0                     sample_updatePursuit
+.soundVector_beginPursuit   SKIP 2  \ soundEffect_pursuitOn     sample_soundExterminate
+.soundVector_endPursuit     SKIP 2  \ soundEffect_pursuitOff    stopSample
+.soundVector_enemyLasered   SKIP 2  \ rts_0                     sample_soundGrown
+.soundVector_weaponFired    SKIP 2  \ soundEffect_pain          sample_soundWeapon
+
+\
+\ silenceSoundEffects()
+\
+.silenceSoundEffects
+{
+    LDA #SOUND_EFFECT_LASER_OFF
+    JSR soundEffect
+    JMP (soundVector_endPursuit) \ implicit RTS
+}
+
+\
+\ pursuitSoundEffect
+\
+\ sound pursuit sound effect (once)
+\
+.pursuitSoundEffect
+{
+    \ sound pursuit sound effect once
+    LDA pursuitSoundEffectCounter : BNE rts_3
+        LDA #SAMPLE_EXTERMINATE_FRAME_COUNT : STA pursuitSoundEffectCounter
+        JMP (soundVector_beginPursuit) \ implicit RTS
+}
+
+\
+\ soundEffect_pursuitOn()
+\
+.soundEffect_pursuitOn
+{
+    LDA #SOUND_EFFECT_PURSUIT_ON
+    BNE soundEffect \ implicit RTS
+}
+
+\
+\ soundEffect_pursuitOff
+\
+.soundEffect_pursuitOff
+{
+    LDA #SOUND_EFFECT_PURSUIT_OFF
+    BNE soundEffect \ implicit RTS
+}
+
+\
+\ soundEffect_pain
+\
+.soundEffect_pain
+{
+    LDA #SOUND_EFFECT_PAIN
+    BEQ soundEffect \ implicit RTS
+}
+
 \ 
 \ updateSoundEffects
 \
@@ -29,7 +89,8 @@
         BNE soundEffect \ implicit RTS
     .endif2
 
-    RTS
+    \ update pursuit sound effects
+    JMP (soundVector_updatePursuit) \ implicit RTS
 }
 
 \
@@ -118,19 +179,6 @@
 }
 
 \
-\ pursuitSoundEffect
-\
-\ sound pursuit sound effect (once)
-\
-.pursuitSoundEffect
-{
-    LDA pursuitSoundEffectOn : BNE rts_3
-        INC pursuitSoundEffectOn
-        LDA #SOUND_EFFECT_PURSUIT_ON
-        BNE soundEffect \ implicit RTS
-}
-
-\
 \ silencePursuitSoundEffect
 \
 \ silence the pursuit sound effect, first checking that no enemies are in pursuit
@@ -145,10 +193,9 @@
         BNE loop
 
     \ silence sound effect (once)
-    LDA pursuitSoundEffectOn : BEQ rts_3
-        DEC pursuitSoundEffectOn
-        LDA #SOUND_EFFECT_PURSUIT_OFF
-        BNE soundEffect \ implicit RTS
+    LDA pursuitSoundEffectCounter : BEQ rts_3
+        LDA #0 : STA pursuitSoundEffectCounter \ clear flag/counter
+        JMP (soundVector_endPursuit) \ implicit RTS
 }
 
 \
@@ -176,18 +223,6 @@
     LDA inhibitMoveSoundEffect : BNE rts_3
         LDA #SOUND_EFFECT_MOVE
         BNE soundEffect \ implicit RTS
-}
-
-\
-\ silenseSoundEffects()
-\
-.silenseSoundEffects
-{
-    LDA #SOUND_EFFECT_LASER_OFF
-    JSR soundEffect
-
-    LDA #SOUND_EFFECT_PURSUIT_OFF
-    BNE soundEffect \ implicit RTS
 }
 
 \ end file

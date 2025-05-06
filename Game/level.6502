@@ -37,9 +37,11 @@
     JSR relocateSpriteAddrTbl
     JSR relocateEnemyHealthBarTbls
     JSR relocateSoundEffectData
+    JSR initializeSound
     JSR relocateLevelData
     JSR relocateDrawObjectJumpTbls
-    JMP setCustomScreenMode \ implicit RTS
+    JSR setCustomScreenMode
+    JMP showLevel \ implicit RTS
 }
 
 \
@@ -73,11 +75,12 @@
     STA k9DamageCounter
     STA endPursuitCounter
     STA laserSoundEffectOn 
-    STA pursuitSoundEffectOn
+    STA pursuitSoundEffectCounter
     STA doorLockedSoundEffectOn
     STA enemyHitTestLastFound
     STA doorScrollRedrawCount
     STA inhibitMoveSoundEffect
+    STA groanInhibited
 
     LDA #12 : STA healthHi
     LDA #&FF : STA healthLo : STA enemyHealthLo
@@ -85,16 +88,21 @@
     \ make sure the space key is lifted
     INC laserInhibited
     
-    \ set level tile count extents
+    \ set horizontal tile count
     LDA levelHorzTileCountLoaded : STA horzTileCount
-    LDA levelVertTileCountLoaded : STA vertTileCount
 
-    \ set coefficients
+    \ set level settings
     LDA levelEnemyWeaponStrengthLoaded : STA enemyWeaponStrength
     LDA levelLaserStrengthLoaded : STA laserStrength
     LDA levelLaserHealthDrainLoaded : STA laserHealthDrain
     LDA levelJewelHealthGainLoLoaded : STA jewelHealthGainLo
     LDA levelJewelHealthGainHiLoaded : STA jewelHealthGainHi
+
+    \ set sampleBasedSoundsEnabled flag
+    LDA sidewaysRAMBankNumber : BEQ skip
+        LDA levelSampleBasedSoundsEnabledLoaded
+    .skip
+    STA sampleBasedSoundsEnabled
 
     \ patch BCC instuction in getObjectTileGridAddr (tilegrid.6502)
     LDA horzTileCount
@@ -116,13 +124,13 @@
     STA bcc_inst+1
 
     \ set scrolling limits
-    LDA horzTileCount
+    LDA levelHorzTileCountLoaded
     LSR A : LSR A : LSR A : LSR A
     SEC 
     SBC #1
     STA scrnLeftHiMaxMinusOne
 
-    LDA vertTileCount
+    LDA levelVertTileCountLoaded
     LSR A : LSR A : LSR A : LSR A
     SEC
     SBC #1
@@ -222,7 +230,14 @@
     LDA #LO(64) : STA sizeLo
     LDA #HI(64) : STA sizeHi
 
-    JMP memcpy \ implicit RTS
+    JSR memcpy \ implicit RTS
+
+    LDA sidewaysRAMBankNumber : BEQ skip
+        \ gamebar atlas resides in sideways RAM
+        LDA #LO(gamebarAtlas_sidewaysRAM) : STA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)
+        LDA #HI(gamebarAtlas_sidewaysRAM) : STA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)+1
+    .skip
+    RTS
 
 .spriteAddrTblLocal
     \ 11 enemy sprites
@@ -364,15 +379,15 @@
     JMP memcpy \ implicit RTS
 
 .soundEffectsLocal
-    EQUB &10, &F1, &2C, &02 \ SOUND_EFFECT_PAIN 
+    EQUB &10, &F7, &2C, &02 \ SOUND_EFFECT_PAIN 
     EQUB &11, &01, &00, &01 \ SOUND_EFFECT_LASER_ON
     EQUB &11, &00, &00, &00 \ SOUND_EFFECT_LASER_OFF
-    EQUB &11, &F1, &60, &01 \ SOUND_EFFECT_HEART_BEAT
-    EQUB &11, &F1, &60, &FF \ SOUND_EFFECT_DIED
+    EQUB &11, &F7, &60, &01 \ SOUND_EFFECT_HEART_BEAT
+    EQUB &11, &F7, &60, &FF \ SOUND_EFFECT_DIED
     EQUB &11, &02, &00, &05 \ SOUND_EFFECT_LEVEL_COMPLETE
     EQUB &12, &02, &18, &03 \ SOUND_EFFECT_KEY_JEWEL
     EQUB &12, &03, &28, &01 \ SOUND_EFFECT_DOOR_LOCKED
-    EQUB &12, &FF, &00, &01 \ SOUND_EFFECT_MOVE
+    EQUB &12, &FE, &00, &01 \ SOUND_EFFECT_MOVE
     EQUB &13, &04, &48, &01 \ SOUND_EFFECT_PURSUIT_ON
     EQUB &13, &00, &00, &00 \ SOUND_EFFECT_PURSUIT_OFF
 }
@@ -584,8 +599,18 @@
     LDA #LO(srcAddr12) : STA srcAddr
     LDA #HI(srcAddr12) : STA srcAddr+1
 
-    LDA #LO(gamebarAtlas) : STA dstAddr
-    LDA #HI(gamebarAtlas) : STA dstAddr+1
+    LDA sidewaysRAMBankNumber : BEQ else
+        \ ensure sideways RAM bank is selected
+        STA &F4 : STA &FE30
+
+        \ gamebar atlas resides in sideways RAM
+        LDA #LO(gamebarAtlas_sidewaysRAM) : STA dstAddr
+        LDA #HI(gamebarAtlas_sidewaysRAM) : STA dstAddr+1
+        BNE endif
+    .else
+        LDA #LO(gamebarAtlas) : STA dstAddr
+        LDA #HI(gamebarAtlas) : STA dstAddr+1
+    .endif
 
     LDA #LO(GAMEBAR_SPRITE_SIZE) : STA sizeLo
     LDA #HI(GAMEBAR_SPRITE_SIZE) : STA sizeHi
@@ -822,9 +847,111 @@
 
         DEX
         BNE loop
+
+    LDA srcAddr
+    CLC
+    ADC sizeLo
+    STA srcAddr
+    BCC nocarry1
+        INC srcAddr+1
+    .nocarry1
+
+    LDA dstAddr
+    CLC
+    ADC sizeLo
+    STA dstAddr
+    BCC nocarry2
+        INC dstAddr+1
+    .nocarry2
+
     .skip2
 
     RTS
+}
+
+\
+\ initializeSound()
+\
+.initializeSound
+{
+    \
+    \ set sound vectors
+    \
+    LDX #9
+    .loop
+        LDA soundVectors_SamplesDisabled, X
+        LDY sampleBasedSoundsEnabled : BEQ skip
+            LDA soundVectors_SamplesEnabled, X
+        .skip
+        STA soundVectors, X
+        DEX
+        BPL loop
+
+    \
+    \ set sample tone frequency and volume
+    \
+    SEI \ disable interupts
+
+    LDA sampleBasedSoundsEnabled : BEQ else2
+        \ set highest frequency low bits
+        LDA #&81
+        JSR sendSoundData
+        
+        \ set highest frequency high bits
+        LDA #0
+        JSR sendSoundData
+
+        JMP endif2
+    .else2
+        \ set lowest frequency low bits
+        LDA #&8F
+        JSR sendSoundData
+         
+        \ set lowest frequency high bits
+        LDA #&3F
+        JSR sendSoundData
+    .endif2
+
+    \ set zero volume
+    LDA #&9F
+    JSR sendSoundData
+
+    CLI \ reenable interrupts
+
+    RTS
+
+.soundVectors_SamplesDisabled
+    EQUW rts_0, soundEffect_pursuitOn, soundEffect_pursuitOff, rts_0, soundEffect_pain      
+
+.soundVectors_SamplesEnabled 
+    EQUW sample_updatePursuit, sample_soundExterminate, stopSample, sample_soundGrown, sample_soundWeapon
+
+.sendSoundData
+    STY temp \ save Y
+
+    \ set data direction register A (write &FF to &FE43)
+    LDY #&FF
+    STY &FE43
+
+    \ output register A (write sound data to &FE4F)
+    STA &FE4F
+
+    \ output register B, prepping write by setting chip write pin low (write 0 to &FE40)
+    INY
+    STY &FE40
+
+    \ keep the write enable line low for at least 8 us, 16 cycles
+    LDY #2
+    .innerLoop
+        DEY
+        BNE innerLoop
+                                                        
+    \ write data by setting chip write pin high (write 8 to &FE40)
+    LDY #8
+    STY &FE40
+     
+    LDY temp \ restore Y
+    RTS                                                 
 }
 
 \ end file
