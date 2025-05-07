@@ -10,7 +10,7 @@
 .soundVectors                       \ REGULAR                   SAMPLE-BASED 
 .soundVector_updatePursuit  SKIP 2  \ rts_0                     sample_updatePursuit
 .soundVector_beginPursuit   SKIP 2  \ soundEffect_pursuitOn     sample_soundExterminate
-.soundVector_endPursuit     SKIP 2  \ soundEffect_pursuitOff    stopSample
+.soundVector_endPursuit     SKIP 2  \ soundEffect_pursuitOff    sample_stop
 .soundVector_enemyLasered   SKIP 2  \ rts_0                     sample_soundGrown
 .soundVector_weaponFired    SKIP 2  \ soundEffect_pain          sample_soundWeapon
 

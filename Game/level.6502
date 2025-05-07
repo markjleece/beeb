@@ -924,7 +924,7 @@
     EQUW rts_0, soundEffect_pursuitOn, soundEffect_pursuitOff, rts_0, soundEffect_pain      
 
 .soundVectors_SamplesEnabled 
-    EQUW sample_updatePursuit, sample_soundExterminate, stopSample, sample_soundGrown, sample_soundWeapon
+    EQUW sample_updatePursuit, sample_soundExterminate, sample_stop, sample_soundGrown, sample_soundWeapon
 
 .sendSoundData
     STY temp \ save Y
