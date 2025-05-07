@@ -33,7 +33,7 @@ To run/debug the game, set the project **Debugging** settings to run the image i
 To run the game from Visual Studio, select the **Game** project in **Solution Explorer**, select '**Set as Startup Project**' from the **Project** menu, and the press **Ctrl+F5**
 
 ## Level Editor
-This project contains a Windows Forms based level editor, that allows levels to be created and edited. Instructions on how to use the editor can be found by clicking on the question mark icon in the toolbar.  The levels files are located in the **game** folder and are named **level1.dat**, **level2.dat** etc.
+This project contains a Windows Forms based level editor, that allows levels to be created and edited. Instructions on how to use the editor can be found by clicking on the question mark icon in the toolbar.  The levels files are located in the **game\\data** folder and are named **level1.dat**, **level2.dat** etc.
 
 <img width="400" alt="editor" src="https://github.com/user-attachments/assets/a4808ee7-d6f9-4219-b2e8-34fd04152909" />
 
@@ -44,9 +44,9 @@ To run the level editor from Visual Studio, select the **LevelEditor** project i
 3. Rebuild All
 
 ### To add a new level:
-1. Using the editor, create a new level file named **level\<N\>.dat** in the **game** folder, where **N** is the next level number in the range **1..9**. An existing level can be used as a template by copying, renaming, and opening it.
+1. Using the editor, create a new level file named **level\<N\>.dat** in the **game\\data** folder, where **N** is the next level number in the range **1..9**. An existing level can be used as a template by copying, renaming, and opening it.
 2. Create new sprite images for the level, by copying an existing **game/assets/level\<N\>** folder, renaming it, and editing the image files within using paint.net, or other image editor. Note that the assets must use the same colors as is defined in the new level's palette.
-3. Update the **LevelCount** constant in **BMPConverter/program.cs**, rebuild BMPConverter, and run it.  A new **level\<N\>.alt** sprite atlas file should be generated in the **game** folder.
+3. Update the **LevelCount** constant in **BMPConverter/program.cs**, rebuild BMPConverter, and run it.  A new **level\<N\>.alt** sprite atlas file should be generated in the **game\\data** folder.
 4. Update the **LEVEL_COUNT** constant in **game/program.6502**.
 5. Package the new level by adding a new **'level N --> SSD'** section at the bottom of **game/program.6502**.
 6. Rebuild All
@@ -63,23 +63,23 @@ Note that the colors used within the BMP asset files must be a close match to th
 To run the BMP converter from Visual Studio, select the **BMPConverter** project in **Solution Explorer**, select '**Set as Startup Project**' from the **Project** menu, and the press **Ctrl+F5**.
 
 ## MIDI Converter
-This project is used to convert a type-0 MIDI file (Doctor Who titles music) into a more compact and Beeb friendly format (**game\\music.dat**) that is binary included in **music.6502**, which in turn is included in **program.6502**. The app also generates a pitch table which is embedded in **music.6502**.
+This project is used to convert a type-0 MIDI file (**game\\assets\\music\\music.mid**) into a more compact and Beeb friendly format (**game\\data\\music.dat**) that is binary included in **music.6502**, which in turn is included in **program.6502**. The app also generates a pitch table which is embedded in **music.6502**.
 
 To run the MIDI converter from Visual Studio, select the **MIDIConverter** project in **Solution Explorer**, select '**Set as Startup Project**' from the **Project** menu, and the press **Ctrl+F5**.
 
 ## WAV Converter
-This project is used to convert Dalek sound effect WAV files (8/8K) into a more compact and Beeb friendly format (**game\\pcm.dat**).  The game loads the samples into 16K of sideways RAM, if available. The app also generates an associated index which is embedded in **sample.6502**.
+This project is used to convert and combine Dalek sound effect 8/8K WAV files, located in **game\\assets\\samples**, into a more compact and Beeb friendly format (**game\\data\\pcm.dat**).  The game loads the samples into 16K of sideways RAM, if available. The app also generates an associated index which is embedded in **sample.6502**.
 
 To run the WAV converter from Visual Studio, select the **WAVConverter** project in **Solution Explorer**, select '**Set as Startup Project**' from the **Project** menu, and the press **Ctrl+F5**.
 
 ## Other files
 | File name | Description |
 |---|---|
-| development.docx | Provides details on the design and development of the game, which may be of interest |
-| memory.xlsx | Used to determine the memory locations of sprite assets and other program data |
-| music.sib | A Sibelius music score containing the Doctor Who music and arrangement by Ron Grainer & Delia Derbyshire |
-| music.midi | A type-0 MIDI file created using Sibelius |
-| programs.mmd | A multi-disc image that can be copied to a micro-sd card and used to play the game on a Beeb which has MMFS Turbo support. Note that building the solution does not update the mmd file |
-| game\titles.bin | Titles screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format |
-| game\instructions.bin | Instructions screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format ||---|---|
+| docs\development.docx | Provides details on the design and development of the game, which may be of interest |
+| docs\memory.xlsx | Used to determine the memory locations of sprite assets and other program data |
+| game\assets\music\music.sib | A Sibelius music score containing the Doctor Who music and arrangement by Ron Grainer & Delia Derbyshire |
+| game\assets\music\music.midi | A type-0 MIDI file created using Sibelius |
+| game\programs.mmd | A multi-disc image that can be copied to a micro-sd card and used to play the game on a Beeb which has MMFS Turbo support. Note that building the solution does not update the mmd file |
+| game\data\titles.bin | Titles screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format |
+| game\data\instructions.bin | Instructions screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format ||---|---|
 
