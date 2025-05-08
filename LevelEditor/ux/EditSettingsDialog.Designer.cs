@@ -39,7 +39,7 @@ namespace LevelEditor.ux
             jewelHealthGainComboBox = new ComboBox();
             okButton = new Button();
             cancelButton = new Button();
-            sampleBasedSoundCheckBox = new CheckBox();
+            dalekSamplesEnabled = new CheckBox();
             label5 = new Label();
             SuspendLayout();
             // 
@@ -136,15 +136,16 @@ namespace LevelEditor.ux
             cancelButton.Text = "Cancel";
             cancelButton.UseVisualStyleBackColor = true;
             // 
-            // sampleBasedSoundCheckBox
+            // dalekSamplesEnabled
             // 
-            sampleBasedSoundCheckBox.AutoSize = true;
-            sampleBasedSoundCheckBox.Location = new Point(15, 176);
-            sampleBasedSoundCheckBox.Name = "sampleBasedSoundCheckBox";
-            sampleBasedSoundCheckBox.Size = new Size(475, 29);
-            sampleBasedSoundCheckBox.TabIndex = 7;
-            sampleBasedSoundCheckBox.Text = "Enable sample-based sounds (uses 16K sideways RAM)";
-            sampleBasedSoundCheckBox.UseVisualStyleBackColor = true;
+            dalekSamplesEnabled.AutoSize = true;
+            dalekSamplesEnabled.Location = new Point(15, 176);
+            dalekSamplesEnabled.Name = "dalekSamplesEnabled";
+            dalekSamplesEnabled.Size = new Size(469, 29);
+            dalekSamplesEnabled.TabIndex = 7;
+            dalekSamplesEnabled.Text = "Enable Dalek sample sounds (uses 16K sideways RAM)";
+            dalekSamplesEnabled.UseVisualStyleBackColor = true;
+            dalekSamplesEnabled.CheckedChanged += sampleBasedSoundCheckBox_CheckedChanged;
             // 
             // label5
             // 
@@ -154,7 +155,7 @@ namespace LevelEditor.ux
             label5.Size = new Size(0, 25);
             label5.TabIndex = 8;
             // 
-            // EditCoefficientsDialog
+            // EditSettingsDialog
             // 
             AcceptButton = okButton;
             AutoScaleDimensions = new SizeF(10F, 25F);
@@ -162,7 +163,7 @@ namespace LevelEditor.ux
             CancelButton = cancelButton;
             ClientSize = new Size(498, 265);
             Controls.Add(label5);
-            Controls.Add(sampleBasedSoundCheckBox);
+            Controls.Add(dalekSamplesEnabled);
             Controls.Add(cancelButton);
             Controls.Add(okButton);
             Controls.Add(jewelHealthGainComboBox);
@@ -173,7 +174,7 @@ namespace LevelEditor.ux
             Controls.Add(label2);
             Controls.Add(enemyWeaponStrengthComboBox);
             Controls.Add(label1);
-            Name = "EditCoefficientsDialog";
+            Name = "EditSettingsDialog";
             Text = "Edit Settings";
             Load += EditCoefficients_Load;
             ResumeLayout(false);
@@ -192,7 +193,7 @@ namespace LevelEditor.ux
         private ComboBox jewelHealthGainComboBox;
         private Button okButton;
         private Button cancelButton;
-        private CheckBox sampleBasedSoundCheckBox;
+        private CheckBox dalekSamplesEnabled;
         private Label label5;
     }
 }

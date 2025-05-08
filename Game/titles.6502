@@ -14,9 +14,9 @@
     JSR resetOSVectors
     JSR showTitleScreen
     JSR initializeVariables
+    JSR playMusic
     JSR initializeSidewaysRAM
     JSR showTitleScreenPrompt
-    JSR playMusic
     JSR waitForSpaceKeyPress
 
     JSR showInstructionsScreen
@@ -253,7 +253,7 @@ INCBIN "data\\instructions.bin"
     LDA IRQ1V+1 : STA mosIRQ1V+1
 
     \ set IRQ1V vector to ingame interrupt IRQ
-    LDA sidewaysRAMBankNumber : BEQ else
+    LDA dalekSamplesRAMBankNumber : BEQ else
         LDA #LO(ingame_sample_irq) : STA IRQ1V
         LDA #HI(ingame_sample_irq) : STA IRQ1V+1
         JMP endif
@@ -283,7 +283,7 @@ INCBIN "data\\instructions.bin"
 	STA &FE44
     STA &FE45  
 
-    LDA sidewaysRAMBankNumber : BEQ skip
+    LDA dalekSamplesRAMBankNumber : BEQ skip
         \ set User-VIA Timer1 to continous mode
 	    LDA #&40
         STA &FE6B
@@ -313,7 +313,7 @@ INCBIN "data\\instructions.bin"
     LDA &F4 : STA temp
 
     LDX #15
-    STX sidewaysRAMBankNumber
+    STX dalekSamplesRAMBankNumber
 
     .loop
         \ page in bank 'X'
@@ -335,7 +335,7 @@ INCBIN "data\\instructions.bin"
 
     \ store bank number
     .break
-    STX sidewaysRAMBankNumber
+    STX dalekSamplesRAMBankNumber
 
     \ restore bank
     LDA temp
@@ -404,7 +404,7 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
         JSR osfile
 
         \ select sideways RAM
-        LDA sidewaysRAMBankNumber
+        LDA dalekSamplesRAMBankNumber
         SEI
         STA &F4 : STA &FE30 \ ROMSEL
         CLI

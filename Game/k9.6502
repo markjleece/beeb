@@ -395,11 +395,7 @@
 \
 .k9CollectJewel
 {
-    \ increase health
-    LDA healthLo
-    CLC
-    ADC jewelHealthGainLo
-    STA healthLo
+    \ increase health (high-byte)
     LDA healthHi
     ADC jewelHealthGainHi
     CMP #MAX_HEALTH_HI : BCC maxHealth

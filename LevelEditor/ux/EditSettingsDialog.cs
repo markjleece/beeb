@@ -15,7 +15,7 @@ namespace LevelEditor.ux
     {
         internal EditSettingsDialog(Settings coefficients)
         {
-            Coefficients = coefficients;
+            Settings = coefficients;
             InitializeComponent();
         }
 
@@ -24,33 +24,33 @@ namespace LevelEditor.ux
             enemyWeaponStrengthComboBox.Items.Add("128 (high)");
             enemyWeaponStrengthComboBox.Items.Add("64 (normal)");
             enemyWeaponStrengthComboBox.Items.Add("32 (low)");
-            SetSelectedValue(enemyWeaponStrengthComboBox, Coefficients.EnemyWeaponStrength);
+            SetSelectedValue(enemyWeaponStrengthComboBox, Settings.EnemyWeaponStrength);
 
             laserStrengthComboBox.Items.Add("64 (high)");
             laserStrengthComboBox.Items.Add("32 (normal)");
             laserStrengthComboBox.Items.Add("16 (low)");
-            SetSelectedValue(laserStrengthComboBox, Coefficients.LaserStrength);
+            SetSelectedValue(laserStrengthComboBox, Settings.LaserStrength);
 
             laserHealthDrainComboBox.Items.Add("16 (high)");
             laserHealthDrainComboBox.Items.Add("8 (normal)");
             laserHealthDrainComboBox.Items.Add("4 (low)");
-            SetSelectedValue(laserHealthDrainComboBox, Coefficients.LaserHealthDrain);
+            SetSelectedValue(laserHealthDrainComboBox, Settings.LaserHealthDrain);
 
-            jewelHealthGainComboBox.Items.Add("512 (high)");
-            jewelHealthGainComboBox.Items.Add("256 (normal)");
-            jewelHealthGainComboBox.Items.Add("128 (low)");
-            SetSelectedValue(jewelHealthGainComboBox, Coefficients.JewelHealthGain);
+            jewelHealthGainComboBox.Items.Add("1024 (high)");
+            jewelHealthGainComboBox.Items.Add("512 (normal)");
+            jewelHealthGainComboBox.Items.Add("256 (low)");
+            SetSelectedValue(jewelHealthGainComboBox, Settings.JewelHealthGain);
 
-            sampleBasedSoundCheckBox.Checked = (Coefficients.SampleBasedSounds != 0);
+            dalekSamplesEnabled.Checked = (Settings.DalekSamplesEnabled != 0);
         }
 
         private void okButton_Click(object sender, EventArgs e)
         {
-            Coefficients.EnemyWeaponStrength = ToInteger(enemyWeaponStrengthComboBox.SelectedItem);
-            Coefficients.LaserStrength = ToInteger(laserStrengthComboBox.SelectedItem);
-            Coefficients.LaserHealthDrain = ToInteger(laserHealthDrainComboBox.SelectedItem);
-            Coefficients.JewelHealthGain = ToInteger(jewelHealthGainComboBox.SelectedItem);
-            Coefficients.SampleBasedSounds = sampleBasedSoundCheckBox.Checked ? 1 : 0;
+            Settings.EnemyWeaponStrength = ToInteger(enemyWeaponStrengthComboBox.SelectedItem);
+            Settings.LaserStrength = ToInteger(laserStrengthComboBox.SelectedItem);
+            Settings.LaserHealthDrain = ToInteger(laserHealthDrainComboBox.SelectedItem);
+            Settings.JewelHealthGain = ToInteger(jewelHealthGainComboBox.SelectedItem);
+            Settings.DalekSamplesEnabled = dalekSamplesEnabled.Checked ? 1 : 0;
         }
 
         private static void SetSelectedValue(ComboBox comboBox, int value)
@@ -71,6 +71,11 @@ namespace LevelEditor.ux
             return Int32.Parse(((string)obj).Split(' ')[0]);
         }
 
-        private Settings Coefficients;
+        private Settings Settings;
+
+        private void sampleBasedSoundCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
     }
 }

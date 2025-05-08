@@ -95,14 +95,13 @@
     LDA levelEnemyWeaponStrengthLoaded : STA enemyWeaponStrength
     LDA levelLaserStrengthLoaded : STA laserStrength
     LDA levelLaserHealthDrainLoaded : STA laserHealthDrain
-    LDA levelJewelHealthGainLoLoaded : STA jewelHealthGainLo
     LDA levelJewelHealthGainHiLoaded : STA jewelHealthGainHi
 
-    \ set sampleBasedSoundsEnabled flag
-    LDA sidewaysRAMBankNumber : BEQ skip
-        LDA levelSampleBasedSoundsEnabledLoaded
+    \ set dalekSamplesEnabled flag
+    LDA dalekSamplesRAMBankNumber : BEQ skip
+        LDA levelDalekSamplesEnabledLoaded
     .skip
-    STA sampleBasedSoundsEnabled
+    STA dalekSamplesEnabled
 
     \ patch BCC instuction in getObjectTileGridAddr (tilegrid.6502)
     LDA horzTileCount
@@ -232,7 +231,7 @@
 
     JSR memcpy \ implicit RTS
 
-    LDA sidewaysRAMBankNumber : BEQ skip
+    LDA dalekSamplesRAMBankNumber : BEQ skip
         \ gamebar atlas resides in sideways RAM
         LDA #LO(gamebarAtlas_sidewaysRAM) : STA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)
         LDA #HI(gamebarAtlas_sidewaysRAM) : STA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)+1
@@ -599,7 +598,7 @@
     LDA #LO(srcAddr12) : STA srcAddr
     LDA #HI(srcAddr12) : STA srcAddr+1
 
-    LDA sidewaysRAMBankNumber : BEQ else
+    LDA dalekSamplesRAMBankNumber : BEQ else
         \ ensure sideways RAM bank is selected
         STA &F4 : STA &FE30
 
@@ -880,7 +879,7 @@
     LDX #9
     .loop
         LDA soundVectors_SamplesDisabled, X
-        LDY sampleBasedSoundsEnabled : BEQ skip
+        LDY dalekSamplesEnabled : BEQ skip
             LDA soundVectors_SamplesEnabled, X
         .skip
         STA soundVectors, X
@@ -892,7 +891,7 @@
     \
     SEI \ disable interupts
 
-    LDA sampleBasedSoundsEnabled : BEQ else2
+    LDA dalekSamplesEnabled : BEQ else2
         \ set highest frequency low bits
         LDA #&81
         JSR sendSoundData

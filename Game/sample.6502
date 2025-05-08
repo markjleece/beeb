@@ -126,7 +126,7 @@
     STA &FE6E
 
     \ select sideways RAM
-    LDA sidewaysRAMBankNumber
+    LDA dalekSamplesRAMBankNumber
     STA &F4 : STA &FE30 \ ROMSEL
 
     CLI \ re-enable interrupts

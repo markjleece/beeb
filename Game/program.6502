@@ -364,17 +364,16 @@ levelPaletteLoaded = &4022              \ level palette (relocated to levelPalet
 levelEnemyWeaponStrengthLoaded = &4032  \ level enemy weapon strength (relocated to enemyWeaponStrength)
 levelLaserStrengthLoaded = &4033        \ level laser strength (relocated to laserStrength)
 levelLaserHealthDrainLoaded = &4034     \ level laser health drain (relocated to laserHealthDrain)
-levelJewelHealthGainLoLoaded = &4035    \ level jewel health gain (relocated to jewelHealthGainLo/Hi)
-levelJewelHealthGainHiLoaded = &4036
-levelSampleBasedSoundsEnabledLoaded = &4037  \ level sample sounds enabled flag (relocated to sampleSoundsEnabled)
-levelObjectsLoaded = &4038              \ 48 x 3 byte objects descriptors (used to populate game objects)
+levelJewelHealthGainHiLoaded = &4035    \ level jewel health gain (relocated to jewelHealthGainHi)
+levelDalekSamplesEnabledLoaded = &4036  \ level dalek samples enabled flag (relocated to dalekSamplesEnabled)
+levelObjectsLoaded = &4037              \ 48 x 3 byte objects descriptors (used to populate game objects)
 
 \ drawObject head and tail jump offset tables
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
 drawObject_tailJumpTbl = &10F6          \ 10 byte tail jump offset table (repurposes DFS &10E0-&10FF workspace)
 
 \ PCM data load address
-pcmDataLoadBufferAddr = &7C00 - PCM_DATA_LOAD_BUFFER_SIZE \ PCM data load buffer is just below Mode-7 screen memory
+pcmDataLoadBufferAddr = &7C00 - PCM_DATA_LOAD_BUFFER_SIZE \ buffer is located below Mode-7 screen memory
 
 \ zero page MOS location
 zeroPageMOS = &90
@@ -428,10 +427,9 @@ ORG 0
 .enemyWeaponStrength        SKIP 1  \ enemy weapon strength
 .laserStrength              SKIP 1  \ laser strength
 .laserHealthDrain           SKIP 1  \ laser health drain
-.jewelHealthGainLo          SKIP 1  \ jewel health gain (low/high bytes)
-.jewelHealthGainHi          SKIP 1  
-.sidewaysRAMBankNumber      SKIP 1  \ sideways RAM bank number (zero denotes no sideways RAM)
-.sampleBasedSoundsEnabled   SKIP 1  \ sample based sounds enabled flag
+.jewelHealthGainHi          SKIP 1  \ jewel health gain (high byte)
+.dalekSamplesRAMBankNumber  SKIP 1  \ dalek samples sideways RAM bank number (zero denotes no sideways RAM)
+.dalekSamplesEnabled        SKIP 1  \ dalek samples enabled flags
 .blackPalette               SKIP 16 \ black palette (resides here as there was space)
 
 \ transient data (values do not persist across frames)
