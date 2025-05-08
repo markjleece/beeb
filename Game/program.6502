@@ -321,6 +321,9 @@ SAMPLE_EXTERMINATE_FRAME_COUNT = 100
 \ frame counter used to inhibit move sound effects
 INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT = 30
 
+\ PCM data load buffer size
+PCM_DATA_LOAD_BUFFER_SIZE = &C9A
+
 \ sprite atlas locations
 enemyAtlas1 = &100
 enemyAtlas2 = &300
@@ -371,7 +374,7 @@ drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurp
 drawObject_tailJumpTbl = &10F6          \ 10 byte tail jump offset table (repurposes DFS &10E0-&10FF workspace)
 
 \ PCM data load address
-pcmDataLoadAddr = &7C00 - &CA0          \ buffer just below Mode-7 screen memory
+pcmDataLoadBufferAddr = &7C00 - PCM_DATA_LOAD_BUFFER_SIZE \ PCM data load buffer is just below Mode-7 screen memory
 
 \ zero page MOS location
 zeroPageMOS = &90
@@ -1353,22 +1356,21 @@ INCLUDE "level.6502" \ packaged level code
 .levelEnd
 
 \
-\ titles (code run during startup)
+\ code executed only during startup (it is overwritten)
 \
 INCLUDE "titles.6502"
-
-\
-\ music (code run during startup)
-\
 INCLUDE "music.6502"
 
 \
-\ Page backups (see loadLevel)
+\ page backups (see loadLevel)
 \
 .loadLevelPageBackup1 SKIP 256
 .loadLevelPageBackup2 SKIP 256
 
-GUARD &7C00 \ Guard mode 7 screen memory
+\ guard PCM data load buffer through &7FFF
+FOR addr, pcmDataLoadBufferAddr, &7FFF
+    GUARD addr
+NEXT
 
 .end
 
@@ -1384,11 +1386,11 @@ ORG &8000
 .pcmData
 INCBIN "data\\pcm.dat"
 
-SAVE "pcm1", &8000, &8CA0
-SAVE "pcm2", &8CA0, &9940
-SAVE "pcm3", &9940, &A5E0
-SAVE "pcm4", &A5E0, &B280
-SAVE "pcm5", &B280, &BF20
+SAVE "pcm1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcm2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcm3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcm4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcm5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE)
 
 \
 \ level 1 --> SSD

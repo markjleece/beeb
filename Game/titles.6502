@@ -284,13 +284,9 @@ INCBIN "data\\instructions.bin"
     STA &FE45  
 
     LDA sidewaysRAMBankNumber : BEQ skip
-        \ enable User-VIA Timer1 (used to play sampled sounds)
-	    LDA #&C0
-        STA &FE6E
-    
         \ set User-VIA Timer1 to continous mode
 	    LDA #&40
-        STA &FE7B
+        STA &FE6B
     
         \ set User-VIA Timer1 length to 1/8000th second
         LDA #LO(125) : STA &FE64
@@ -298,6 +294,10 @@ INCBIN "data\\instructions.bin"
         LDA #LO(125 - 2) : STA &FE66
         LDA #HI(125 - 2) : STA &FE67
     .skip
+
+    \ disable all User-VIA interupts
+	LDA #&3F
+    STA &FE6E
 
     CLI \ reenable interrupts
 
@@ -376,8 +376,8 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
     LDA #LO(&8000) : STA dstAddr
     LDA #HI(&8000) : STA dstAddr+1
 
-    LDA #LO(&CA0) : STA sizeLo
-    LDA #HI(&CA0) : STA sizeHi
+    LDA #LO(PCM_DATA_LOAD_BUFFER_SIZE) : STA sizeLo
+    LDA #HI(PCM_DATA_LOAD_BUFFER_SIZE) : STA sizeHi
 
     LDA #'1' : STA index
 
@@ -394,8 +394,8 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
             CPY #18
             BNE innerLoop
 
-        LDA #LO(pcmDataLoadAddr) : STA osfileParamBlock+2
-        LDA #HI(pcmDataLoadAddr) : STA osfileParamBlock+3
+        LDA #LO(pcmDataLoadBufferAddr) : STA osfileParamBlock+2
+        LDA #HI(pcmDataLoadBufferAddr) : STA osfileParamBlock+3
 
         \ invoke osfile
         LDX #LO(osfileParamBlock)
@@ -410,8 +410,8 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
         CLI
 
         \ copy data to sideways RAM (we need to reset srcAddr)
-        LDA #LO(pcmDataLoadAddr) : STA srcAddr
-        LDA #HI(pcmDataLoadAddr) : STA srcAddr+1
+        LDA #LO(pcmDataLoadBufferAddr) : STA srcAddr
+        LDA #HI(pcmDataLoadBufferAddr) : STA srcAddr+1
         JSR memcpy
 
         \ restore bank

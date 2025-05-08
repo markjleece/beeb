@@ -5,7 +5,7 @@ namespace WAVConverter
 {
     internal class Program
     {
-        const int fileSize = 0x3F20; // 16K - 224 (size of gamebar asset)
+        const int fileSize = 0x3F00; // 16K - 256
 
         static void Main(string[] args)
         {
@@ -16,22 +16,22 @@ namespace WAVConverter
                 ExtractAndEncodePCMData(samplesFolder + "groan.wav"),
                 ExtractAndEncodePCMData(samplesFolder + "weapon.wav")];
 
-            // stack the encoded data at page boundaries
+            // stack encoded data, aligning ends to page boundaries
             byte[] pcmData = new byte[fileSize];
             int[] startIndices = new int[3];
             int[] endIndices = new int[3];
 
-            int offset = 0;
+            int offset = fileSize;
             for (int i = 0; i < pcmDataSamples.Length; i++)
             {
-                int samplesLength = pcmDataSamples[i].Length;
-                
-                Array.Copy(pcmDataSamples[i], 0, pcmData, offset, samplesLength);
+                int sampleLength = pcmDataSamples[i].Length;
 
-                startIndices[i] = offset + samplesLength - 1;
-                endIndices[i] = offset - 1;
-                
-                offset += RoundToNextPage(samplesLength);
+                Array.Copy(pcmDataSamples[i], 0, pcmData, offset - sampleLength, sampleLength);
+
+                startIndices[i] = offset - sampleLength;
+                endIndices[i] = offset;
+
+                offset -= RoundToNextPage(sampleLength);
             }
 
             // write PCM data
@@ -43,11 +43,11 @@ namespace WAVConverter
             Console.WriteLine($".pcmDataEndAddrHiTbl   EQUB &{HI(endIndices[0]):X2}, &{HI(endIndices[1]):X2}, &{HI(endIndices[2]):X2}");
         }
 
-        static int RoundToNextPage(int value) => (value + 255) / 256 * 256;
-        static int HI(int value) => (0x8000 + value) / 256;
-        static int LO(int value) => (0x8000 + value) % 256;
+        private static int RoundToNextPage(int value) => (value + 255) / 256 * 256;
+        private static int HI(int value) => (0x8000 + value) / 256;
+        private static int LO(int value) => (0x8000 + value) % 256;
 
-        static private byte[] ExtractAndEncodePCMData(string filePath)
+        private static byte[] ExtractAndEncodePCMData(string filePath)
         { 
             // read PCM data from 8/8K wav file
             byte[] pcmData = ReadPCMData(filePath);
@@ -65,14 +65,13 @@ namespace WAVConverter
             // ensure last amplitude is silence
             pcmData[halfLength - 1] |= 0xF0;
 
-            // resize array and reverse it (the runtime traverses it backwards)
+            // resize array
             Array.Resize(ref pcmData, halfLength);
-            Array.Reverse(pcmData);
 
             return pcmData;
         }
 
-        static private byte[] ReadPCMData(string filePath)
+        private static byte[] ReadPCMData(string filePath)
         { 
             FileStream fileStream = File.OpenRead(filePath);
 
@@ -142,7 +141,7 @@ namespace WAVConverter
             return pcmData;
         }
 
-        static private void WritePCMData(byte[] pcmData, string filePath)
+        private static void WritePCMData(byte[] pcmData, string filePath)
         { 
             // delete existing file as File.OpenWrite(...) does will open an existing file for write
             try
@@ -175,7 +174,7 @@ namespace WAVConverter
             return fileStream.ReadByte() | (fileStream.ReadByte() << 8) | (fileStream.ReadByte() << 16) | (fileStream.ReadByte() << 24);
         }
 
-        static private string GetSolutionFolder()
+        private static string GetSolutionFolder()
         {
             var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
             while (directory != null && directory.GetFiles("*.sln").Length == 0)
