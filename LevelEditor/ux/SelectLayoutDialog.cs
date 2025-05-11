@@ -34,7 +34,7 @@ namespace LevelEditor.ux
 
         }
 
-        private void okayButton_Click(object sender, EventArgs e)
+        private void OkayButton_Click(object sender, EventArgs e)
         {
             switch (SelectedLayoutIndex)
             {
@@ -61,7 +61,7 @@ namespace LevelEditor.ux
             }
         }
 
-        private void layoutSelectorPanel_MouseClick(object sender, MouseEventArgs e)
+        private void LayoutSelectorPanel_MouseClick(object sender, MouseEventArgs e)
         {
             int index = LayoutSelectedPanel_HitTest(e.X, e.Y);
             if (index != -1 && index != SelectedLayoutIndex)
@@ -76,7 +76,7 @@ namespace LevelEditor.ux
             }
         }
 
-        private void layoutSelectorPanel_Paint(object sender, PaintEventArgs e)
+        private void LayoutSelectorPanel_Paint(object sender, PaintEventArgs e)
         {
             Rectangle clippingRect = e.ClipRectangle;
 
@@ -86,42 +86,27 @@ namespace LevelEditor.ux
                 if (!clippingRect.IntersectsWith(bounds)) continue;
 
                 // draw page layout
-                double[,] pageCoords;
-
-                switch (i)
+                double[,] pageCoords = i switch
                 {
-                    default:
-                    case 0:
-                        pageCoords = new double[,] {
-                            { -4.0, -0.5 }, { -3.0, -0.5 }, { -2.0, -0.5 }, { -1.0, -0.5 }, 
-                            { 0.0, -0.5 }, { 1.0, -0.5 }, { 2.0, -0.5 }, { 3.0, -0.5 } };
-                        break;
-
-                    case 1:
-                        pageCoords = new double[,] {
+                    1 => new double[,] {
                             { -2.0, -1.0 }, { -1.0, -1.0 }, { 0.0, -1.0 }, { 1.0, -1.0 },
-                            { -2.0, 0.0 }, { -1.0, 0.0 }, { 0.0, 0.0 }, { 1.0, 0.0 } };
-                        break;
-
-                    case 2:
-                        pageCoords = new double[,] {
+                            { -2.0,  0.0 }, { -1.0,  0.0 }, { 0.0,  0.0 }, { 1.0,  0.0 } },
+                    2 => new double[,] {
                             { -1.0, -2.0 }, { -1.0, -1.0 }, { -1.0, 0.0 }, { -1.0, 1.0 },
-                            { 0.0, -2.0 }, { 0.0, -1.0 }, { 0.0, 0.0 }, { 0.0, 1.0 } };
-                        break;
-
-                    case 3:
-                        pageCoords = new double[,] {
+                            {  0.0, -2.0 }, {  0.0, -1.0 }, {  0.0, 0.0 }, {  0.0, 1.0 } },
+                    3 => new double[,] {
                             { -0.5, -4.0 }, { -0.5, -3.0 }, { -0.5, -2.0 }, { -0.5, -1.0 },
-                            { -0.5, 0.0 }, { -0.5, 1.0 }, { -0.5, 2.0 }, { -0.5, 3.0 } };
-                        break;
-                }
-                
+                            { -0.5,  0.0 }, { -0.5,  1.0 }, { -0.5,  2.0 }, { -0.5,  3.0 } },
+                    _ => new double[,] {
+                            { -4.0, -0.5 }, { -3.0, -0.5 }, { -2.0, -0.5 }, { -1.0, -0.5 },
+                            {  0.0, -0.5 }, {  1.0, -0.5 }, {  2.0, -0.5 }, {  3.0, -0.5 } },
+                };
                 LayoutSelectorDrawLayout(bounds, pageCoords, e.Graphics);
 
                 // draw selection border
                 if (i == SelectedLayoutIndex)
                 {
-                    Pen pen = new Pen(Color.Gray, 4);
+                    Pen pen = new(Color.Gray, 4);
                     bounds.Inflate(-2, -2);
                     e.Graphics.DrawRectangle(pen, bounds);
                 }
@@ -134,7 +119,7 @@ namespace LevelEditor.ux
             }
         }
 
-        private void LayoutSelectorDrawLayout(Rectangle bounds, double[,] pageCoords, Graphics graphics)
+        private static void LayoutSelectorDrawLayout(Rectangle bounds, double[,] pageCoords, Graphics graphics)
         {
             // find max value
             double maxValue = 0.0;
@@ -149,20 +134,20 @@ namespace LevelEditor.ux
 
             double scale = 0.5 * bounds.Width / maxValue;
 
-            Point boundsCenter = new Point(
+            Point boundsCenter = new(
                 (bounds.Left + bounds.Right) / 2, (bounds.Top + bounds.Bottom) / 2);
 
             for (int i = 0; i < 8; i++)
             {
-                Point topLeft = new Point(
+                Point topLeft = new(
                     boundsCenter.X + (int)(scale * pageCoords[i, 0]),
                     boundsCenter.Y + (int)(scale * pageCoords[i, 1]));
 
-                Point bottomRight = new Point(
+                Point bottomRight = new(
                     boundsCenter.X + (int)(scale * (pageCoords[i, 0] + 1.0)),
                     boundsCenter.Y + (int)(scale * (pageCoords[i, 1] + 1.0)));
 
-                Rectangle pageRectangle = new Rectangle(
+                Rectangle pageRectangle = new(
                     topLeft.X, topLeft.Y, (bottomRight.X - topLeft.X), (bottomRight.Y - topLeft.Y));
 
                 graphics.FillRectangle(Brushes.DarkGray, pageRectangle);
@@ -170,7 +155,7 @@ namespace LevelEditor.ux
             }
         }
 
-        private int LayoutSelectedPanel_HitTest(int x, int y)
+        private static int LayoutSelectedPanel_HitTest(int x, int y)
         {
             for (int i = 0; i < 4; i++)
             {
@@ -184,7 +169,7 @@ namespace LevelEditor.ux
             return -1;
         }
 
-        private Rectangle GetLayoutSelectorPanelRect(int index)
+        private static Rectangle GetLayoutSelectorPanelRect(int index)
         {
             return new Rectangle(index * LayoutItemSize, 0, LayoutItemSize, LayoutItemSize);
         }

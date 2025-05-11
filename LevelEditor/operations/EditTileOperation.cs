@@ -24,7 +24,7 @@ namespace LevelEditor
                 return false;
             }
 
-            EditTileDialog dialog = new EditTileDialog(NewTile, LevelData.Palette);
+            EditTileDialog dialog = new(NewTile, LevelData.Palette);
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 Redo();
@@ -44,9 +44,9 @@ namespace LevelEditor
             LevelData.Tiles[TileIndex] = OldTile;
         }
 
-        private Level LevelData;
-        private int TileIndex;
-        private Tile NewTile;
-        private Tile OldTile;
+        private readonly Level LevelData;
+        private readonly int TileIndex;
+        private readonly Tile NewTile;
+        private readonly Tile OldTile;
     }
 }

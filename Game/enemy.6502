@@ -232,7 +232,10 @@
         JSR clearObjectInsideTileFlags 
 
         \ end pursuit sound effect?
-        JMP silencePursuitSoundEffect \ implicit RTS
+        JSR silencePursuitSoundEffect 
+        
+        \ invoke enemy destroyed sound effect
+        JMP (secondarySoundVector_enemyDestroyed) \ implicit RTS
     .skip1
 
     \ enemy have sufficient remaining health to pursue or use weapon?
@@ -264,8 +267,8 @@
         JSR enemyAnimate
     .skip3
 
-    \ sound groan (if sampling enabled)
-    JMP (soundVector_enemyLasered) \ implict RTS
+    \ invoke enemy lasered sound effect
+    JMP (primarySoundVector_enemyLasered) \ implict RTS
 }
 
 \

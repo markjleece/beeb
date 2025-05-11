@@ -9,12 +9,12 @@ namespace LevelEditor
 
         internal Settings Clone()
         {
-            Settings clone = new Settings();
+            Settings clone = new();
             clone.EnemyWeaponStrength = EnemyWeaponStrength;
             clone.JewelHealthGain = JewelHealthGain;
             clone.LaserHealthDrain = LaserHealthDrain;
             clone.LaserStrength = LaserStrength;
-            clone.DalekSamplesEnabled = DalekSamplesEnabled;
+            clone.SampleSoundsEnabled = SampleSoundsEnabled;
             return clone;
         }
 
@@ -24,7 +24,7 @@ namespace LevelEditor
             LaserStrength = fs.ReadByte();
             LaserHealthDrain = fs.ReadByte();
             JewelHealthGain = fs.ReadByte() * 256;
-            DalekSamplesEnabled = fs.ReadByte();
+            SampleSoundsEnabled = fs.ReadByte();
         }
 
         internal void Write(FileStream fs)
@@ -33,13 +33,13 @@ namespace LevelEditor
             fs.WriteByte((byte)LaserStrength);
             fs.WriteByte((byte)LaserHealthDrain);
             fs.WriteByte((byte)(JewelHealthGain / 256));
-            fs.WriteByte((byte)DalekSamplesEnabled);
+            fs.WriteByte((byte)SampleSoundsEnabled);
         }
 
         internal int EnemyWeaponStrength = 64;
         internal int JewelHealthGain = 512;
         internal int LaserHealthDrain = 8;
         internal int LaserStrength = 32;
-        internal int DalekSamplesEnabled = 1/*true*/;
+        internal int SampleSoundsEnabled = 1/*true*/;
     }
 }

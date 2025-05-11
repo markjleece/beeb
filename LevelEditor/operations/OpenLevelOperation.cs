@@ -7,7 +7,7 @@ namespace LevelEditor
         {
             CurrentState = currentState;
             OldState = currentState.Clone();
-            NewState = new Level();
+            NewState = new();
         }
 
         internal override bool Execute()
@@ -49,8 +49,8 @@ namespace LevelEditor
             CurrentState.Set(OldState);
         }
 
-        private Level CurrentState;
+        private readonly Level CurrentState;
+        private readonly Level OldState;
         private Level NewState;
-        private Level OldState;
     }
 }

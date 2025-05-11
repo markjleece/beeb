@@ -20,10 +20,11 @@ namespace LevelEditor
 
         internal TileGrid Clone()
         {
-            TileGrid clone = new TileGrid();
-
-            clone.Width = Width;
-            clone.Height = Height;
+            TileGrid clone = new()
+            {
+                Width = Width,
+                Height = Height
+            };
 
             for (int i = 0; i < Width * Height; i++)
             {

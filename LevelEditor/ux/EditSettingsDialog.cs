@@ -41,16 +41,16 @@ namespace LevelEditor.ux
             jewelHealthGainComboBox.Items.Add("256 (low)");
             SetSelectedValue(jewelHealthGainComboBox, Settings.JewelHealthGain);
 
-            dalekSamplesEnabled.Checked = (Settings.DalekSamplesEnabled != 0);
+            sampleSoundsCheckbox.Checked = (Settings.SampleSoundsEnabled != 0);
         }
 
-        private void okButton_Click(object sender, EventArgs e)
+        private void OkButton_Click(object sender, EventArgs e)
         {
             Settings.EnemyWeaponStrength = ToInteger(enemyWeaponStrengthComboBox.SelectedItem);
             Settings.LaserStrength = ToInteger(laserStrengthComboBox.SelectedItem);
             Settings.LaserHealthDrain = ToInteger(laserHealthDrainComboBox.SelectedItem);
             Settings.JewelHealthGain = ToInteger(jewelHealthGainComboBox.SelectedItem);
-            Settings.DalekSamplesEnabled = dalekSamplesEnabled.Checked ? 1 : 0;
+            Settings.SampleSoundsEnabled = sampleSoundsCheckbox.Checked ? 1 : 0;
         }
 
         private static void SetSelectedValue(ComboBox comboBox, int value)
@@ -71,11 +71,6 @@ namespace LevelEditor.ux
             return Int32.Parse(((string)obj).Split(' ')[0]);
         }
 
-        private Settings Settings;
-
-        private void sampleBasedSoundCheckBox_CheckedChanged(object sender, EventArgs e)
-        {
-
-        }
+        private readonly Settings Settings;
     }
 }

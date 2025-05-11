@@ -1,4 +1,5 @@
 ﻿// This file is Copyright © 2025 - Mark John Leece - All rights reserved
+using System.Runtime.InteropServices;
 using System.Xml.Linq;
 
 namespace WAVConverter
@@ -7,19 +8,62 @@ namespace WAVConverter
     {
         const int fileSize = 0x3F00; // 16K - 256
 
-        static void Main(string[] args)
+        static void Main(string[] _)
         {
-            // extract and encode the PCM data from the following WAV files
-            string samplesFolder = GetSolutionFolder() + "\\game\\assets\\samples\\";
-            byte[][] pcmDataSamples = [
-                ExtractAndEncodePCMData(samplesFolder + "exterminate.wav"),
-                ExtractAndEncodePCMData(samplesFolder + "groan.wav"),
-                ExtractAndEncodePCMData(samplesFolder + "weapon.wav")];
+            List<int> startIndices = [];
+            List<int> endIndices = [];
 
+            string inputFolder = GetSolutionFolder() + "\\game\\assets\\samples\\";
+            string outputFolder = GetSolutionFolder() + "\\game\\data\\";
+
+            // convert primary samples (loaded to first 16K of sideways RAM)
+            byte[][] pcmDataSamples = [
+                ExtractAndEncodeData(inputFolder + "dalek_exterminate.wav"),
+                ExtractAndEncodeData(inputFolder + "dalek_groan.wav"),
+                ExtractAndEncodeData(inputFolder + "dalek_weapon.wav")];
+
+            WriteData(startIndices, endIndices, pcmDataSamples, outputFolder + "pcm_primary.dat");
+
+            // convert secondary samples (loaded to second 16K of sideways RAM)
+            pcmDataSamples = [
+                ExtractAndEncodeData(inputFolder + "k9_affirmative.wav"),
+                ExtractAndEncodeData(inputFolder + "k9_insufficient_data.wav"),
+                ExtractAndEncodeData(inputFolder + "tardis_door.wav")];
+
+            WriteData(startIndices, endIndices, pcmDataSamples, outputFolder + "pcm_secondary.dat");
+
+            // write address tables (copied to sound.6502)
+            WriteAddressTable("pcmDataStartAddrLoTbl", startIndices, (int value) => LO(value));
+            WriteAddressTable("pcmDataStartAddrHiTbl", startIndices, (int value) => HI(value));
+            WriteAddressTable("pcmDataEndAddrHiTbl  ", endIndices, (int value) => HI(value));
+
+            // create 4-bit resolution WAV files for comparison
+            // ConvertWAVtoWAV(inputFolder + "dalek_exterminate.wav", inputFolder + "dalek_exterminate_4bit.wav");
+            // ConvertWAVtoWAV(inputFolder + "dalek_groan.wav", inputFolder + "dalek_groan_4bit.wav");
+            // ConvertWAVtoWAV(inputFolder + "dalek_weapon.wav", inputFolder + "dalek_weapon_4bit.wav");
+            // ConvertWAVtoWAV(inputFolder + "k9_affirmative.wav", inputFolder + "k9_affirmative_4bit.wav");
+            // ConvertWAVtoWAV(inputFolder + "k9_insufficient_data.wav", inputFolder + "k9_insufficient_data_4bit.wav");
+            // ConvertWAVtoWAV(inputFolder + "tardis_door.wav", inputFolder + "tardis_door_4bit.wav");
+        }
+
+        private static void WriteAddressTable(string symbolName, List<int> addresses, Func<int, int> func)
+        {
+            Console.Write($".{symbolName} EQUB ");
+            for (int i = 0; i < addresses.Count; i++)
+            {
+                if (i > 0)
+                {
+                    Console.Write(", ");
+                }
+                Console.Write($"&{func(addresses[i]):X2}");
+            }
+            Console.WriteLine();
+        }
+
+        private static void WriteData(List<int> startIndices, List<int> endIndices, byte[][] pcmDataSamples, string filePath)
+        { 
             // stack encoded data, aligning ends to page boundaries
             byte[] pcmData = new byte[fileSize];
-            int[] startIndices = new int[3];
-            int[] endIndices = new int[3];
 
             int offset = fileSize;
             for (int i = 0; i < pcmDataSamples.Length; i++)
@@ -28,52 +72,80 @@ namespace WAVConverter
 
                 Array.Copy(pcmDataSamples[i], 0, pcmData, offset - sampleLength, sampleLength);
 
-                startIndices[i] = offset - sampleLength;
-                endIndices[i] = offset;
+                startIndices.Add(offset - sampleLength);
+                endIndices.Add(offset);
 
                 offset -= RoundToNextPage(sampleLength);
             }
 
-            // write PCM data
-            WritePCMData(pcmData, GetSolutionFolder() + "\\game\\data\\pcm.dat");
+            // delete existing file as File.OpenWrite(...) does will open an existing file for write
+            try
+            {
+                File.Delete(filePath);
+            }
+            catch (Exception ex)
+            {
+                if (ex is not FileNotFoundException)
+                {
+                    throw new Exception($"Error deleting: {filePath}");
+                }
+            }
 
-            // write address tables (copied to sound.6502)
-            Console.WriteLine($".pcmDataStartAddrLoTbl EQUB &{LO(startIndices[0]):X2}, &{LO(startIndices[1]):X2}, &{LO(startIndices[2]):X2}");
-            Console.WriteLine($".pcmDataStartAddrHiTbl EQUB &{HI(startIndices[0]):X2}, &{HI(startIndices[1]):X2}, &{HI(startIndices[2]):X2}");
-            Console.WriteLine($".pcmDataEndAddrHiTbl   EQUB &{HI(endIndices[0]):X2}, &{HI(endIndices[1]):X2}, &{HI(endIndices[2]):X2}");
+            // open new file for write
+            using FileStream fileStream = File.OpenWrite(filePath);
+
+            // write data
+            fileStream.Write(pcmData);
         }
 
         private static int RoundToNextPage(int value) => (value + 255) / 256 * 256;
         private static int HI(int value) => (0x8000 + value) / 256;
         private static int LO(int value) => (0x8000 + value) % 256;
 
-        private static byte[] ExtractAndEncodePCMData(string filePath)
-        { 
+        private static byte[] ExtractAndEncodeData(string filePath)
+        {
             // read PCM data from 8/8K wav file
-            byte[] pcmData = ReadPCMData(filePath);
+            byte[] pcmData = ReadPCMData(filePath, out _);
             if (pcmData.Length == 0) return [];
 
-            // write in low and high nibble amplitudes
+            // encode the data
             int halfLength = pcmData.Length / 2;
+            byte[] encodedData = new byte[halfLength];
+
             for (int i = 0; i < halfLength; i++)
             {
-                int firstHalfAmplitude = 0xF - (pcmData[i] >> 4);
-                int secondHalfAmplitude = 0xF - (pcmData[i + halfLength] >> 4);
-                pcmData[i] = (byte)(firstHalfAmplitude | (secondHalfAmplitude << 4));
+                // convert two 8-bit samples to two 4-bit SN76489 volume values
+                int firstHalfAmplitude = SampleToVolumeRegister(pcmData[i]);
+                int secondHalfAmplitude = SampleToVolumeRegister(pcmData[i + halfLength]);
+
+                // write the two 4-bit volume values to the low and high nibbles
+                encodedData[i] = (byte)(firstHalfAmplitude | (secondHalfAmplitude << 4));
             }
 
-            // ensure last amplitude is silence
-            pcmData[halfLength - 1] |= 0xF0;
-
-            // resize array
-            Array.Resize(ref pcmData, halfLength);
-
-            return pcmData;
+            return encodedData;
         }
 
-        private static byte[] ReadPCMData(string filePath)
-        { 
+        private static int SampleToVolumeRegister(int value)
+        {
+            // non-linear lookup
+            for (int i = 0; i < VolumeToRegiserLookup.Length; i++)
+            {
+                if (value >= VolumeToRegiserLookup[i])
+                {
+                    return i;
+                }
+            }
+
+            return 0;
+        }
+
+        private static readonly int[] VolumeToRegiserLookup = [204, 162, 129, 103, 82, 65, 52, 41, 33, 27, 21, 17, 14, 11, 8, 0];
+
+        private static byte[] ReadPCMData(string filePath, out long pcmPosition)
+        {
             FileStream fileStream = File.OpenRead(filePath);
+
+            pcmPosition = 0;
 
             // read file header
             if (fileStream.ReadByte() != 'R' ||
@@ -136,32 +208,10 @@ namespace WAVConverter
             // read PCM data
             int pcmDataSize = ReadInt(fileStream);
             byte[] pcmData = new byte[pcmDataSize];
+            pcmPosition = fileStream.Position;
             fileStream.ReadExactly(pcmData);
 
             return pcmData;
-        }
-
-        private static void WritePCMData(byte[] pcmData, string filePath)
-        { 
-            // delete existing file as File.OpenWrite(...) does will open an existing file for write
-            try
-            {
-                File.Delete(filePath);
-            }
-            catch (Exception ex)
-            {
-                if (ex is not FileNotFoundException)
-                {
-                    throw new Exception($"Error deleting: {filePath}");
-                }
-            }
-
-            // open new file for write
-            using (FileStream fileStream = File.OpenWrite(filePath))
-            {
-                // write data
-                fileStream.Write(pcmData);
-            }
         }
 
         private static short ReadShort(FileStream fileStream)
@@ -182,6 +232,24 @@ namespace WAVConverter
                 directory = directory.Parent;
             }
             return (directory != null) ? directory.FullName : string.Empty;
+        }
+
+        private static void ConvertWAVtoWAV(string inputFilePath, string outputFilePath)
+        {
+            byte[] pcmData = ReadPCMData(inputFilePath, out long pcmPosition);
+
+            for (int i = 0; i < pcmData.Length; i++)
+            {
+                // requantize to 4-bits
+                pcmData[i] = (byte)(pcmData[i] & 0xF8);
+            }
+
+            File.Copy(inputFilePath, outputFilePath, overwrite:true);
+
+            using FileStream fs = File.OpenWrite(outputFilePath);
+
+            fs.Seek(pcmPosition, SeekOrigin.Begin);
+            fs.Write(pcmData);
         }
     }
 }

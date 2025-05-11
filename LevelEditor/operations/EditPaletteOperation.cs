@@ -14,7 +14,7 @@ namespace LevelEditor
 
         internal override bool Execute()
         {
-            EditPaletteDialog dialog = new EditPaletteDialog(NewPalette);
+            EditPaletteDialog dialog = new(NewPalette);
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 Redo();
@@ -34,8 +34,8 @@ namespace LevelEditor
             LevelData.Palette = OldPalette;
         }
 
-        Palette NewPalette;
-        Palette OldPalette;
-        Level LevelData;
+        readonly Palette NewPalette;
+        readonly Palette OldPalette;
+        readonly Level LevelData;
     }
 }

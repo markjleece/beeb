@@ -311,9 +311,12 @@ SOUND_EFFECT_PURSUIT_ON = 36
 SOUND_EFFECT_PURSUIT_OFF = 40
 
 \ samples
-SAMPLE_EXTERMINATE = 0
-SAMPLE_GROAN = 1
-SAMPLE_WEAPON = 2
+SAMPLE_DALEK_EXTERMINATE = 0
+SAMPLE_DALEK_GROAN = 1
+SAMPLE_DALEK_WEAPON = 2
+SAMPLE_K9_AFFIRMATIVE = 3
+SAMPLE_K9_INSUFFICIENT_DATA = 4
+SAMPLE_TARDIS_DOOR = 5
 
 \ frame counter used to repeat exterminate sample
 SAMPLE_EXTERMINATE_FRAME_COUNT = 100
@@ -365,7 +368,7 @@ levelEnemyWeaponStrengthLoaded = &4032  \ level enemy weapon strength (relocated
 levelLaserStrengthLoaded = &4033        \ level laser strength (relocated to laserStrength)
 levelLaserHealthDrainLoaded = &4034     \ level laser health drain (relocated to laserHealthDrain)
 levelJewelHealthGainHiLoaded = &4035    \ level jewel health gain (relocated to jewelHealthGainHi)
-levelDalekSamplesEnabledLoaded = &4036  \ level dalek samples enabled flag (relocated to dalekSamplesEnabled)
+levelSampleSoundsEnabledLoaded = &4036  \ level sound samples enabled flag (used in setting primarySamplesEnabled and secondarySamplesEnabled)
 levelObjectsLoaded = &4037              \ 48 x 3 byte objects descriptors (used to populate game objects)
 
 \ drawObject head and tail jump offset tables
@@ -373,7 +376,7 @@ drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurp
 drawObject_tailJumpTbl = &10F6          \ 10 byte tail jump offset table (repurposes DFS &10E0-&10FF workspace)
 
 \ PCM data load address
-pcmDataLoadBufferAddr = &7C00 - PCM_DATA_LOAD_BUFFER_SIZE \ buffer is located below Mode-7 screen memory
+pcmDataLoadBuffer = &7C00 - PCM_DATA_LOAD_BUFFER_SIZE \ buffer is located below Mode-7 screen memory
 
 \ zero page MOS location
 zeroPageMOS = &90
@@ -385,6 +388,7 @@ ORG 0
 
 \ persistent data (values persist across frames)
 .zeroMemory32               SKIP 32 \ 32-byte zero memory (located here to catch errant writes)
+.blackPalette               SKIP 16 \ black palette (resides here as there is space)
 .mosIRQ1V                   SKIP 2  \ MOS IRQ vector
 .pcmDataAddr                SKIP 2  \ PCM data address
 .scrnAddr                   SKIP 2  \ top left screen address
@@ -428,9 +432,10 @@ ORG 0
 .laserStrength              SKIP 1  \ laser strength
 .laserHealthDrain           SKIP 1  \ laser health drain
 .jewelHealthGainHi          SKIP 1  \ jewel health gain (high byte)
-.dalekSamplesRAMBankNumber  SKIP 1  \ dalek samples sideways RAM bank number (zero denotes no sideways RAM)
-.dalekSamplesEnabled        SKIP 1  \ dalek samples enabled flags
-.blackPalette               SKIP 16 \ black palette (resides here as there was space)
+.primarySamplesEnabled      SKIP 1  \ primary samples enabled flag
+.primarySamplesROMSEL       SKIP 1  \ primary samples ROM selector (zero denotes no sideways RAM)
+.secondarySamplesEnabled    SKIP 1  \ secondary samples enabled flag
+.secondarySamplesROMSEL     SKIP 1  \ secondary samples ROM selector (zero denotes no additional sideways RAM)
 
 \ transient data (values do not persist across frames)
 .soundParams                SKIP 8  
@@ -455,7 +460,6 @@ ORG 0
 .outerIndex                 SKIP 1
 .stride                     SKIP 1
 .direction                  SKIP 1
-.mask                       SKIP 1
 .temp                       SKIP 1
 .count                      SKIP 1
 .outerCount                 SKIP 1
@@ -538,7 +542,8 @@ INCLUDE "tilegrid.6502"
 \
 .ingame_irq
 {
-    LDA &FC : PHA \ save accumalator
+    \ save accumalator
+    LDA &FC : PHA
 
     .^irq_try_vsync \ entry point from ingame_sample_irq
 
@@ -558,13 +563,15 @@ INCLUDE "tilegrid.6502"
         LDA #LO(SOUND_TIMER_LENTH) : STA &FE44
         LDA #HI(SOUND_TIMER_LENTH) : STA &FE45
 
+         \ restore accumulator, updating &FC
+        PLA : STA &FC
+
         \ just return (we don't want MOS to process SYSTEM-VIA v-sync irqs)
-        PLA \ restore accumulator
         RTI
     
     .try_mos
 
-    \ restore A, updating &FC
+    \ restore accumulator, updating &FC
     PLA : STA &FC
 
     \ pass System-VIA Timer1 irq to MOS, which processes sounds using this timer
@@ -585,7 +592,10 @@ INCLUDE "tilegrid.6502"
     JSR waitForVSync
 
     \ set level palette
-    JMP setLevelPalette \ implicit RTS
+    JSR setLevelPalette 
+
+    \ invoke sound effect
+    JMP (secondarySoundVector_startLevel) \ implicit RTS
 }
 
 \
@@ -1020,7 +1030,7 @@ INCLUDE "tilegrid.6502"
     AND #1
     BNE else
         JSR setBlackPalette
-        JMP (soundVector_weaponFired) \ implicit RTS
+        JMP (primarySoundVector_weaponFired) \ implicit RTS
     .else
         JMP setLevelPalette \ implicit RTS
 }
@@ -1161,9 +1171,8 @@ INCLUDE "tilegrid.6502"
     \ preamble
     JSR levelEndPreamble
 
-    \ sound effect
-    LDA #SOUND_EFFECT_LEVEL_COMPLETE
-    JSR soundEffect
+    \ invoke sound effect
+    JSR levelCompleteSoundEffect
 
     \ game completed?
     LDA level
@@ -1176,6 +1185,9 @@ INCLUDE "tilegrid.6502"
     JSR printMode7Text
 
     JSR waitForSpaceKeyPress
+
+    \ silence sound effects
+    JSR silenceSoundEffects
 
     \ load next level
     INC level
@@ -1324,15 +1336,15 @@ ENDMACRO
 .lastCodeAddr \ last code address
 
 \
-\ reserve space for data area (populated during titles and level initialization)
+\ reserve space for level data (populated during level initialization)
 \
 ORG k9Atlas3
 SKIP (levelLoadAddr - k9Atlas3)
 
 \
 \ load sample.6502 where the gamebar atlas normally resides. On machines with 
-\ 16K of sideways RAM this code is used to play samples, and the gamebar
-\ atlas is located at gamebarAtlas_sidewaysRAM
+\ sideways RAM (16K or 32K) this is used to play samples, and the gamebar
+\ atlas is instead located at gamebarAtlas_sidewaysRAM
 \
 CLEAR gamebarAtlas, gamebarAtlas + GAMEBAR_SPRITE_SIZE
 
@@ -1366,7 +1378,7 @@ INCLUDE "music.6502"
 .loadLevelPageBackup2 SKIP 256
 
 \ guard PCM data load buffer through &7FFF
-FOR addr, pcmDataLoadBufferAddr, &7FFF
+FOR addr, pcmDataLoadBuffer, &7FFF
     GUARD addr
 NEXT
 
@@ -1378,17 +1390,29 @@ NEXT
 SAVE "program", start, end
 
 \
-\ pcm data --> SSD 
+\ primary pcm data --> SSD 
 \
 ORG &8000
-.pcmData
-INCBIN "data\\pcm.dat"
+INCBIN "data\\pcm_primary.dat"
 
-SAVE "pcm1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE)
-SAVE "pcm2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE)
-SAVE "pcm3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE)
-SAVE "pcm4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE)
-SAVE "pcm5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcmP1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcmP2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcmP3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcmP4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcmP5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE)
+
+\
+\ secondary pcm data --> SSD 
+\
+CLEAR &8000, &C000
+ORG &8000
+INCBIN "data\\pcm_secondary.dat"
+
+SAVE "pcmS1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcmS2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcmS3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcmS4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcmS5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE)
 
 \
 \ level 1 --> SSD
@@ -1396,9 +1420,9 @@ SAVE "pcm5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "data\\level1.dat"     \ level data (palette, tile grid, tiles etc)
-INCBIN "data\\level1.atl"     \ level atlas sprite data (enemies, elevators, doors)
-\INCLUDE "level.6502"   \ packaged level code (INCLUDE statement is unnecessary)
+INCBIN "data\\level1.dat"   \ level data (palette, tile grid, tiles etc)
+INCBIN "data\\level1.atl"   \ level atlas sprite data (enemies, elevators, doors etc)
+\INCLUDE "level.6502"       \ packaged level code (INCLUDE statement unnecessary)
 
 SAVE "level1", levelLoadAddr, levelEnd
 
@@ -1408,9 +1432,9 @@ SAVE "level1", levelLoadAddr, levelEnd
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "data\\level2.dat"     \ level data (palette, tile grid, tiles etc)
-INCBIN "data\\level2.atl"     \ level atlas sprite data (enemies, elevators, doors)
-\INCLUDE "level.6502"   \ packaged level code (INCLUDE statement is unnecessary)
+INCBIN "data\\level2.dat"   \ level data (palette, tile grid, tiles etc)
+INCBIN "data\\level2.atl"   \ level atlas sprite data (enemies, elevators, doors etc)
+\INCLUDE "level.6502"       \ packaged level code (INCLUDE statement unnecessary)
 
 SAVE "level2", levelLoadAddr, levelEnd
 
@@ -1420,9 +1444,9 @@ SAVE "level2", levelLoadAddr, levelEnd
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "data\\level3.dat"     \ level data (palette, tile grid, tiles etc)
-INCBIN "data\\level3.atl"     \ level atlas sprite data (enemies, elevators, doors)
-\INCLUDE "level.6502"   \ packaged level code (INCLUDE statement is unnecessary)
+INCBIN "data\\level3.dat"   \ level data (palette, tile grid, tiles etc)
+INCBIN "data\\level3.atl"   \ level atlas sprite data (enemies, elevators, doors etc)
+\INCLUDE "level.6502"       \ packaged level code (INCLUDE statement unnecessary)
 
 SAVE "level3", levelLoadAddr, levelEnd
 

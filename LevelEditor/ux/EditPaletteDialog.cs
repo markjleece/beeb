@@ -35,7 +35,7 @@ namespace LevelEditor.ux
             colorSelector_3.SelectedIndex = Palette[3];
         }
 
-        private void colorSelector_DrawItem(object sender, System.Windows.Forms.DrawItemEventArgs e)
+        private void ColorSelector_DrawItem(object sender, System.Windows.Forms.DrawItemEventArgs e)
         {
             Brush myBrush = Brushes.Black;
             switch (e.Index)
@@ -70,7 +70,7 @@ namespace LevelEditor.ux
             e.DrawFocusRectangle();
         }
 
-        private void okayButton_Click(object sender, EventArgs e)
+        private void OkayButton_Click(object sender, EventArgs e)
         {
             Palette[0] = (byte)colorSelector_0.SelectedIndex;
             Palette[1] = (byte)colorSelector_1.SelectedIndex;
@@ -78,6 +78,6 @@ namespace LevelEditor.ux
             Palette[3] = (byte)colorSelector_3.SelectedIndex;
         }
 
-        private Palette Palette;
+        private readonly Palette Palette;
     }
 }

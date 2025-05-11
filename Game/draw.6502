@@ -83,7 +83,7 @@ ELSE
 
     RTS
 
-    SKIP 125 \ report same number of unsued code/data bytes
+    SKIP 155 \ report same number of unsued code/data bytes
 ENDIF
 }
 
@@ -141,7 +141,7 @@ ELSE
     \ draw health bar
     \
 
-    \ 'XOR mask' = (keyColor == foreground) ? &FF : 0
+    \ 'XOR mask' (flags) = (keyColor == foreground) ? &FF : 0
     LDY #59
     LDA (srcBaseAddr), Y \ peek key color
     ASL A
@@ -151,7 +151,7 @@ ELSE
     .skip2
     STA flags \ <-- XOR mask
 
-    \ 'OR mask' = (heathHi < 5) ? (&F ^ XOR mask) : 0
+    \ 'OR mask' (temp) = (heathHi < 5) ? (&F ^ XOR mask) : 0
     LDA healthHi
     CMP #5
     LDA #0
@@ -159,10 +159,12 @@ ELSE
         LDA #&0F
         EOR flags
     .skip1
-    STA mask \ <-- OR mask
+    STA temp \ <-- OR mask
 
-    LDA #4 : STA temp
-    LDA #4 : STA count
+    \ offset, count = 4
+    LDA #4
+    STA offset
+    STA count
 
     .healthBarLoop
         LDY #0
@@ -173,14 +175,14 @@ ELSE
         STA (dstAddr), Y : INY
 
         \ render bar (in foreground/background colors)
-        LDA temp \ if (temp - healthHi <= 0)
+        LDA offset \ if (offset - healthHi <= 0)
         SEC
         SBC healthHi : BEQ then : BPL else
         .then
             LDA #0 \ background
             BEQ endif
         .else
-            CMP #4 : BPL else2 \ if (temp - healthHi < 4)
+            CMP #4 : BPL else2 \ if (offset - healthHi < 4)
             LDA healthHi
             AND #3
             TAX
@@ -190,8 +192,8 @@ ELSE
             LDA #&FF \ foreground
         .endif
 
-        ORA mask  \ apply or mask
-        EOR flags \ apply xor mask
+        ORA temp  \ apply OR mask
+        EOR flags \ apply XOR mask
 
         STA (dstAddr), Y : INY
         STA (dstAddr), Y : INY
@@ -206,14 +208,13 @@ ELSE
         STA (dstAddr), Y
 
         \ dstAddr += 8 (with wraparound)
-        LDA #8
-        JSR dstAddr_add
+        JSR dstAddr_add_8
 
-        \ temp += 4
-        LDA temp
+        \ offset += 4
+        LDA offset
         CLC
         ADC #4
-        STA temp
+        STA offset
 
         \ loop?
         DEC count
@@ -785,9 +786,9 @@ ENDIF
     ADC temp
     STA dstBaseAddr
 
-    \ laserAddr = dstBaseAddr
-    LDA dstBaseAddr : STA laserAddr 
-    LDA dstBaseAddr+1 : STA laserAddr+1
+    \ laserAddr, dstAddr = dstBaseAddr
+    LDA dstBaseAddr : STA laserAddr : STA dstAddr
+    LDA dstBaseAddr+1 : STA laserAddr+1 : STA dstAddr+1
 
     \ drain health
     LDA healthLo
@@ -803,7 +804,7 @@ ENDIF
 
     \ draw first few pixels
     LDY #0
-    LDA (dstBaseAddr), Y
+    LDA (dstAddr), Y
     JSR drawEnd
 
     \ draw line body...
@@ -812,18 +813,8 @@ ENDIF
 
     \ draw left to right...
     .leftToRightLoop
-        \ dstBaseAddr += 8
-        LDA dstBaseAddr
-        CLC
-        ADC #8
-        STA dstBaseAddr
-        BCC skip4
-            INC dstBaseAddr+1
-            BPL skip4\ if (dstBaseAddr >= &8000) dstBaseAddr -= &4000
-                LDA dstBaseAddr+1
-                SBC #&40
-                STA dstBaseAddr+1
-        .skip4
+        \ dstAddr += 8
+        JSR dstAddr_add_8
 
         \ leftLo += 4
         LDA leftLo
@@ -832,13 +823,13 @@ ENDIF
         STA leftLo
 
         \ background color?
-        LDA (dstBaseAddr), Y
+        LDA (dstAddr), Y
         STA laserLastPixels
         BNE drawEndAndHitTest \ hit test & draw last few pixels, and RTS
 
         \ draw 4 red pixels
         LDA #&0F
-        STA (dstBaseAddr), Y
+        STA (dstAddr), Y
 
         INX
         CPX laserLength
@@ -849,18 +840,8 @@ ENDIF
 
     \ draw right to left...
     .rightToLeftLoop
-        \ dstBaseAddr -= 8
-        LDA dstBaseAddr
-        SEC
-        SBC #8
-        STA dstBaseAddr
-        BCS skip5
-            DEC dstBaseAddr+1
-            LDA dstBaseAddr+1
-            CMP #HI(&4000) : BCS skip5 \ if (dstBaseAddr < &4000) dstBaseAddr += &4000
-                ADC #&40
-                STA dstBaseAddr+1
-        .skip5
+        \ dstAddr -= 8
+        JSR dstAddr_sub_8
 
         \ leftLo -= 4
         LDA leftLo
@@ -869,13 +850,13 @@ ENDIF
         STA leftLo
 
         \ background color?
-        LDA (dstBaseAddr), Y
+        LDA (dstAddr), Y
         STA laserLastPixels
         BNE drawEndAndHitTest \ hit test & draw last few pixels, and RTS
 
         \ draw 4 red pixels
         LDA #&0F
-        STA (dstBaseAddr), Y
+        STA (dstAddr), Y
 
         INX
         CPX laserLength
@@ -889,8 +870,8 @@ ENDIF
     STA temp
     LSR A : LSR A : LSR A : LSR A
     AND temp
-    ORA (dstBaseAddr), Y
-    STA (dstBaseAddr), Y
+    ORA (dstAddr), Y
+    STA (dstAddr), Y
 
 .return
     RTS
@@ -911,10 +892,14 @@ ENDIF
 \ drawLaserOff()
 \
 \ modifies:
-\   laserAddr, temp
+\   dstBaseAddr, temp
 \
 .drawLaserOff
 {
+    \ dstAddr = laserAddr
+    LDA laserAddr : STA dstAddr
+    LDA laserAddr+1 : STA dstAddr+1
+
     LDY #0
     LDX #&FF \ clear first few pixels twice
     LDA laserDirection
@@ -925,22 +910,12 @@ ENDIF
     \
     .leftToRightEnd
         \ clear first few pixels (we do this twice because K9 may have moved)
-        LDA (laserAddr), Y
+        LDA (dstAddr), Y
         JSR drawStart
 
     .leftToRightLoop
-        \ laserAddr += 8
-        LDA laserAddr
-        CLC
-        ADC #8
-        STA laserAddr
-        BCC skip1
-            INC laserAddr+1
-            BPL skip1 \ if (laserAddr >= &8000) laserAddr -= &4000
-                LDA laserAddr+1
-                SBC #&40
-                STA laserAddr+1
-        .skip1
+        \ dstAddr += 8
+        JSR dstAddr_add_8
 
         \ clear first few pixels again?
         DEX
@@ -954,7 +929,7 @@ ENDIF
 
         \ draw 4 white pixels
         LDA #0
-        STA (laserAddr), Y
+        STA (dstAddr), Y
 
         BEQ leftToRightLoop
 
@@ -966,22 +941,13 @@ ENDIF
 
     .rightToLeftEnd
         \ clear first few pixels (we do this twice because K9 may have moved)
-        LDA (laserAddr), Y
+        LDA (dstAddr), Y
         JSR drawStart
 
     .rightToLeftLoop
-        \ laserAddr -= 8
-        LDA laserAddr
-        SEC
-        SBC #8
-        STA laserAddr
-        BCS skip3
-            DEC laserAddr+1
-            LDA laserAddr+1
-            CMP #HI(&4000) : BCS skip3 \ if (laserAddr < &4000) laserAddr += &4000
-                ADC #&40
-                STA laserAddr+1
-        .skip3
+
+        \ dstAddr -= 8
+        JSR dstAddr_sub_8
 
         \ clear first few pixels again?
         DEX
@@ -995,11 +961,10 @@ ENDIF
 
         \ draw 4 white pixels
         LDA #0
-        STA (laserAddr), Y
+        STA (dstAddr), Y
 
         BEQ rightToLeftLoop
 
-.return
     RTS
 
 .drawStart
@@ -1008,13 +973,13 @@ ENDIF
     LSR A : LSR A : LSR A : LSR A
     AND temp
     EOR #&FF
-    AND (laserAddr), Y
-    STA (laserAddr), Y
+    AND (dstAddr), Y
+    STA (dstAddr), Y
     RTS
 
 .drawEnd
     LDA laserLastPixels
-    STA (laserAddr), Y
+    STA (dstAddr), Y
     RTS
 }
 
@@ -1620,9 +1585,9 @@ ENDIF
 
             .headInnerLoop
                 LDA (srcAddr), Y
-                STA mask
+                STA flags
                 LSR A : LSR A : LSR A : LSR A
-                AND mask
+                AND flags
                 STA (dstAddr), Y
                 INY
                 DEX
@@ -1667,9 +1632,9 @@ ENDIF
         BEQ skipTailLoop 
         .tailLoop
             LDA (srcAddr), Y
-            STA mask
+            STA flags
             LSR A : LSR A : LSR A : LSR A
-            AND mask
+            AND flags
             STA (dstAddr), Y
             INY
             DEX
@@ -1860,28 +1825,6 @@ ENDIF
 }
 
 \
-\ dstAddr_add(A)
-\
-\ dstAddr += Accumulator
-\ if (dstAddr >= &8000) dstAddr -= &4000
-\
-.dstAddr_add
-{
-    CLC
-    ADC dstAddr
-    STA dstAddr
-    BCC nocarry1
-        INC dstAddr+1
-        BPL nowrap1 \ if (dstAddr >= &8000) dstAddr -= &4000 
-            LDA dstAddr+1
-            SBC #&40  
-            STA dstAddr+1
-        .nowrap1
-    .nocarry1
-    RTS
-}
-
-\
 \ dstAddr_add_512()
 \
 \ dstAddr += 512
@@ -1892,12 +1835,69 @@ ENDIF
     LDA #2
     CLC
     ADC dstAddr+1
-    BPL nowrap1  \ dstAddr >= &8000?
+    BPL nowrap  \ dstAddr >= &8000?
         SEC
         SBC #&40
         CLC
-    .nowrap1
+    .nowrap
     STA dstAddr+1
+    RTS
+}
+
+\
+\ dstAddr_add_8
+\
+\ dstAddr += 8
+\ if (dstAddr >= &8000) dstAddr -= &4000
+\
+.dstAddr_add_8
+{
+    LDA #8
+    \ fall through to dstAddr_add
+}
+
+\
+\ dstAddr_add(A)
+\
+\ dstAddr += Accumulator
+\ if (dstAddr >= &8000) dstAddr -= &4000
+\
+.dstAddr_add
+{
+    CLC
+    ADC dstAddr
+    STA dstAddr
+    BCC nocarry
+        INC dstAddr+1
+        BPL nowrap \ if (dstAddr >= &8000) dstAddr -= &4000 
+            LDA dstAddr+1
+            SBC #&40  
+            STA dstAddr+1
+        .nowrap
+    .nocarry
+    RTS
+}
+
+\
+\ dstAddr_sub_8()
+\
+\ dstAddr -= 8
+\ if (dstAddr < &4000) dstAddr += &4000
+\
+.dstAddr_sub_8
+{
+    LDA dstAddr
+    SEC
+    SBC #8
+    STA dstAddr
+    BCS noborrow
+        DEC dstAddr+1
+        LDA dstAddr+1
+        CMP #HI(&4000) : BCS nowrap \ if (dstAddr < &4000) dstAddr += &4000
+            ADC #&40
+            STA dstAddr+1
+        .nowrap
+    .noborrow
     RTS
 }
 

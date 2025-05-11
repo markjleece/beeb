@@ -14,7 +14,7 @@ namespace LevelEditor
 
         internal override bool Execute()
         {
-            EditSettingsDialog dialog = new EditSettingsDialog(NewSettings);
+            EditSettingsDialog dialog = new(NewSettings);
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 Redo();
@@ -34,8 +34,8 @@ namespace LevelEditor
             LevelData.Settings = OldSettings;
         }
 
-        Level LevelData;
-        Settings OldSettings;
-        Settings NewSettings;
+        readonly Level LevelData;
+        readonly Settings OldSettings;
+        readonly Settings NewSettings;
     }
 }

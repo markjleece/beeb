@@ -14,7 +14,7 @@ namespace LevelEditor
 
         internal override bool Execute()
         {
-            SelectLayoutDialog dialog = new SelectLayoutDialog(LevelData.TileGrid.Width, LevelData.TileGrid.Height);
+            SelectLayoutDialog dialog = new(LevelData.TileGrid.Width, LevelData.TileGrid.Height);
             if (dialog.ShowDialog() == DialogResult.OK)
             {
                 NewTileGrid.Resize(dialog.LayoutWidth, dialog.LayoutHeight);
@@ -35,8 +35,8 @@ namespace LevelEditor
             LevelData.TileGrid = OldTileGrid;
         }
 
-        Level LevelData;
-        TileGrid OldTileGrid;
-        TileGrid NewTileGrid;
+        readonly Level LevelData;
+        readonly TileGrid OldTileGrid;
+        readonly TileGrid NewTileGrid;
     }
 }

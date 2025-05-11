@@ -63,7 +63,7 @@ namespace LevelEditor
             return false; // not handled
         }
 
-        private void okButton_Click(object sender, EventArgs e)
+        private void OkButton_Click(object sender, EventArgs e)
         {
             Tile.TileType[] enumValues = Enum.GetValues<Tile.TileType>();
             Tile.Type = enumValues[typeComboBox.SelectedIndex];
@@ -72,7 +72,7 @@ namespace LevelEditor
             AppSettings.Instance.EditTileSecondaryColor = SecondaryColor;
         }
 
-        private void undoButton_Click(object sender, EventArgs e)
+        private void UndoButton_Click(object sender, EventArgs e)
         {
             Undo();
         }
@@ -87,7 +87,7 @@ namespace LevelEditor
             }
         }
 
-        private void redoButton_Click(object sender, EventArgs e)
+        private void RedoButton_Click(object sender, EventArgs e)
         {
             Redo();
         }
@@ -102,7 +102,7 @@ namespace LevelEditor
             }
         }
 
-        private void colorPickerPanel_MouseClick(object sender, MouseEventArgs e)
+        private void ColorPickerPanel_MouseClick(object sender, MouseEventArgs e)
         {
             for (int i = 0; i < 4; i++)
             {
@@ -126,7 +126,7 @@ namespace LevelEditor
             }
         }
 
-        private void colorPickerPanel_Paint(object sender, PaintEventArgs e)
+        private void ColorPickerPanel_Paint(object sender, PaintEventArgs e)
         {
             for (int i = 0; i < 4; i++)
             {
@@ -149,27 +149,29 @@ namespace LevelEditor
             return new Rectangle(0, top, selectedColorPanel.Width, bottom - top);
         }
 
-        private void selectedColorPanel_Paint(object sender, PaintEventArgs e)
+        private void SelectedColorPanel_Paint(object sender, PaintEventArgs e)
         {
             int halfWidth = selectedColorPanel.Width / 2;
 
             Font font = SystemFonts.DialogFont;
-            StringFormat format = new StringFormat(StringFormatFlags.NoClip);
-            format.Alignment = StringAlignment.Center;
-            format.LineAlignment = StringAlignment.Center;
+            StringFormat format = new(StringFormatFlags.NoClip)
+            {
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center
+            };
 
             Brush primaryBrush = PaletteIndexToBrush(PrimaryColor);
-            Rectangle primaryRect = new Rectangle(0, 0, halfWidth, selectedColorPanel.Height);
+            Rectangle primaryRect = new(0, 0, halfWidth, selectedColorPanel.Height);
             e.Graphics.FillRectangle(primaryBrush, primaryRect);
             e.Graphics.DrawString("L", font, Brushes.Gray, primaryRect, format);
 
             Brush secondaryBrush = PaletteIndexToBrush(SecondaryColor);
-            Rectangle secondaryRect = new Rectangle(halfWidth, 0, halfWidth, selectedColorPanel.Height);
+            Rectangle secondaryRect = new(halfWidth, 0, halfWidth, selectedColorPanel.Height);
             e.Graphics.FillRectangle(secondaryBrush, secondaryRect);
             e.Graphics.DrawString("R", font, Brushes.Gray, secondaryRect, format);
         }
 
-        private void pixelsPanel_Paint(object sender, PaintEventArgs e)
+        private void PixelsPanel_Paint(object sender, PaintEventArgs e)
         {
             Rectangle clippingRect = e.ClipRectangle;
 
@@ -202,7 +204,7 @@ namespace LevelEditor
             }
         }
 
-        private void pixelsPanel_MouseDown(object sender, MouseEventArgs e)
+        private void PixelsPanel_MouseDown(object sender, MouseEventArgs e)
         {
             ClearOverlay();
 
@@ -233,12 +235,12 @@ namespace LevelEditor
             }
         }
 
-        private void pixelsPanel_MouseUp(object sender, MouseEventArgs e)
+        private void PixelsPanel_MouseUp(object sender, MouseEventArgs e)
         {
             if (OverlayColorIndex != -1)
             {
                 Point[] pixelCoords = GetOverlayPixelCoords();
-                EditPixelOperation op = new EditPixelOperation(Tile, pixelCoords, OverlayColorIndex);
+                EditPixelOperation op = new(Tile, pixelCoords, OverlayColorIndex);
                 UndoRedoHistory.Execute(op);
                 {
                     UpdateButtons();
@@ -249,7 +251,7 @@ namespace LevelEditor
             }
         }
 
-        private void pixelsPanel_MouseMove(object sender, MouseEventArgs e)
+        private void PixelsPanel_MouseMove(object sender, MouseEventArgs e)
         {
             int pixelX = e.X * 16 / pixelsPanel.Width;
             int pixelY = e.Y * 16 / pixelsPanel.Height;
@@ -294,7 +296,7 @@ namespace LevelEditor
             }
         }
 
-        private void pixelsPanel_MouseEnter(object sender, EventArgs e)
+        private void PixelsPanel_MouseEnter(object sender, EventArgs e)
         {
             if (FocusRect != Rectangle.Empty)
             {
@@ -304,7 +306,7 @@ namespace LevelEditor
             FocusRect = Rectangle.Empty;
         }
 
-        private void pixelsPanel_MouseLeave(object sender, EventArgs e)
+        private void PixelsPanel_MouseLeave(object sender, EventArgs e)
         {
             if (FocusRect != Rectangle.Empty)
             {
@@ -325,20 +327,18 @@ namespace LevelEditor
 
         private Brush PaletteIndexToBrush(int index)
         {
-            int bbcColor = Palette[index];
-            switch (bbcColor)
+            return Palette[index] switch
             {
-                case 0: return Brushes.Black;
-                case 1: return Brushes.Red;
-                case 2: return Brushes.Lime;
-                case 3: return Brushes.Yellow;
-                case 4: return Brushes.Blue;
-                case 5: return Brushes.Magenta;
-                case 6: return Brushes.Cyan;
-                case 7: return Brushes.White;
-            }
-
-            return Brushes.Black;
+                0 => Brushes.Black,
+                1 => Brushes.Red,
+                2 => Brushes.Lime,
+                3 => Brushes.Yellow,
+                4 => Brushes.Blue,
+                5 => Brushes.Magenta,
+                6 => Brushes.Cyan,
+                7 => Brushes.White,
+                _ => Brushes.Black,
+            };
         }
 
         private void SetOverlayPixel(int pixelX, int pixelY, bool value)
@@ -359,7 +359,7 @@ namespace LevelEditor
 
         private void SetOverlayRectangle(int pixelX, int pixelY)
         {
-            Rectangle rect = new Rectangle(
+            Rectangle rect = new(
                 Math.Min(pixelX, OverlayStartPosition.X),
                 Math.Min(pixelY, OverlayStartPosition.Y),
                 Math.Abs(pixelX - OverlayStartPosition.X) + 1,
@@ -385,8 +385,8 @@ namespace LevelEditor
             // draw line onto canvas
             bool[,] canvas = new bool[16, 16];
 
-            Point from = new Point(pixelX, pixelY);
-            Point to = new Point(OverlayStartPosition.X, OverlayStartPosition.Y);
+            Point from = new(pixelX, pixelY);
+            Point to = new(OverlayStartPosition.X, OverlayStartPosition.Y);
 
             int deltaX = Math.Abs(from.X - to.X);
             int deltaY = Math.Abs(from.Y - to.Y);
@@ -517,19 +517,19 @@ namespace LevelEditor
             rectModeButton.Checked = (_DrawMode == DrawMode.Rectangle);
         }
 
-        private void freeformModeButton_Click(object sender, EventArgs e)
+        private void FreeformModeButton_Click(object sender, EventArgs e)
         {
             _DrawMode = DrawMode.Freeform;
             UpdateButtons();
         }
 
-        private void lineModeButton_Click(object sender, EventArgs e)
+        private void LineModeButton_Click(object sender, EventArgs e)
         {
             _DrawMode = DrawMode.Line;
             UpdateButtons();
         }
 
-        private void rectModeButton_Click(object sender, EventArgs e)
+        private void RectModeButton_Click(object sender, EventArgs e)
         {
             _DrawMode = DrawMode.Rectangle;
             UpdateButtons();
@@ -538,13 +538,13 @@ namespace LevelEditor
         private DrawMode _DrawMode = DrawMode.Freeform;
 
         private int OverlayColorIndex = -1;
-        private bool[,] OverlayPixels = new bool[16, 16];
-        private Point OverlayStartPosition = new Point();
+        private readonly bool[,] OverlayPixels = new bool[16, 16];
+        private Point OverlayStartPosition = new();
 
         private int PrimaryColor = 0;
         private int SecondaryColor = 0;
         private Rectangle FocusRect = Rectangle.Empty;
-        private UndoRedoHistory UndoRedoHistory = new UndoRedoHistory();
+        private readonly UndoRedoHistory UndoRedoHistory = new();
 
         private enum DrawMode
         {

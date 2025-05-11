@@ -253,7 +253,9 @@ INCBIN "data\\instructions.bin"
     LDA IRQ1V+1 : STA mosIRQ1V+1
 
     \ set IRQ1V vector to ingame interrupt IRQ
-    LDA dalekSamplesRAMBankNumber : BEQ else
+    LDA primarySamplesROMSEL
+    ORA secondarySamplesROMSEL
+    BEQ else
         LDA #LO(ingame_sample_irq) : STA IRQ1V
         LDA #HI(ingame_sample_irq) : STA IRQ1V+1
         JMP endif
@@ -283,7 +285,9 @@ INCBIN "data\\instructions.bin"
 	STA &FE44
     STA &FE45  
 
-    LDA dalekSamplesRAMBankNumber : BEQ skip
+    LDA primarySamplesROMSEL
+    ORA secondarySamplesROMSEL
+    BEQ skip
         \ set User-VIA Timer1 to continous mode
 	    LDA #&40
         STA &FE6B
@@ -309,57 +313,72 @@ INCBIN "data\\instructions.bin"
 \
 .initializeSidewaysRAM
 {
-    \ get current bank
+    \ save current ROM
     LDA &F4 : STA temp
 
+    \ find sideways RAM, setting primarySamplesROMSEL and secondarySamplesROMSEL
     LDX #15
-    STX dalekSamplesRAMBankNumber
-
     .loop
-        \ page in bank 'X'
+        \ select ROM 'X'
         TXA
-        SEI
-        STA &F4 : STA &FE30 \ ROMSEL
-        CLI
+        JSR selectROM
 
-        \ if bank contains 16K of RAM, break
+        \ test for 16K of RAM, by writing and reading at address &8000 and &BFFF
         LDA #&FF : STA &8000 : STA &BFFF
         LDA &8000 : AND &BFFF : CMP #&FF : BNE continue
 
         LDA #0 : STA &8000 : STA &BFFF
-        LDA &8000 : ORA &BFFF : BEQ break
+        LDA &8000 : ORA &BFFF : BNE continue
+
+        \ 16K RAM found, so assign to primarySamplesROMSEL first, then secondarySamplesROMSEL
+        LDA primarySamplesROMSEL : BNE else
+            STX primarySamplesROMSEL
+            BEQ continue
+        .else
+            STX secondarySamplesROMSEL
+            BNE break
 
         .continue
         DEX
         BNE loop
 
-    \ store bank number
     .break
-    STX dalekSamplesRAMBankNumber
 
-    \ restore bank
-    LDA temp
-    SEI
-    STA &F4 : STA &FE30 \ ROMSEL
-    CLI
-
-    CPX #0 : BEQ skip
-        \ populate sideway RAM
+    \ populate sideways RAM
+    LDA primarySamplesROMSEL : BEQ skip1
+        LDX #'P'
         JSR populateSidewaysRAM
-    .skip
+    .skip1
 
-    RTS 
+    LDA secondarySamplesROMSEL : BEQ skip2
+        LDX #'S'
+        JSR populateSidewaysRAM
+    .skip2
+   
+    \ restore ROM
+    LDA temp
+    JMP selectROM \ implicit RTS
 }
 
 \
-\ populateSidewaysRAM()
+\ populateSidewaysRAM(A, X)
 \
 \ populate sideway RAM with PCM data
+\
+\ params:
+\   Accumulator ROM selector
+\   X register  File qualifier: 'P' for primary, 'S' for secondary
 \
 ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
 
 .populateSidewaysRAM
 {
+    \ save ROM selector in local
+    STA sidewaysRamROMSEL
+
+    \ set file qualifier
+    STX filename+3
+
     \ backup code which resides in DFS workspaces, clearing memory
     COPY_CLEAR_PAGE loadLevelPageBackup1, &1700 
     COPY_CLEAR_PAGE loadLevelPageBackup2, &1800
@@ -369,8 +388,8 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
     LDY #HI(cmdDISK)
     JSR oscli
 
-    \ save current bank
-    LDA &F4 : STA temp
+    \ save DFS ROM selector
+    LDA &F4 : STA dfsROMSEL
 
     \ load pcm1..pcm5 files into sideways RAM
     LDA #LO(&8000) : STA dstAddr
@@ -383,7 +402,7 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
 
     .loop
         \ update filename
-        LDA index : STA filename+3
+        LDA index : STA filename+4
 
         \ initialize osfile parameter block, as previous call modifies this
         LDA #0
@@ -394,8 +413,8 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
             CPY #18
             BNE innerLoop
 
-        LDA #LO(pcmDataLoadBufferAddr) : STA osfileParamBlock+2
-        LDA #HI(pcmDataLoadBufferAddr) : STA osfileParamBlock+3
+        LDA #LO(pcmDataLoadBuffer) : STA osfileParamBlock+2
+        LDA #HI(pcmDataLoadBuffer) : STA osfileParamBlock+3
 
         \ invoke osfile
         LDX #LO(osfileParamBlock)
@@ -404,21 +423,17 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
         JSR osfile
 
         \ select sideways RAM
-        LDA dalekSamplesRAMBankNumber
-        SEI
-        STA &F4 : STA &FE30 \ ROMSEL
-        CLI
+        LDA sidewaysRamROMSEL
+        JSR selectROM
 
         \ copy data to sideways RAM (we need to reset srcAddr)
-        LDA #LO(pcmDataLoadBufferAddr) : STA srcAddr
-        LDA #HI(pcmDataLoadBufferAddr) : STA srcAddr+1
+        LDA #LO(pcmDataLoadBuffer) : STA srcAddr
+        LDA #HI(pcmDataLoadBuffer) : STA srcAddr+1
         JSR memcpy
 
-        \ restore bank
-        LDA temp
-        SEI
-        STA &F4 : STA &FE30 \ ROMSEL
-        CLI
+        \ restore DFS ROM
+        LDA dfsROMSEL
+        JSR selectROM
 
         \ loop while index < '6'
         INC index
@@ -436,10 +451,13 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
     EQUS "DISK", 13
 
 .filename
-    EQUS "pcmN", 13
+    EQUS "pcmTN", 13
 
 .osfileParamBlock
     EQUW filename, 0, 0, 0, 0, 0, 0, 0, 0
+
+.sidewaysRamROMSEL  SKIP 1
+.dfsROMSEL          SKIP 1
 }
 
 \ end file

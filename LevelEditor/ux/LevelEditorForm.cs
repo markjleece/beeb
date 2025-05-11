@@ -99,58 +99,58 @@ namespace LevelEditor
             }
         }
 
-        private void newButton_Click(object sender, EventArgs e)
+        private void NewButton_Click(object sender, EventArgs e)
         {
             if (!HandleUnsavedChanges())
             {
                 return;
             }
 
-            NewLevelOperation op = new NewLevelOperation(LevelData);
+            NewLevelOperation op = new(LevelData);
             if (UndoRedoHistory.Execute(op))
             {
                 ResetState(true/*resetView*/);
             }
         }
 
-        private void openButton_Click(object sender, EventArgs e)
+        private void OpenButton_Click(object sender, EventArgs e)
         {
             if (!HandleUnsavedChanges())
             {
                 return;
             }
 
-            OpenLevelOperation op = new OpenLevelOperation(LevelData);
+            OpenLevelOperation op = new(LevelData);
             if (UndoRedoHistory.Execute(op))
             {
                 ResetState(true/*resetView*/);
             }
         }
 
-        private void saveButton_Click(object sender, EventArgs e)
+        private void SaveButton_Click(object sender, EventArgs e)
         {
             Save();
         }
 
         private void Save()
         {
-            SaveLevelOperation op = new SaveLevelOperation(LevelData);
+            SaveLevelOperation op = new(LevelData);
             if (UndoRedoHistory.Execute(op))
             {
                 ResetState(false/*resetView*/);
             }
         }
 
-        private void saveAsButton_Click(object sender, EventArgs e)
+        private void SaveAsButton_Click(object sender, EventArgs e)
         {
-            SaveAsLevelOperation op = new SaveAsLevelOperation(LevelData);
+            SaveAsLevelOperation op = new(LevelData);
             if (UndoRedoHistory.Execute(op))
             {
                 ResetState(false/*resetView*/);
             }
         }
 
-        private void undoButton_Click(object sender, EventArgs e)
+        private void UndoButton_Click(object sender, EventArgs e)
         {
             Undo();
         }
@@ -164,7 +164,7 @@ namespace LevelEditor
             }
         }
 
-        private void redoButton_Click(object sender, EventArgs e)
+        private void RedoButton_Click(object sender, EventArgs e)
         {
             Redo();
         }
@@ -178,38 +178,38 @@ namespace LevelEditor
             }
         }
 
-        private void editSettingsButton_Click(object sender, EventArgs e)
+        private void EditSettingsButton_Click(object sender, EventArgs e)
         {
-            EditSettingsOperation op = new EditSettingsOperation(LevelData);
+            EditSettingsOperation op = new(LevelData);
             if (UndoRedoHistory.Execute(op))
             {
                 ResetState(true/*resetView*/);
             }
         }
 
-        private void selectLayoutButton_Click(object sender, EventArgs e)
+        private void SelectLayoutButton_Click(object sender, EventArgs e)
         {
-            EditLayoutOperation op = new EditLayoutOperation(LevelData);
+            EditLayoutOperation op = new(LevelData);
             UndoRedoHistory.Execute(op);
         }
 
         private void PaletteButton_Click(object sender, EventArgs e)
         {
-            EditPaletteOperation op = new EditPaletteOperation(LevelData);
+            EditPaletteOperation op = new(LevelData);
             if (UndoRedoHistory.Execute(op))
             {
                 ResetState(false/*resetView*/);
             }
         }
 
-        private void editTileButton_Click(object sender, EventArgs e)
+        private void EditTileButton_Click(object sender, EventArgs e)
         {
             EditTile(SelectedTileIndex);
         }
 
-        private void tileSelectorPanel_MouseDoubleClick(object sender, MouseEventArgs e)
+        private void TileSelectorPanel_MouseDoubleClick(object sender, MouseEventArgs e)
         {
-            int tileIndex = tileSelectedPanel_HitTest(e.X, e.Y);
+            int tileIndex = TileSelectedPanel_HitTest(e.X, e.Y);
             if (tileIndex != -1)
             {
                 EditTile(tileIndex);
@@ -218,7 +218,7 @@ namespace LevelEditor
 
         private void EditTile(int tileIndex)
         {
-            EditTileOperation op = new EditTileOperation(LevelData, tileIndex);
+            EditTileOperation op = new(LevelData, tileIndex);
             if (UndoRedoHistory.Execute(op))
             {
                 ResetState(false/*reset view*/);
@@ -232,7 +232,7 @@ namespace LevelEditor
             tileGridPanel.Height = ClientSize.Height - tileGridPanel.Top - borderWidth;
         }
 
-        private void tileSelectorPanel_Paint(object sender, PaintEventArgs e)
+        private void TileSelectorPanel_Paint(object sender, PaintEventArgs e)
         {
             Rectangle clippingRect = e.ClipRectangle;
 
@@ -247,14 +247,14 @@ namespace LevelEditor
 
                 if (i == SelectedTileIndex)
                 {
-                    Pen pen = new Pen(Color.Gray, 4);
+                    Pen pen = new(Color.Gray, 4);
                     bounds.Inflate(-2, -2);
                     e.Graphics.DrawRectangle(pen, bounds);
                 }
             }
 
             // draw divider
-            Rectangle divider = new Rectangle(0, 16 * (TileSelectorTileSize + 1), tileSelectorPanel.Width, 5);
+            Rectangle divider = new(0, 16 * (TileSelectorTileSize + 1), tileSelectorPanel.Width, 5);
             if (clippingRect.IntersectsWith(divider))
             {
                 e.Graphics.FillRectangle(new SolidBrush(SystemColors.Window), divider);
@@ -273,7 +273,7 @@ namespace LevelEditor
             }
         }
 
-        private int tileSelectedPanel_HitTest(int x, int y)
+        private int TileSelectedPanel_HitTest(int x, int y)
         {
             for (int i = 0; i < TileSelectorCount; i++)
             {
@@ -287,9 +287,9 @@ namespace LevelEditor
             return -1;
         }
 
-        private void tileSelectorPanel_MouseClick(object sender, MouseEventArgs e)
+        private void TileSelectorPanel_MouseClick(object sender, MouseEventArgs e)
         {
-            int tileIndex = tileSelectedPanel_HitTest(e.X, e.Y);
+            int tileIndex = TileSelectedPanel_HitTest(e.X, e.Y);
             if (tileIndex != -1 && tileIndex != SelectedTileIndex)
             {
                 bool updateButtons = ((tileIndex < 32) != (SelectedTileIndex < 32));
@@ -351,7 +351,7 @@ namespace LevelEditor
             return new Rectangle(left, top, TileSelectorTileSize, TileSelectorTileSize);
         }
 
-        private void tileGridPanel_Paint(object sender, PaintEventArgs e)
+        private void TileGridPanel_Paint(object sender, PaintEventArgs e)
         {
             Rectangle clippingRect = e.ClipRectangle;
 
@@ -360,7 +360,7 @@ namespace LevelEditor
             {
                 for (int x = 0; x < LevelData.TileGrid.Width; x++)
                 {
-                    Rectangle bounds = new Rectangle(x * TileGridTileSize, y * TileGridTileSize, TileGridTileSize, TileGridTileSize);
+                    Rectangle bounds = new(x * TileGridTileSize, y * TileGridTileSize, TileGridTileSize, TileGridTileSize);
                     bounds.Offset(tileGridPanel.AutoScrollPosition);
 
                     if (!clippingRect.IntersectsWith(bounds)) continue;
@@ -400,7 +400,7 @@ namespace LevelEditor
             }
 
             // draw surround
-            Point pageGridExtents = new Point(
+            Point pageGridExtents = new(
                 LevelData.TileGrid.Width * TileGridTileSize,
                 LevelData.TileGrid.Height * TileGridTileSize);
 
@@ -420,7 +420,7 @@ namespace LevelEditor
             }
         }
 
-        private void tileGridPanel_MouseDown(object sender, MouseEventArgs e)
+        private void TileGridPanel_MouseDown(object sender, MouseEventArgs e)
         {
             EraseMode = (e.Button == MouseButtons.Right);
 
@@ -439,14 +439,14 @@ namespace LevelEditor
             }
         }
 
-        private void tileGridPanel_MouseUp(object sender, MouseEventArgs e)
+        private void TileGridPanel_MouseUp(object sender, MouseEventArgs e)
         {
             if (OverlayActive)
             {
                 Point[] tileCoords = GetOverlayTileCoords();
                 int tileIndex = EraseMode ? 0 : SelectedTileIndex;
 
-                EditTileGridOperation op = new EditTileGridOperation(LevelData, tileCoords, tileIndex);
+                EditTileGridOperation op = new(LevelData, tileCoords, tileIndex);
                 UndoRedoHistory.Execute(op);
                 {
                     UpdateButtons();
@@ -456,7 +456,7 @@ namespace LevelEditor
             }
         }
 
-        private void tileGridPanel_MouseMove(object sender, MouseEventArgs e)
+        private void TileGridPanel_MouseMove(object sender, MouseEventArgs e)
         {
             if (SelectedTileIndex >= 32)
             {
@@ -508,7 +508,7 @@ namespace LevelEditor
             }
         }
 
-        private void tileGridPanel_MouseEnter(object sender, EventArgs e)
+        private void TileGridPanel_MouseEnter(object sender, EventArgs e)
         {
             if (FocusRect != Rectangle.Empty)
             {
@@ -518,7 +518,7 @@ namespace LevelEditor
             FocusRect = Rectangle.Empty;
         }
 
-        private void tileGridPanel_MouseLeave(object sender, EventArgs e)
+        private void TileGridPanel_MouseLeave(object sender, EventArgs e)
         {
             if (FocusRect != Rectangle.Empty)
             {
@@ -528,17 +528,17 @@ namespace LevelEditor
             FocusRect = Rectangle.Empty;
         }
 
-        private void zoomInButton_Click(object sender, EventArgs e)
+        private void ZoomInButton_Click(object sender, EventArgs e)
         {
             ZoomIn();
         }
 
-        private void zoomOutButton_Click(object sender, EventArgs e)
+        private void ZoomOutButton_Click(object sender, EventArgs e)
         {
             ZoomOut();
         }
 
-        private void tileGridPanel_MouseWheel(object? sender, MouseEventArgs e)
+        private void TileGridPanel_MouseWheel(object? sender, MouseEventArgs e)
         {
             if ((Control.ModifierKeys & Keys.Control) == Keys.Control)
             {
@@ -561,7 +561,7 @@ namespace LevelEditor
             else if (FocusRect != Rectangle.Empty)
             {
                 // invalidate vertical strip to ensure focus rect is drawn correctly
-                Rectangle rect = new Rectangle(FocusRect.Left, 0, FocusRect.Width, tileGridPanel.Height);
+                Rectangle rect = new(FocusRect.Left, 0, FocusRect.Width, tileGridPanel.Height);
                 tileGridPanel.Invalidate(rect);
             }
         }
@@ -585,7 +585,7 @@ namespace LevelEditor
             TileGridTileSize = Math.Clamp((int)(scaleFactor * TileGridTileSize), 16, 512);
 
             // calculate new extents
-            Size newExtents = new Size(
+            Size newExtents = new(
                 TileGridTileSize * LevelData.TileGrid.Width,
                 TileGridTileSize * LevelData.TileGrid.Height);
 
@@ -595,23 +595,23 @@ namespace LevelEditor
             float scaleFactorX = (float)newExtents.Width / (float)oldExtents.Width;
             float scaleFactorY = (float)newExtents.Height / (float)oldExtents.Height;
 
-            Point oldScrollPosition = new Point(
+            Point oldScrollPosition = new(
                 -tileGridPanel.AutoScrollPosition.X,
                 -tileGridPanel.AutoScrollPosition.Y);
 
-            Point scaleCenter = new Point(
+            Point scaleCenter = new(
                 oldScrollPosition.X + focusX,
                 oldScrollPosition.Y + focusY);
 
-            Matrix transform = new Matrix();
+            Matrix transform = new();
             transform.Translate(-scaleCenter.X, -scaleCenter.Y);
             transform.Scale(scaleFactorX, scaleFactorY);
             transform.Translate(scaleCenter.X, scaleCenter.Y);
 
-            Point[] points = new Point[] { new Point(0, 0) };
+            Point[] points = [new(0, 0)];
             transform.TransformPoints(points); // transform origin
 
-            Point newScrollPosition = new Point(
+            Point newScrollPosition = new(
                 oldScrollPosition.X + points[0].X,
                 oldScrollPosition.Y + points[0].Y);
 
@@ -630,7 +630,7 @@ namespace LevelEditor
 
         private Rectangle GetTileGridRect(int tileX, int tileY)
         {
-            Rectangle rect = new Rectangle(tileX * TileGridTileSize, tileY * TileGridTileSize, TileGridTileSize, TileGridTileSize);
+            Rectangle rect = new(tileX * TileGridTileSize, tileY * TileGridTileSize, TileGridTileSize, TileGridTileSize);
             rect.Offset(tileGridPanel.AutoScrollPosition.X, tileGridPanel.AutoScrollPosition.Y);
             return rect;
         }
@@ -677,13 +677,13 @@ namespace LevelEditor
 
             GCHandle gch = GCHandle.Alloc(bytes); // lock bytes
 
-            Bitmap bitmap = new Bitmap(
+            Bitmap bitmap = new(
                 width, height, bytes.Length / height/*stide*/,
                 PixelFormat.Format32bppArgb,
                 Marshal.UnsafeAddrOfPinnedArrayElement(bytes, 0));
 
             // create cached bitmap, for faster rendering
-            CachedBitmap cachedBitmap = new CachedBitmap(bitmap, graphics);
+            CachedBitmap cachedBitmap = new(bitmap, graphics);
 
             // clean up
             bitmap.Dispose();
@@ -694,31 +694,29 @@ namespace LevelEditor
 
         CachedBitmap GeneratorCachedObjectBitmap(int index, int width, int height, Graphics graphics)
         {
-            Bitmap scaledBitmap = new Bitmap(ObjectBitmaps[index], width, height);
+            Bitmap scaledBitmap = new(ObjectBitmaps[index], width, height);
             return new CachedBitmap(scaledBitmap, graphics);
         }
 
         private uint PaletteIndexToARGB(int index)
         {
-            int color = LevelData.Palette[index];
-            switch (color)
+            return LevelData.Palette[index] switch
             {
-                case 0: return 0xFF000000; // black
-                case 1: return 0xFFFF0000; // red
-                case 2: return 0xFF00FF00; // green
-                case 3: return 0xFFFFFF00; // yellow
-                case 4: return 0xFF0000FF; // blue
-                case 5: return 0xFFFF00FF; // magenta
-                case 6: return 0xFF00FFFF; // cyan
-                case 7: return 0xFFFFFFFF; // white
-            }
-
-            return 0xFF000000;
+                0 => 0xFF000000, // black
+                1 => 0xFFFF0000, // red
+                2 => 0xFF00FF00, // green
+                3 => 0xFFFFFF00, // yellow
+                4 => 0xFF0000FF, // blue
+                5 => 0xFFFF00FF, // magenta
+                6 => 0xFF00FFFF, // cyan
+                7 => 0xFFFFFFFF, // white
+                _ => 0xFF000000  // default
+            };
         }
 
         private Rectangle GetOverlayRect(int tileX, int tileY)
         {
-            Rectangle rect = new Rectangle(
+            Rectangle rect = new(
                 tileX * TileGridTileSize,
                 tileY * TileGridTileSize,
                 TileGridTileSize,
@@ -745,7 +743,7 @@ namespace LevelEditor
 
         private void SetOverlayRectangle(int tileX, int tileY)
         {
-            Rectangle rect = new Rectangle(
+            Rectangle rect = new(
                 Math.Min(tileX, OverlayStartPosition.X),
                 Math.Min(tileY, OverlayStartPosition.Y),
                 Math.Abs(tileX - OverlayStartPosition.X) + 1,
@@ -769,10 +767,10 @@ namespace LevelEditor
         private void SetOverlayLine(int tileX, int tileY)
         {
             // draw line onto canvas
-            bool[,] canvas = new bool[LevelData.TileGrid.Width, LevelData.TileGrid.Height];
+            bool[,] canvas = new bool[ LevelData.TileGrid.Width, LevelData.TileGrid.Height ];
 
-            Point from = new Point(tileX, tileY);
-            Point to = new Point(OverlayStartPosition.X, OverlayStartPosition.Y);
+            Point from = new(tileX, tileY);
+            Point to = new(OverlayStartPosition.X, OverlayStartPosition.Y);
 
             int deltaX = Math.Abs(from.X - to.X);
             int deltaY = Math.Abs(from.Y - to.Y);
@@ -895,19 +893,19 @@ namespace LevelEditor
             return coords;
         }
 
-        private void freeformModeButton_Click(object sender, EventArgs e)
+        private void FreeformModeButton_Click(object sender, EventArgs e)
         {
             _DrawMode = DrawMode.Freeform;
             UpdateButtons();
         }
 
-        private void lineModeButton_Click(object sender, EventArgs e)
+        private void LineModeButton_Click(object sender, EventArgs e)
         {
             _DrawMode = DrawMode.Line;
             UpdateButtons();
         }
 
-        private void rectModeButton_Click(object sender, EventArgs e)
+        private void RectModeButton_Click(object sender, EventArgs e)
         {
             _DrawMode = DrawMode.Rectangle;
             UpdateButtons();
@@ -964,7 +962,7 @@ namespace LevelEditor
             rectModeButton.Checked = (_DrawMode == DrawMode.Rectangle);
         }
 
-        private void helpButton_Click(object sender, EventArgs e)
+        private void HelpButton_Click(object sender, EventArgs e)
         {
             MessageBox.Show(
                 "The main panel shows the design of the level. Its layout can be modified by using the 'Select Layout' button.\n\n" +
@@ -979,8 +977,8 @@ namespace LevelEditor
                 "Help", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
-        private Level LevelData = new Level();
-        private UndoRedoHistory UndoRedoHistory = new UndoRedoHistory();
+        private Level LevelData = new();
+        private readonly UndoRedoHistory UndoRedoHistory = new();
 
         private int SelectedTileIndex = 1;
         private int TileSelectorTileSize = 64;
@@ -996,12 +994,12 @@ namespace LevelEditor
         DrawMode _DrawMode = DrawMode.Freeform;
         private int TileGridTileSize = 64;
         private bool OverlayActive = false;
-        private Point OverlayStartPosition = new Point();
+        private Point OverlayStartPosition = new();
         private bool[,] OverlayPixels = new bool[0, 0];
         private bool EraseMode = false;
         private Rectangle FocusRect = Rectangle.Empty;
         private CachedBitmap[] CachedTileGridBitmaps = new CachedBitmap[TileSelectorCount];
-        private Bitmap[] ObjectBitmaps = new Bitmap[6];
+        private readonly Bitmap[] ObjectBitmaps = new Bitmap[6];
 
         private const int TileSelectorCount = 38; // 32 regular tiles + 6 object tiles
     }

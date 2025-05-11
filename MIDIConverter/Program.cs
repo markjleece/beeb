@@ -1,4 +1,5 @@
-﻿// This file is Copyright © 2025 - Mark John Leece - All rights reserved
+﻿
+// This file is Copyright © 2025 - Mark John Leece - All rights reserved
 using System.Diagnostics;
 
 namespace MIDIConverter
@@ -166,7 +167,7 @@ namespace MIDIConverter
             noteEvents.Sort(CompareNoteEventsByTimeToneGeneratorAndVolume);
 
             // remove any rudundant note off events
-            List<NoteEvent> eventsToRemove = new List<NoteEvent>();
+            List<NoteEvent> eventsToRemove = [];
             NoteEvent? lastNoteEvent = null;
             foreach (var noteEvent in noteEvents)
             {
@@ -223,7 +224,7 @@ namespace MIDIConverter
 
         static List<NoteEvent> ExtractNoteEventsFromMIDIFile(string filePath)
         {
-            List<NoteEvent> noteEvents = new List<NoteEvent>();
+            List<NoteEvent> noteEvents = [];
 
             FileStream fileStream = File.OpenRead(filePath);
 
@@ -292,7 +293,6 @@ namespace MIDIConverter
                 if (trackEvent < 0xF0)
                 {
                     byte midiNoteNumber, velocity, pressure, controllerNumber, newValue, programNumber;
-                    int channel = (trackEvent & 0xF);
                     switch (trackEvent & 0xF0)
                     {
                         case 0x80: // Note Off
@@ -420,35 +420,34 @@ namespace MIDIConverter
             }
 
             // open new file for write
-            using (FileStream fs = File.OpenWrite(filePath))
-            {
-                // write events
-                foreach (NoteEvent noteEvent in noteEvents)
-                {
-                    // delta time
-                    int deltaTime = noteEvent.DeltaTime;
-                    if (deltaTime < 128)
-                    {
-                        fs.WriteByte((byte)deltaTime);
-                    }
-                    else
-                    {
-                        fs.WriteByte((byte)((deltaTime >> 8) | 0x80));
-                        fs.WriteByte((byte)deltaTime);
-                    }
+            using FileStream fs = File.OpenWrite(filePath);
 
-                    // pitch / tone generator
-                    int pitch = (noteEvent.Amplitude > 0) ? noteEvent.Pitch : 0;
-                    fs.WriteByte((byte)((pitch << 2) | noteEvent.ToneGenerator));
+            // write events
+            foreach (NoteEvent noteEvent in noteEvents)
+            {
+                // delta time
+                int deltaTime = noteEvent.DeltaTime;
+                if (deltaTime < 128)
+                {
+                    fs.WriteByte((byte)deltaTime);
+                }
+                else
+                {
+                    fs.WriteByte((byte)((deltaTime >> 8) | 0x80));
+                    fs.WriteByte((byte)deltaTime);
                 }
 
-                // write terminator with one-second delay
-                fs.WriteByte(0x64);
-                fs.WriteByte(0xFF);
+                // pitch / tone generator
+                int pitch = (noteEvent.Amplitude > 0) ? noteEvent.Pitch : 0;
+                fs.WriteByte((byte)((pitch << 2) | noteEvent.ToneGenerator));
             }
+
+            // write terminator with one-second delay
+            fs.WriteByte(0x64);
+            fs.WriteByte(0xFF);
         }
 
-        static void DebugWriteLine(string value)
+        static void DebugWriteLine(string _)
         {
             //Console.WriteLine("Debug: " + value);
         }

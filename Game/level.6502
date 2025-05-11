@@ -97,11 +97,17 @@
     LDA levelLaserHealthDrainLoaded : STA laserHealthDrain
     LDA levelJewelHealthGainHiLoaded : STA jewelHealthGainHi
 
-    \ set dalekSamplesEnabled flag
-    LDA dalekSamplesRAMBankNumber : BEQ skip
-        LDA levelDalekSamplesEnabledLoaded
-    .skip
-    STA dalekSamplesEnabled
+    \ set primarySamplesEnabled flag
+    LDA primarySamplesROMSEL : BEQ skip1
+        LDA levelSampleSoundsEnabledLoaded
+    .skip1
+    STA primarySamplesEnabled
+
+    \ set secondarySamplesEnabled flag
+    LDA secondarySamplesROMSEL : BEQ skip2
+        LDA levelSampleSoundsEnabledLoaded
+    .skip2
+    STA secondarySamplesEnabled
 
     \ patch BCC instuction in getObjectTileGridAddr (tilegrid.6502)
     LDA horzTileCount
@@ -231,7 +237,9 @@
 
     JSR memcpy \ implicit RTS
 
-    LDA dalekSamplesRAMBankNumber : BEQ skip
+    LDA primarySamplesROMSEL
+    ORA secondarySamplesROMSEL
+    BEQ skip
         \ gamebar atlas resides in sideways RAM
         LDA #LO(gamebarAtlas_sidewaysRAM) : STA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)
         LDA #HI(gamebarAtlas_sidewaysRAM) : STA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)+1
@@ -592,27 +600,46 @@
 
     JSR memcpy
 
-    \ gamebar sprites at gamebarAtlas
+    \ copy gamebar altas...
     srcAddr12 = srcAddr11 + (K9_SPRITE_SIZE * 9)
+
+    LDA primarySamplesROMSEL
+    ORA secondarySamplesROMSEL
+    BEQ else
+        \ copy atlas to primary sideways RAM
+        LDA primarySamplesROMSEL : BEQ skip1
+            JSR selectROM
+
+            LDA #LO(gamebarAtlas_sidewaysRAM) : STA dstAddr
+            LDA #HI(gamebarAtlas_sidewaysRAM) : STA dstAddr+1
+        
+            JSR copyGamebarAsset
+        .skip1
+
+        \ copy atlas to secondary sideways RAM
+        LDA secondarySamplesROMSEL : BEQ skip2
+            JSR selectROM
+
+            LDA #LO(gamebarAtlas_sidewaysRAM) : STA dstAddr
+            LDA #HI(gamebarAtlas_sidewaysRAM) : STA dstAddr+1
+        
+            JSR copyGamebarAsset
+        .skip2
+
+        RTS
+    .else
+        \ copy atlas to normal location, overwritting sample.6502
+        LDA #LO(gamebarAtlas) : STA dstAddr
+        LDA #HI(gamebarAtlas) : STA dstAddr+1
+        
+        \ fall through to copyGamebarAsset
+
+.copyGamebarAsset
+    LDA #LO(GAMEBAR_SPRITE_SIZE) : STA sizeLo
+    LDA #HI(GAMEBAR_SPRITE_SIZE) : STA sizeHi
 
     LDA #LO(srcAddr12) : STA srcAddr
     LDA #HI(srcAddr12) : STA srcAddr+1
-
-    LDA dalekSamplesRAMBankNumber : BEQ else
-        \ ensure sideways RAM bank is selected
-        STA &F4 : STA &FE30
-
-        \ gamebar atlas resides in sideways RAM
-        LDA #LO(gamebarAtlas_sidewaysRAM) : STA dstAddr
-        LDA #HI(gamebarAtlas_sidewaysRAM) : STA dstAddr+1
-        BNE endif
-    .else
-        LDA #LO(gamebarAtlas) : STA dstAddr
-        LDA #HI(gamebarAtlas) : STA dstAddr+1
-    .endif
-
-    LDA #LO(GAMEBAR_SPRITE_SIZE) : STA sizeLo
-    LDA #HI(GAMEBAR_SPRITE_SIZE) : STA sizeHi
 
     JMP memcpy \ implicit RTS
 }
@@ -873,25 +900,42 @@
 \
 .initializeSound
 {
-    \
-    \ set sound vectors
-    \
+    \ set primary sound vectors
     LDX #9
-    .loop
-        LDA soundVectors_SamplesDisabled, X
-        LDY dalekSamplesEnabled : BEQ skip
-            LDA soundVectors_SamplesEnabled, X
-        .skip
-        STA soundVectors, X
+    .loop1
+        LDA primarySoundVectors_Regular, X
+        LDY primarySamplesEnabled : BEQ skip1
+            LDA primarySoundVectors_SampleBased, X
+        .skip1
+        STA primarySoundVectors, X
         DEX
-        BPL loop
+        BPL loop1
+
+    \ set secondary sound vectors
+    LDX #5
+    .loop2
+        LDA secondarySoundVectors_Regular, X
+        LDY secondarySamplesEnabled : BEQ skip2
+            LDA secondarySoundVectors_SampleBased, X
+        .skip2
+        STA secondarySoundVectors, X
+        DEX
+        BPL loop2
 
     \
-    \ set sample tone frequency and volume
+    \ set tone generator 3 frequency and volume
     \
     SEI \ disable interupts
 
-    LDA dalekSamplesEnabled : BEQ else2
+    \ set zero volume
+    LDA #&9F
+    JSR sendSoundData
+
+    \ set frequency
+    LDA primarySamplesEnabled
+    ORA secondarySamplesEnabled
+    BEQ else
+
         \ set highest frequency low bits
         LDA #&81
         JSR sendSoundData
@@ -900,8 +944,8 @@
         LDA #0
         JSR sendSoundData
 
-        JMP endif2
-    .else2
+        JMP endif
+    .else
         \ set lowest frequency low bits
         LDA #&8F
         JSR sendSoundData
@@ -909,21 +953,37 @@
         \ set lowest frequency high bits
         LDA #&3F
         JSR sendSoundData
-    .endif2
-
-    \ set zero volume
-    LDA #&9F
-    JSR sendSoundData
+    .endif
 
     CLI \ reenable interrupts
 
     RTS
 
-.soundVectors_SamplesDisabled
-    EQUW rts_0, soundEffect_pursuitOn, soundEffect_pursuitOff, rts_0, soundEffect_pain      
+\ primary sound vectors
+.primarySoundVectors_Regular
+    EQUW rts_0                          \ updatePursuit
+    EQUW soundEffect_pursuitOn          \ beginPursuit 
+    EQUW soundEffect_pursuitOff         \ endPursuit   
+    EQUW rts_0                          \ enemyLasered 
+    EQUW soundEffect_pain               \ weaponFired  
+                                        
+.primarySoundVectors_SampleBased
+    EQUW sample_updatePursuit           \ updatePursuit
+    EQUW sample_soundExterminate        \ beginPursuit 
+    EQUW sample_stop                    \ endPursuit   
+    EQUW sample_soundDalekGroan         \ enemyLasered 
+    EQUW sample_soundDalekWeapon        \ weaponFired  
 
-.soundVectors_SamplesEnabled 
-    EQUW sample_updatePursuit, sample_soundExterminate, sample_stop, sample_soundGrown, sample_soundWeapon
+\ secondary sound vectors
+.secondarySoundVectors_Regular
+    EQUW rts_0                          \ enemyDestroyed
+    EQUW rts_0                          \ startLevel    
+    EQUW soundEffect_levelComplete      \ completeLevel 
+
+.secondarySoundVectors_SampleBased 
+    EQUW sample_soundK9Affirmative      \ enemyDestroyed
+    EQUW sample_soundK9InsufficientData \ startLevel    
+    EQUW sample_soundTardisDoor         \ completeLevel 
 
 .sendSoundData
     STY temp \ save Y
@@ -951,6 +1011,22 @@
      
     LDY temp \ restore Y
     RTS                                                 
+}
+
+\
+\ selectROM(A)
+\
+\ select ROM helper
+\
+\ params:
+\  Accumulator  ROM selector
+\
+.selectROM
+{
+    SEI
+    STA &F4 : STA &FE30 \ ROMSEL
+    CLI
+    RTS
 }
 
 \ end file

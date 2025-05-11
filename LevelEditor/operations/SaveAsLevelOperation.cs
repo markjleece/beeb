@@ -48,8 +48,8 @@ namespace LevelEditor
             CurrentState.FilePathName = OldFilePathName;
         }
 
-        private Level CurrentState;
-        private string OldFilePathName;
+        private readonly Level CurrentState;
+        private readonly string OldFilePathName;
         private string NewFilePathName;
     }
 }

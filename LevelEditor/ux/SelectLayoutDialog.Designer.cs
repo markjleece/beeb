@@ -54,7 +54,7 @@ namespace LevelEditor.ux
             okayButton.TabIndex = 10;
             okayButton.Text = "Ok";
             okayButton.UseVisualStyleBackColor = true;
-            okayButton.Click += okayButton_Click;
+            okayButton.Click += OkayButton_Click;
             // 
             // layoutSelectorPanel
             // 
@@ -64,8 +64,8 @@ namespace LevelEditor.ux
             layoutSelectorPanel.Name = "layoutSelectorPanel";
             layoutSelectorPanel.Size = new Size(768, 192);
             layoutSelectorPanel.TabIndex = 12;
-            layoutSelectorPanel.Paint += layoutSelectorPanel_Paint;
-            layoutSelectorPanel.MouseClick += layoutSelectorPanel_MouseClick;
+            layoutSelectorPanel.Paint += LayoutSelectorPanel_Paint;
+            layoutSelectorPanel.MouseClick += LayoutSelectorPanel_MouseClick;
             // 
             // EditLayoutDialog
             // 

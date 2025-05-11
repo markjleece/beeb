@@ -64,9 +64,9 @@ namespace LevelEditor
             tileSelectorPanel.Name = "tileSelectorPanel";
             tileSelectorPanel.Size = new Size(130, 1240);
             tileSelectorPanel.TabIndex = 4;
-            tileSelectorPanel.Paint += tileSelectorPanel_Paint;
-            tileSelectorPanel.MouseClick += tileSelectorPanel_MouseClick;
-            tileSelectorPanel.MouseDoubleClick += tileSelectorPanel_MouseDoubleClick;
+            tileSelectorPanel.Paint += TileSelectorPanel_Paint;
+            tileSelectorPanel.MouseClick += TileSelectorPanel_MouseClick;
+            tileSelectorPanel.MouseDoubleClick += TileSelectorPanel_MouseDoubleClick;
             // 
             // tileGridPanel
             // 
@@ -76,13 +76,13 @@ namespace LevelEditor
             tileGridPanel.Name = "tileGridPanel";
             tileGridPanel.Size = new Size(1715, 1240);
             tileGridPanel.TabIndex = 5;
-            tileGridPanel.Paint += tileGridPanel_Paint;
-            tileGridPanel.MouseDown += tileGridPanel_MouseDown;
-            tileGridPanel.MouseEnter += tileGridPanel_MouseEnter;
-            tileGridPanel.MouseLeave += tileGridPanel_MouseLeave;
-            tileGridPanel.MouseMove += tileGridPanel_MouseMove;
-            tileGridPanel.MouseUp += tileGridPanel_MouseUp;
-            tileGridPanel.MouseWheel += tileGridPanel_MouseWheel;
+            tileGridPanel.Paint += TileGridPanel_Paint;
+            tileGridPanel.MouseDown += TileGridPanel_MouseDown;
+            tileGridPanel.MouseEnter += TileGridPanel_MouseEnter;
+            tileGridPanel.MouseLeave += TileGridPanel_MouseLeave;
+            tileGridPanel.MouseMove += TileGridPanel_MouseMove;
+            tileGridPanel.MouseUp += TileGridPanel_MouseUp;
+            tileGridPanel.MouseWheel += TileGridPanel_MouseWheel;
             // 
             // toolStrip
             // 
@@ -102,7 +102,7 @@ namespace LevelEditor
             newButton.Name = "newButton";
             newButton.Size = new Size(34, 28);
             newButton.Text = "New";
-            newButton.Click += newButton_Click;
+            newButton.Click += NewButton_Click;
             // 
             // openButton
             // 
@@ -112,7 +112,7 @@ namespace LevelEditor
             openButton.Name = "openButton";
             openButton.Size = new Size(34, 28);
             openButton.Text = "Open";
-            openButton.Click += openButton_Click;
+            openButton.Click += OpenButton_Click;
             // 
             // saveButton
             // 
@@ -123,7 +123,7 @@ namespace LevelEditor
             saveButton.Size = new Size(34, 28);
             saveButton.Text = "Save";
             saveButton.ToolTipText = "Save (Ctrl+S)";
-            saveButton.Click += saveButton_Click;
+            saveButton.Click += SaveButton_Click;
             // 
             // saveAsButton
             // 
@@ -133,7 +133,7 @@ namespace LevelEditor
             saveAsButton.Name = "saveAsButton";
             saveAsButton.Size = new Size(34, 28);
             saveAsButton.Text = "Save As";
-            saveAsButton.Click += saveAsButton_Click;
+            saveAsButton.Click += SaveAsButton_Click;
             // 
             // toolStripSeparator1
             // 
@@ -149,7 +149,7 @@ namespace LevelEditor
             undoButton.Size = new Size(34, 28);
             undoButton.Text = "Undo";
             undoButton.ToolTipText = "Undo (Ctrl+Z)";
-            undoButton.Click += undoButton_Click;
+            undoButton.Click += UndoButton_Click;
             // 
             // redoButton
             // 
@@ -160,7 +160,7 @@ namespace LevelEditor
             redoButton.Size = new Size(34, 28);
             redoButton.Text = "Redo";
             redoButton.ToolTipText = "Redo (Ctrl+Y)";
-            redoButton.Click += redoButton_Click;
+            redoButton.Click += RedoButton_Click;
             // 
             // toolStripSeparator3
             // 
@@ -176,7 +176,7 @@ namespace LevelEditor
             editSettingsButton.Size = new Size(34, 28);
             editSettingsButton.Text = "Select Layout";
             editSettingsButton.ToolTipText = "Edit Settings";
-            editSettingsButton.Click += editSettingsButton_Click;
+            editSettingsButton.Click += EditSettingsButton_Click;
             // 
             // selectLayoutButton
             // 
@@ -187,7 +187,7 @@ namespace LevelEditor
             selectLayoutButton.Size = new Size(34, 28);
             selectLayoutButton.Text = "Select Layout";
             selectLayoutButton.ToolTipText = "Select Layout";
-            selectLayoutButton.Click += selectLayoutButton_Click;
+            selectLayoutButton.Click += SelectLayoutButton_Click;
             // 
             // editPaletteButton
             // 
@@ -209,7 +209,7 @@ namespace LevelEditor
             editTileButton.Size = new Size(34, 28);
             editTileButton.Text = "Edit Tile";
             editTileButton.ToolTipText = "Edit Tile";
-            editTileButton.Click += editTileButton_Click;
+            editTileButton.Click += EditTileButton_Click;
             // 
             // toolStripSeparator2
             // 
@@ -225,7 +225,7 @@ namespace LevelEditor
             freeformModeButton.Size = new Size(34, 28);
             freeformModeButton.Text = "Freeform";
             freeformModeButton.ToolTipText = "Freeform Mode";
-            freeformModeButton.Click += freeformModeButton_Click;
+            freeformModeButton.Click += FreeformModeButton_Click;
             // 
             // lineModeButton
             // 
@@ -236,7 +236,7 @@ namespace LevelEditor
             lineModeButton.Size = new Size(34, 28);
             lineModeButton.Text = "Line";
             lineModeButton.ToolTipText = "Line Mode";
-            lineModeButton.Click += lineModeButton_Click;
+            lineModeButton.Click += LineModeButton_Click;
             // 
             // rectModeButton
             // 
@@ -247,7 +247,7 @@ namespace LevelEditor
             rectModeButton.Size = new Size(34, 28);
             rectModeButton.Text = "Rectangle";
             rectModeButton.ToolTipText = "Rectangle Mode";
-            rectModeButton.Click += rectModeButton_Click;
+            rectModeButton.Click += RectModeButton_Click;
             // 
             // toolStripSeparator4
             // 
@@ -263,7 +263,7 @@ namespace LevelEditor
             zoomInButton.Size = new Size(34, 28);
             zoomInButton.Text = "Zoom In";
             zoomInButton.ToolTipText = "Zoom In (Ctrl +)";
-            zoomInButton.Click += zoomInButton_Click;
+            zoomInButton.Click += ZoomInButton_Click;
             // 
             // zoomOutButton
             // 
@@ -274,7 +274,7 @@ namespace LevelEditor
             zoomOutButton.Size = new Size(34, 28);
             zoomOutButton.Text = "Zoom Out (Ctrl (-)";
             zoomOutButton.ToolTipText = "Zoom Out (Ctrl -)";
-            zoomOutButton.Click += zoomOutButton_Click;
+            zoomOutButton.Click += ZoomOutButton_Click;
             // 
             // helpButton
             // 
@@ -285,7 +285,7 @@ namespace LevelEditor
             helpButton.Size = new Size(34, 28);
             helpButton.Text = "toolStripButton1";
             helpButton.ToolTipText = "Help";
-            helpButton.Click += helpButton_Click;
+            helpButton.Click += HelpButton_Click;
             // 
             // LevelEditorForm
             // 

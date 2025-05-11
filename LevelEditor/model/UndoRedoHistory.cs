@@ -48,7 +48,7 @@ namespace LevelEditor
                      UndoHistory.Peek() is SaveAsLevelOperation);
         }
 
-        private Stack<Operation> UndoHistory = new Stack<Operation>();
-        private Stack<Operation> RedoHistory = new Stack<Operation>();
+        private readonly Stack<Operation> UndoHistory = new Stack<Operation>();
+        private readonly Stack<Operation> RedoHistory = new Stack<Operation>();
     }
 }

@@ -5,7 +5,7 @@ namespace LevelEditor
     {
         internal Tile Clone()
         {
-            Tile clone = new Tile();
+            Tile clone = new();
 
             clone.Type = Type;
 
@@ -25,10 +25,10 @@ namespace LevelEditor
             byte[] buffer = new byte[size];
             fs.ReadExactly(buffer, 0, size);
 
-            int[] highPixelMask = { 0x80, 0x40, 0x20, 0x10 };
-            int[] lowPixelMask = { 0x08, 0x04, 0x02, 0x01 };
-            int[] highPixelShift = { 6, 5, 4, 3 };
-            int[] lowPixelShift = { 3, 2, 1, 0 };
+            int[] highPixelMask = [ 0x80, 0x40, 0x20, 0x10 ];
+            int[] lowPixelMask = [ 0x08, 0x04, 0x02, 0x01 ];
+            int[] highPixelShift = [ 6, 5, 4, 3 ];
+            int[] lowPixelShift = [ 3, 2, 1, 0 ];
 
             for (int y = 0; y < TileHeight; y++)
             {
@@ -59,8 +59,8 @@ namespace LevelEditor
             const int halfSize = size / 2;
             byte[] buffer = new byte[size];
 
-            int[] highPixelShift = { 6, 5, 4, 3 };
-            int[] lowPixelShift = { 3, 2, 1, 0 };
+            int[] highPixelShift = [ 6, 5, 4, 3 ];
+            int[] lowPixelShift = [ 3, 2, 1, 0 ];
 
             for (int y = 0; y < TileHeight; y++)
             {

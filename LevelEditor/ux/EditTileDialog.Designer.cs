@@ -54,8 +54,8 @@ namespace LevelEditor
             colorPickerPanel.Name = "colorPickerPanel";
             colorPickerPanel.Size = new Size(64, 256);
             colorPickerPanel.TabIndex = 0;
-            colorPickerPanel.Paint += colorPickerPanel_Paint;
-            colorPickerPanel.MouseClick += colorPickerPanel_MouseClick;
+            colorPickerPanel.Paint += ColorPickerPanel_Paint;
+            colorPickerPanel.MouseClick += ColorPickerPanel_MouseClick;
             // 
             // selectedColorPanel
             // 
@@ -64,7 +64,7 @@ namespace LevelEditor
             selectedColorPanel.Name = "selectedColorPanel";
             selectedColorPanel.Size = new Size(64, 32);
             selectedColorPanel.TabIndex = 1;
-            selectedColorPanel.Paint += selectedColorPanel_Paint;
+            selectedColorPanel.Paint += SelectedColorPanel_Paint;
             // 
             // pixelsPanel
             // 
@@ -73,12 +73,12 @@ namespace LevelEditor
             pixelsPanel.Name = "pixelsPanel";
             pixelsPanel.Size = new Size(512, 512);
             pixelsPanel.TabIndex = 2;
-            pixelsPanel.Paint += pixelsPanel_Paint;
-            pixelsPanel.MouseDown += pixelsPanel_MouseDown;
-            pixelsPanel.MouseEnter += pixelsPanel_MouseEnter;
-            pixelsPanel.MouseLeave += pixelsPanel_MouseLeave;
-            pixelsPanel.MouseMove += pixelsPanel_MouseMove;
-            pixelsPanel.MouseUp += pixelsPanel_MouseUp;
+            pixelsPanel.Paint += PixelsPanel_Paint;
+            pixelsPanel.MouseDown += PixelsPanel_MouseDown;
+            pixelsPanel.MouseEnter += PixelsPanel_MouseEnter;
+            pixelsPanel.MouseLeave += PixelsPanel_MouseLeave;
+            pixelsPanel.MouseMove += PixelsPanel_MouseMove;
+            pixelsPanel.MouseUp += PixelsPanel_MouseUp;
             // 
             // okButton
             // 
@@ -89,7 +89,7 @@ namespace LevelEditor
             okButton.TabIndex = 5;
             okButton.Text = "Ok";
             okButton.UseVisualStyleBackColor = true;
-            okButton.Click += okButton_Click;
+            okButton.Click += OkButton_Click;
             // 
             // cancelButton
             // 
@@ -119,7 +119,7 @@ namespace LevelEditor
             undoButton.Name = "undoButton";
             undoButton.Size = new Size(34, 28);
             undoButton.Text = "Undo (Ctrl+Z)";
-            undoButton.Click += undoButton_Click;
+            undoButton.Click += UndoButton_Click;
             // 
             // redoButton
             // 
@@ -129,7 +129,7 @@ namespace LevelEditor
             redoButton.Name = "redoButton";
             redoButton.Size = new Size(34, 28);
             redoButton.Text = "Redo (Ctrl+Y)";
-            redoButton.Click += redoButton_Click;
+            redoButton.Click += RedoButton_Click;
             // 
             // toolStripSeparator1
             // 
@@ -146,7 +146,7 @@ namespace LevelEditor
             freeformModeButton.Size = new Size(34, 28);
             freeformModeButton.Text = "Freeform";
             freeformModeButton.ToolTipText = "Freeform Mode";
-            freeformModeButton.Click += freeformModeButton_Click;
+            freeformModeButton.Click += FreeformModeButton_Click;
             // 
             // lineModeButton
             // 
@@ -158,7 +158,7 @@ namespace LevelEditor
             lineModeButton.Size = new Size(34, 28);
             lineModeButton.Text = "Line";
             lineModeButton.ToolTipText = "Line Mode";
-            lineModeButton.Click += lineModeButton_Click;
+            lineModeButton.Click += LineModeButton_Click;
             // 
             // rectModeButton
             // 
@@ -170,7 +170,7 @@ namespace LevelEditor
             rectModeButton.Size = new Size(34, 28);
             rectModeButton.Text = "Rectangle";
             rectModeButton.ToolTipText = "Rectangle Mode";
-            rectModeButton.Click += rectModeButton_Click;
+            rectModeButton.Click += RectModeButton_Click;
             // 
             // typeComboBox
             // 

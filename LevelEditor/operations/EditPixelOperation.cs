@@ -41,9 +41,9 @@ namespace LevelEditor
             }
         }
 
-        private Tile Tile;
-        private Point[] PixelCoords;
-        private byte[] OldColors;
-        private byte NewColor;
+        private readonly Tile Tile;
+        private readonly Point[] PixelCoords;
+        private readonly byte[] OldColors;
+        private readonly byte NewColor;
     }
 }

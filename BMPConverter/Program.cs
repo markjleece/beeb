@@ -21,10 +21,10 @@ namespace BMPConverter
     internal class Program
     {
         const char LevelCount = '3';
-        private static string assetsFolderPath = GetSolutionFolder() + "\\Game\\assets\\level{0}\\";
-        private static string dataFolderPath = GetSolutionFolder() + "\\Game\\data\\";
+        private static readonly string assetsFolderPath = GetSolutionFolder() + "\\Game\\assets\\level{0}\\";
+        private static readonly string dataFolderPath = GetSolutionFolder() + "\\Game\\data\\";
 
-        static void Main(string[] args)
+        static void Main(string[] _)
         {
             try
             {
@@ -32,43 +32,42 @@ namespace BMPConverter
                 {
                     Color[] palette = ReadLevelPalette(level);
 
-                    using (FileStream fs = File.OpenWrite(dataFolderPath + $"level{level}.atl"))
-                    {
-                        string folderPath = string.Format(assetsFolderPath, level);
-                        byte[] data;
+                    FileStream fs = File.OpenWrite(dataFolderPath + $"level{level}.atl");
 
-                        data = ConvertBMPFile(folderPath + "enemy_left.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
-                        fs.Write(data, 0, data.Length);
+                    string folderPath = string.Format(assetsFolderPath, level);
+                    byte[] data;
 
-                        data = ConvertBMPFile(folderPath + "enemy_right.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
-                        fs.Write(data, 0, data.Length);
+                    data = ConvertBMPFile(folderPath + "enemy_left.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
+                    fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "enemy_turn.bmp", 3/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
-                        fs.Write(data, 0, data.Length);
+                    data = ConvertBMPFile(folderPath + "enemy_right.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
+                    fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "door.bmp", 4/*spriteCount*/, 4/*spriteWidth*/, 32/*spriteHeight*/, palette);
-                        fs.Write(data, 0, data.Length);
+                    data = ConvertBMPFile(folderPath + "enemy_turn.bmp", 3/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
+                    fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "elevator.bmp", 4/*spriteCount*/, 32/*spriteWidth*/, 3/*spriteHeight*/, palette);
-                        fs.Write(data, 0, data.Length);
+                    data = ConvertBMPFile(folderPath + "door.bmp", 4/*spriteCount*/, 4/*spriteWidth*/, 32/*spriteHeight*/, palette);
+                    fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "k9_left.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);
-                        fs.Write(data, 0, data.Length);
+                    data = ConvertBMPFile(folderPath + "elevator.bmp", 4/*spriteCount*/, 32/*spriteWidth*/, 3/*spriteHeight*/, palette);
+                    fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "k9_right.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);
-                        fs.Write(data, 0, data.Length);
+                    data = ConvertBMPFile(folderPath + "k9_left.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);
+                    fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "k9_turn.bmp", 3/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);                        
-                        fs.Write(data, 0, data.Length);
+                    data = ConvertBMPFile(folderPath + "k9_right.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);
+                    fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "gamebar.bmp", 1/*spriteCount*/, 112/*spriteWidth*/, 8/*spriteHeight*/, palette);
-                        fs.Write(data, 0, data.Length);
-                    }
+                    data = ConvertBMPFile(folderPath + "k9_turn.bmp", 3/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);                        
+                    fs.Write(data, 0, data.Length);
+
+                    data = ConvertBMPFile(folderPath + "gamebar.bmp", 1/*spriteCount*/, 112/*spriteWidth*/, 8/*spriteHeight*/, palette);
+                    fs.Write(data, 0, data.Length);
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine("Unexpected error", e.Message);
+                Console.WriteLine($"Unexpected error: {e.Message}");
             }
         }
 
@@ -116,7 +115,7 @@ namespace BMPConverter
                 return [];
             }
 
-            int bmpSize = ReadInt(fileStream);
+            ReadInt(fileStream); // skip bmpSize
 
             ReadShort(fileStream); // skip reserved
             ReadShort(fileStream); // skip reserved
@@ -135,12 +134,12 @@ namespace BMPConverter
             int bitmapHeight = ReadInt(fileStream);
             short colorPlanes = ReadShort(fileStream);
             short bitsPerPixel = ReadShort(fileStream);
-            int compressionMethod = ReadInt(fileStream);
-            int imageSizeInBytes = ReadInt(fileStream);
-            int horzRes = ReadInt(fileStream);
-            int vertRes = ReadInt(fileStream);
+            ReadInt(fileStream); // skip compressionMethod
+            ReadInt(fileStream); // skip imageSizeInBytes
+            ReadInt(fileStream); // skip horzRes
+            ReadInt(fileStream); // skip vertRes
             int logicalColorCount = ReadInt(fileStream);
-            int importantColorCount = ReadInt(fileStream);
+            ReadInt(fileStream); // skip importantColorCount
 
             if (bitsPerPixel != 32 || colorPlanes != 1 || logicalColorCount != 0)
             {

@@ -16,12 +16,13 @@ namespace LevelEditor
 
             if (NewFilePathName == string.Empty)
             {
-                SaveFileDialog saveAsFileDialog = new SaveFileDialog();
-
-                saveAsFileDialog.InitialDirectory = Path.GetDirectoryName(AppSettings.Instance.RecentFilePathName);
-                saveAsFileDialog.Filter = "All files (*.*)|*.*";
-                saveAsFileDialog.FilterIndex = 1;
-                saveAsFileDialog.RestoreDirectory = true;
+                SaveFileDialog saveAsFileDialog = new()
+                {
+                    InitialDirectory = Path.GetDirectoryName(AppSettings.Instance.RecentFilePathName),
+                    Filter = "All files (*.*)|*.*",
+                    FilterIndex = 1,
+                    RestoreDirectory = true
+                };
 
                 if (saveAsFileDialog.ShowDialog() != DialogResult.OK)
                 {
@@ -52,8 +53,8 @@ namespace LevelEditor
             CurrentState.FilePathName = OldFilePathName;
         }
 
-        private Level CurrentState;
-        private string OldFilePathName;
+        private readonly Level CurrentState;
+        private readonly string OldFilePathName;
         private string NewFilePathName;
     }
 }

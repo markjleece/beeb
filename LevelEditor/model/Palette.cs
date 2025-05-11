@@ -14,7 +14,7 @@ namespace LevelEditor
 
         internal Palette Clone()
         {
-            Palette clone = new Palette();
+            Palette clone = new();
             for (int i = 0; i < PaletteSize; i++)
             {
                 clone.ColorIndices[i] = ColorIndices[i];

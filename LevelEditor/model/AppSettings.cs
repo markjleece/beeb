@@ -5,7 +5,7 @@ namespace LevelEditor
 {
     class AppSettings
     {
-        static internal readonly AppSettings Instance = new AppSettings();
+        static internal readonly AppSettings Instance = new();
 
         // Settings...
         internal string RecentFilePathName
@@ -50,7 +50,7 @@ namespace LevelEditor
             ConfigurationManager.RefreshSection("appSettings");
         }
 
-        private Configuration Config;
+        private readonly Configuration Config;
 
         private const string RecentFilePathName_PropertyName = "RecentFilePathName";
         private const string EditTilePrimaryColor_PropertyName = "EditTilePrimaryColor";

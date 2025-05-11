@@ -78,7 +78,7 @@ namespace LevelEditor.ux
             colorSelector_0.Name = "colorSelector_0";
             colorSelector_0.Size = new Size(182, 32);
             colorSelector_0.TabIndex = 13;
-            colorSelector_0.DrawItem += colorSelector_DrawItem;
+            colorSelector_0.DrawItem += ColorSelector_DrawItem;
             // 
             // colorSelector_3
             // 
@@ -89,7 +89,7 @@ namespace LevelEditor.ux
             colorSelector_3.Name = "colorSelector_3";
             colorSelector_3.Size = new Size(182, 32);
             colorSelector_3.TabIndex = 14;
-            colorSelector_3.DrawItem += colorSelector_DrawItem;
+            colorSelector_3.DrawItem += ColorSelector_DrawItem;
             // 
             // colorSelector_2
             // 
@@ -100,7 +100,7 @@ namespace LevelEditor.ux
             colorSelector_2.Name = "colorSelector_2";
             colorSelector_2.Size = new Size(182, 32);
             colorSelector_2.TabIndex = 15;
-            colorSelector_2.DrawItem += colorSelector_DrawItem;
+            colorSelector_2.DrawItem += ColorSelector_DrawItem;
             // 
             // colorSelector_1
             // 
@@ -111,7 +111,7 @@ namespace LevelEditor.ux
             colorSelector_1.Name = "colorSelector_1";
             colorSelector_1.Size = new Size(182, 32);
             colorSelector_1.TabIndex = 16;
-            colorSelector_1.DrawItem += colorSelector_DrawItem;
+            colorSelector_1.DrawItem += ColorSelector_DrawItem;
             // 
             // cancelButton
             // 
@@ -133,7 +133,7 @@ namespace LevelEditor.ux
             okayButton.TabIndex = 11;
             okayButton.Text = "Ok";
             okayButton.UseVisualStyleBackColor = true;
-            okayButton.Click += okayButton_Click;
+            okayButton.Click += OkayButton_Click;
             // 
             // EditPaletteDialog
             // 

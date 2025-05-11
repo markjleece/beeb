@@ -74,7 +74,7 @@ namespace LevelEditor
                 // check that the character is placed in space
                 for (int i = 0; i < (isEnemy ? 4 : 2); i++)
                 {
-                    Point coords = new Point(TileCoords[0].X + i % 2, TileCoords[0].Y - i / 2);
+                    Point coords = new(TileCoords[0].X + i % 2, TileCoords[0].Y - i / 2);
                     if (coords.X >= LevelData.TileGrid.Width || coords.Y < 0)
                     {
                         MessageBox.Show(
@@ -117,9 +117,9 @@ namespace LevelEditor
             }
         }
 
-        private Point[] TileCoords;
-        private byte[] OldTileIndices;
-        private byte NewTileIndex;
-        Level LevelData;
+        private readonly Point[] TileCoords;
+        private readonly byte[] OldTileIndices;
+        private readonly byte NewTileIndex;
+        readonly Level LevelData;
     }
 }

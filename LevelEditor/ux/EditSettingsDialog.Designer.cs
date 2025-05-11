@@ -39,14 +39,14 @@ namespace LevelEditor.ux
             jewelHealthGainComboBox = new ComboBox();
             okButton = new Button();
             cancelButton = new Button();
-            dalekSamplesEnabled = new CheckBox();
+            sampleSoundsCheckbox = new CheckBox();
             label5 = new Label();
             SuspendLayout();
             // 
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(12, 9);
+            label1.Location = new Point(12, 15);
             label1.Name = "label1";
             label1.Size = new Size(208, 25);
             label1.TabIndex = 0;
@@ -56,7 +56,7 @@ namespace LevelEditor.ux
             // 
             enemyWeaponStrengthComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             enemyWeaponStrengthComboBox.FormattingEnabled = true;
-            enemyWeaponStrengthComboBox.Location = new Point(260, 12);
+            enemyWeaponStrengthComboBox.Location = new Point(302, 12);
             enemyWeaponStrengthComboBox.Name = "enemyWeaponStrengthComboBox";
             enemyWeaponStrengthComboBox.Size = new Size(226, 33);
             enemyWeaponStrengthComboBox.TabIndex = 1;
@@ -64,7 +64,7 @@ namespace LevelEditor.ux
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new Point(12, 51);
+            label2.Location = new Point(12, 54);
             label2.Name = "label2";
             label2.Size = new Size(124, 25);
             label2.TabIndex = 0;
@@ -74,7 +74,7 @@ namespace LevelEditor.ux
             // 
             laserStrengthComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             laserStrengthComboBox.FormattingEnabled = true;
-            laserStrengthComboBox.Location = new Point(260, 51);
+            laserStrengthComboBox.Location = new Point(302, 51);
             laserStrengthComboBox.Name = "laserStrengthComboBox";
             laserStrengthComboBox.Size = new Size(226, 33);
             laserStrengthComboBox.TabIndex = 2;
@@ -92,7 +92,7 @@ namespace LevelEditor.ux
             // 
             laserHealthDrainComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             laserHealthDrainComboBox.FormattingEnabled = true;
-            laserHealthDrainComboBox.Location = new Point(260, 90);
+            laserHealthDrainComboBox.Location = new Point(302, 90);
             laserHealthDrainComboBox.Name = "laserHealthDrainComboBox";
             laserHealthDrainComboBox.Size = new Size(226, 33);
             laserHealthDrainComboBox.TabIndex = 3;
@@ -110,7 +110,7 @@ namespace LevelEditor.ux
             // 
             jewelHealthGainComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             jewelHealthGainComboBox.FormattingEnabled = true;
-            jewelHealthGainComboBox.Location = new Point(260, 129);
+            jewelHealthGainComboBox.Location = new Point(302, 129);
             jewelHealthGainComboBox.Name = "jewelHealthGainComboBox";
             jewelHealthGainComboBox.Size = new Size(226, 33);
             jewelHealthGainComboBox.TabIndex = 4;
@@ -118,34 +118,33 @@ namespace LevelEditor.ux
             // okButton
             // 
             okButton.DialogResult = DialogResult.OK;
-            okButton.Location = new Point(374, 219);
+            okButton.Location = new Point(416, 219);
             okButton.Name = "okButton";
             okButton.Size = new Size(112, 34);
             okButton.TabIndex = 5;
             okButton.Text = "Ok";
             okButton.UseVisualStyleBackColor = true;
-            okButton.Click += okButton_Click;
+            okButton.Click += OkButton_Click;
             // 
             // cancelButton
             // 
             cancelButton.DialogResult = DialogResult.Cancel;
-            cancelButton.Location = new Point(256, 219);
+            cancelButton.Location = new Point(298, 219);
             cancelButton.Name = "cancelButton";
             cancelButton.Size = new Size(112, 34);
             cancelButton.TabIndex = 6;
             cancelButton.Text = "Cancel";
             cancelButton.UseVisualStyleBackColor = true;
             // 
-            // dalekSamplesEnabled
+            // sampleSoundsCheckbox
             // 
-            dalekSamplesEnabled.AutoSize = true;
-            dalekSamplesEnabled.Location = new Point(15, 176);
-            dalekSamplesEnabled.Name = "dalekSamplesEnabled";
-            dalekSamplesEnabled.Size = new Size(469, 29);
-            dalekSamplesEnabled.TabIndex = 7;
-            dalekSamplesEnabled.Text = "Enable Dalek sample sounds (uses 16K sideways RAM)";
-            dalekSamplesEnabled.UseVisualStyleBackColor = true;
-            dalekSamplesEnabled.CheckedChanged += sampleBasedSoundCheckBox_CheckedChanged;
+            sampleSoundsCheckbox.AutoSize = true;
+            sampleSoundsCheckbox.Location = new Point(15, 176);
+            sampleSoundsCheckbox.Name = "sampleSoundsCheckbox";
+            sampleSoundsCheckbox.Size = new Size(530, 29);
+            sampleSoundsCheckbox.TabIndex = 7;
+            sampleSoundsCheckbox.Text = "Enable sample based sounds (uses 16K or 32K sideways RAM)";
+            sampleSoundsCheckbox.UseVisualStyleBackColor = true;
             // 
             // label5
             // 
@@ -161,9 +160,9 @@ namespace LevelEditor.ux
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = cancelButton;
-            ClientSize = new Size(498, 265);
+            ClientSize = new Size(542, 265);
             Controls.Add(label5);
-            Controls.Add(dalekSamplesEnabled);
+            Controls.Add(sampleSoundsCheckbox);
             Controls.Add(cancelButton);
             Controls.Add(okButton);
             Controls.Add(jewelHealthGainComboBox);
@@ -193,7 +192,7 @@ namespace LevelEditor.ux
         private ComboBox jewelHealthGainComboBox;
         private Button okButton;
         private Button cancelButton;
-        private CheckBox dalekSamplesEnabled;
+        private CheckBox sampleSoundsCheckbox;
         private Label label5;
     }
 }
