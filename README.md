@@ -8,15 +8,15 @@ A Doctor Who themed platform game for the BBC Micro Model B, titled '**An Advent
 <img width="300" alt="level3" src="https://github.com/user-attachments/assets/97ffe41d-e558-4c4f-bc8f-657dac17487d" />
 
 **Features**
-- Docter Who title music is played whilst the title and instructions screens are shown.
+- Docter Who title music is played while the title and instructions screens are shown.
 - The game contains three levels, of increasing difficulty.
-- Sample-based sound effects (if 16K of sideways RAM is available).
+- Dalek samples are played if 16K of sideways RAM is available. Additional samples are played if 32K of sideways RAM is available.
 - Level editor, which can be used to edit and add new levels (see below).
   
 # Running the game
 The game can be run in [BeebEm](https://github.com/stardot/beebem-windows) using the disc image: **game/program.ssd**, or run on a BBC Micro model B (with MMFS Turbo support) by copying **game/program.mmd** to a micro-sd card.
 
-The game targets a BBC Model B with a floppy disc drive (or MMFS Turbo support). The game's sound effects are enhanced if 16K of sideways RAM is installed.
+The game targets a BBC Model B with a floppy disc drive (or MMFS Turbo support). The game's sound effects are enhanced if 16K or 32K of sideways RAM is installed.
 
 # Building the game
 The game was developed in Visual Studio 2022 using [BeebAsm](https://github.com/stardot/beebasm) and [BeebEm](https://github.com/stardot/beebem-windows). The Visual Studio solution (**beeb.sln**) contains five projects: **Game**, **LevelEditor**, **BMPConverter**, **MIDIConverter**, and **WAVConverter**.
@@ -68,7 +68,7 @@ This project is used to convert a type-0 MIDI file (**game\\assets\\music\\music
 To run the MIDI converter from Visual Studio, select the **MIDIConverter** project in **Solution Explorer**, select '**Set as Startup Project**' from the **Project** menu, and the press **Ctrl+F5**.
 
 ## WAV Converter
-This project is used to convert and combine Dalek sound effect 8/8K WAV files, located in **game\\assets\\samples**, into a more compact and Beeb friendly format (**game\\data\\pcm.dat**).  The game loads the samples into 16K of sideways RAM, if available. The app also generates an associated index which is embedded in **sample.6502**.
+This project is used to convert and combine sound effect 8/8K WAV files, located in **game\\assets\\samples**, into a more compact and Beeb friendly format (**game\\data\\pcm_primary.dat** and **game\\data\\pcm_secondary.dat**). The game loads the samples into 16K or 32K of sideways RAM, if available. The app also generates an associated index which is embedded in **sample.6502**.
 
 To run the WAV converter from Visual Studio, select the **WAVConverter** project in **Solution Explorer**, select '**Set as Startup Project**' from the **Project** menu, and the press **Ctrl+F5**.
 
