@@ -67,20 +67,20 @@ PAL_color_2 = &80
 PAL_color_3 = &A0
 
 \ phycical colors
-PAL_black	= (0 EOR 7)
-PAL_red		= (1 EOR 7)
-PAL_green	= (2 EOR 7)
-PAL_yellow	= (3 EOR 7)
-PAL_blue	= (4 EOR 7)
+PAL_black   = (0 EOR 7)
+PAL_red     = (1 EOR 7)
+PAL_green   = (2 EOR 7)
+PAL_yellow  = (3 EOR 7)
+PAL_blue    = (4 EOR 7)
 PAL_magenta = (5 EOR 7)
-PAL_cyan	= (6 EOR 7)
-PAL_white	= (7 EOR 7)
+PAL_cyan    = (6 EOR 7)
+PAL_white   = (7 EOR 7)
 
 MACRO PALETTE_ENTRY logicalColor, physicalColor
-	EQUB logicalColor + &00 + physicalColor
-	EQUB logicalColor + &10 + physicalColor
-	EQUB logicalColor + &40 + physicalColor
-	EQUB logicalColor + &50 + physicalColor
+    EQUB logicalColor + &00 + physicalColor
+    EQUB logicalColor + &10 + physicalColor
+    EQUB logicalColor + &40 + physicalColor
+    EQUB logicalColor + &50 + physicalColor
 ENDMACRO
 
 .relocateBlackPalette
@@ -269,27 +269,27 @@ INCBIN "data\\instructions.bin"
     STA &FE4E
 
     \ enable System-VIA Timer1 and vSync interrupts
-	LDA #&C2
+    LDA #&C2
     STA &FE4E   
 
     \ set addressable latch for writing
-	LDA #&0F
+    LDA #&0F
     STA &FE42
 
     \ set System-VIA Timer1 to one shot mode
-	LDA #0
+    LDA #0
     STA &FE4B
 
     \ set System-VIA Timer1 default length
     LDA #&FF
-	STA &FE44
+    STA &FE44
     STA &FE45  
 
     LDA primarySamplesROMSEL
     ORA secondarySamplesROMSEL
     BEQ skip
         \ set User-VIA Timer1 to continous mode
-	    LDA #&40
+        LDA #&40
         STA &FE6B
     
         \ set User-VIA Timer1 length to 1/8000th second
@@ -300,7 +300,7 @@ INCBIN "data\\instructions.bin"
     .skip
 
     \ disable all User-VIA interupts
-	LDA #&3F
+    LDA #&3F
     STA &FE6E
 
     CLI \ reenable interrupts

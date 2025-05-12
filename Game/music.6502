@@ -300,11 +300,11 @@ AMPLITUDE_PHASE_RELEASE = 3
     STA &FE4E
 
     \ enable System-VIA Timer1 & Timer2
-	LDA #&E0
+    LDA #&E0
     STA &FE4E
 
     \ set Timer1 to continous mode and Timer2 to one-shot mode
-	LDA #&40
+    LDA #&40
     STA &FE4B
 
     \ set Timer1 length to 1/100th second
@@ -315,7 +315,7 @@ AMPLITUDE_PHASE_RELEASE = 3
 
     \ set default Timer2 length
     LDA #&FF
-	STA &FE48
+    STA &FE48
     STA &FE49
 
     CLI \ re-enable interrupts

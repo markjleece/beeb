@@ -56,38 +56,38 @@
 \
 \ Memory addresses:
 \
-\   Address	 Size  Description
+\   Address  Size  Description
 \   -------  ----  -----------
 \   &0100    192   1 enemy sprite*
 \   &01C0    64    Program stack
 \   &0200    256   MOS general workspace
 \   &0300    192   1 enemy sprite*
-\   &03C0    32	   1 door sprite*
-\   &03E0    32	   Tile types* (repurposed MOS keyboard buffer)
+\   &03C0    32    1 door sprite*
+\   &03E0    32    Tile types* (repurposed MOS keyboard buffer)
 \   &0400    480   10 game objects array*
-\   &05E0    48	   Game object order array*
+\   &05E0    48    Game object order array*
 \   &0610    384   2 enemy sprites*
-\   &0790    96	   1 K9 sprite*
-\   &07F0    16	   Level palette*
+\   &0790    96    1 K9 sprite*
+\   &07F0    16    Level palette*
 \   &0800    128   MOS workspace
-\   &0880    64	   Sprite address table* (repurposed MOS printer buffer)
-\   &08C0    64	   MOS workspace
+\   &0880    64    Sprite address table* (repurposed MOS printer buffer)
+\   &08C0    64    MOS workspace
 \   &0900    960   5 enemy sprites*
-\   &0CC0    64	   2 door sprites*
-\   &0D00    32	   Enemy health bar atlas* (repurposed NMI memory)
-\   &0D20    64	   Tile address table* (repurposed NMI memory)
+\   &0CC0    64    2 door sprites*
+\   &0D00    32    Enemy health bar atlas* (repurposed NMI memory)
+\   &0D20    64    Tile address table* (repurposed NMI memory)
 \   &0D60    160   MOS ROM workspace
 \   &0E00    384   2 enemy sprites*
-\   &0F80    32	   1 door sprite*
-\   &0FA0    96	   1 K9 sprite*
+\   &0F80    32    1 door sprite*
+\   &0FA0    96    1 K9 sprite*
 \   &1000    144   DFS workspace
-\   &1090    48	   Sound effects* (repurposed transient DFS memory)
-\   &10C0    32	   DFS workspace
-\   &10E0    12	   Sprite health bar table* (repurposed transient DFS memory)
-\   &10EC    20	   Draw object jump tables* (repurposed transient DFS memory)
+\   &1090    48    Sound effects* (repurposed transient DFS memory)
+\   &10C0    32    DFS workspace
+\   &10E0    12    Sprite health bar table* (repurposed transient DFS memory)
+\   &10EC    20    Draw object jump tables* (repurposed transient DFS memory)
 \   &1100    7680  Program code
 \   &2BA0    864   9 K9 sprites*
-\   &2F00    96	   4 elevator sprites*
+\   &2F00    96    4 elevator sprites*
 \   &2F60    224   Gamebar sprites* (or sample.6502 if 16K+ of sideways RAM exists)
 \   &3040    1984  Level tiles*
 \   &3800    2048  Level tile grid*
@@ -402,7 +402,7 @@ ORG 0
 .enemyCount                 SKIP 1  \ number of enemy game objects
 .elevatorCount              SKIP 1  \ number of elevator game objects
 .doorCount                  SKIP 1  \ number of door objects
-.vsync			            SKIP 1  \ set on vsync
+.vsync                      SKIP 1  \ set on vsync
 .frameCount                 SKIP 1  \ incremented every frame
 .scrnLeftLo                 SKIP 1  \ left position of screen (low/high bytes)
 .scrnLeftHi                 SKIP 1  

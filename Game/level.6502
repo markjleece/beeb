@@ -151,21 +151,21 @@
     \ set up video 6845 CRTC
     LDX #13
     .loop
-	    STX &FE00
-	    LDA crtcRegs,X
-	    STA &FE01
-	    DEX
-	    BPL loop
+        STX &FE00
+        LDA crtcRegs,X
+        STA &FE01
+        DEX
+        BPL loop
 
     \ set up video ULA
     LDA #&D8
-	STA &FE20
+    STA &FE20
 
     \ set screen wrap to 16K
     SEI
     LDA #&0F : STA &FE42 \ set data direction register B (bits 0..3 write)
-	LDA #4 : STA &FE40   \ clear screen wraps bit 4
-	LDA #5 : STA &FE40   \ clear screen wraps bit 5
+    LDA #4 : STA &FE40   \ clear screen wraps bit 4
+    LDA #5 : STA &FE40   \ clear screen wraps bit 5
     CLI
 
     \ initialize screen address
@@ -183,20 +183,20 @@
     RTS
 
 .crtcRegs
-	EQUB 127			\ R0  horizontal total
-	EQUB 64				\ R1  horizontal displayed
-	EQUB 90             \ R2  horizontal position
-	EQUB 40				\ R3  sync width
-	EQUB 38				\ R4  vertical total
-	EQUB 0				\ R5  vertical total adjust
-	EQUB 32				\ R6  vertical displayed
-	EQUB 34				\ R7  vertical position
-	EQUB 0				\ R8  interlace
-	EQUB 7				\ R9  scanlines per row
-	EQUB 32				\ R10 cursor start
-	EQUB 8				\ R11 cursor end
-	EQUB HI(&4000/8)	\ R12 screen start address, high
-	EQUB LO(&4000/8)	\ R13 screen start address, low
+    EQUB 127            \ R0  horizontal total
+    EQUB 64             \ R1  horizontal displayed
+    EQUB 90             \ R2  horizontal position
+    EQUB 40             \ R3  sync width
+    EQUB 38             \ R4  vertical total
+    EQUB 0              \ R5  vertical total adjust
+    EQUB 32             \ R6  vertical displayed
+    EQUB 34             \ R7  vertical position
+    EQUB 0              \ R8  interlace
+    EQUB 7              \ R9  scanlines per row
+    EQUB 32             \ R10 cursor start
+    EQUB 8              \ R11 cursor end
+    EQUB HI(&4000/8)    \ R12 screen start address, high
+    EQUB LO(&4000/8)    \ R13 screen start address, low
 }
 
 \

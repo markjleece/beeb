@@ -1718,12 +1718,12 @@ ENDIF
     \ lookup left and right pixels, which we store in srcAddr and srcAddr+1
     LDA temp \ <-- health
     SEC
-	SBC #1
-	AND #&FE \ DIV 2 MUL 2
-	STA temp \ --> (health - 1) DIV 2 MUL 2
+    SBC #1
+    AND #&FE \ DIV 2 MUL 2
+    STA temp \ --> (health - 1) DIV 2 MUL 2
 
     TXA \ <-- health bar position & offset
-	AND #&7F \ mask out offset
+    AND #&7F \ mask out offset
     CLC
     ADC temp
     TAY

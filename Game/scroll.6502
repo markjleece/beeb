@@ -232,15 +232,15 @@
 
     \ Set 6845 CRTC: R13 screen start address, low
     LDA #13
-	STA &FE00
+    STA &FE00
     LDA srcAddr
-	STA &FE01
+    STA &FE01
 
     \ Set 6845 CRTC: R12 with screen start address, high
     LDA #12
-	STA &FE00
+    STA &FE00
     LDA srcAddr+1
-	STA &FE01
+    STA &FE01
 
     RTS
 }

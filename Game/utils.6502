@@ -9,12 +9,12 @@
 \
 .setBlackPalette
 {
-	LDY #15
+    LDY #15
     .loop
-	    LDA blackPalette, Y
-	    STA &FE21
-	    DEY
-	    BPL loop
+        LDA blackPalette, Y
+        STA &FE21
+        DEY
+        BPL loop
     RTS
 }
 
@@ -23,12 +23,12 @@
 \
 .setLevelPalette
 {
-	LDY #15
+    LDY #15
     .loop
-	    LDA levelPalette, Y
-	    STA &FE21
-	    DEY
-	    BPL loop
+        LDA levelPalette, Y
+        STA &FE21
+        DEY
+        BPL loop
     RTS
 }
 
@@ -79,7 +79,7 @@
 {
     \ wait for release
     .releaseLoop
-    	LDA #&62 \ space key scan code
+        LDA #&62 \ space key scan code
         JSR scanKey
         BMI releaseLoop
 
