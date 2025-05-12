@@ -375,12 +375,8 @@ levelObjectsLoaded = &4037              \ 48 x 3 byte objects descriptors (used 
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
 drawObject_tailJumpTbl = &10F6          \ 10 byte tail jump offset table (repurposes DFS &10E0-&10FF workspace)
 
-\ loadLevel page backup locations (located below Mode-7 screen memory)
-loadLevelPageBackup1 = &7A00
-loadLevelPageBackup2 = &7B00
-
-\ PCM data load address (located below loadLevel page backups)
-pcmDataLoadBuffer = &7A00 - PCM_DATA_LOAD_BUFFER_SIZE
+\ PCM data load address (located below Mode 7 screen memory)
+pcmDataLoadBuffer = &7C00 - PCM_DATA_LOAD_BUFFER_SIZE
 
 \ zero page MOS location
 zeroPageMOS = &90
@@ -1243,33 +1239,6 @@ INCLUDE "tilegrid.6502"
 \ params:
 \   A (accumulator)  Level number (1..N)
 \
-
-ASSERT (HI(P%) > &18) \ ensure loadLevel is assembled after &18FF
-
-MACRO COPY_PAGE toAddr, fromAddr 
-{
-    LDX #0
-    .loop
-        LDA fromAddr, X
-        STA toAddr, X
-        INX
-        BNE loop
-}
-ENDMACRO
-
-MACRO COPY_CLEAR_PAGE toAddr, fromAddr 
-{
-    LDX #0
-    .loop
-        LDA fromAddr, X
-        STA toAddr, X
-        LDA #0
-        STA fromAddr, X
-        INX
-        BNE loop
-}
-ENDMACRO
-
 .loadLevel
 {
     STA level \ store level
@@ -1277,14 +1246,10 @@ ENDMACRO
     \ update filename level number
     CLC
     ADC #'0'
-    STA filename+5
+    STA cmdLoadLevel+10
 
     \ set black palette
     JSR setBlackPalette
-
-    \ backup code which resides in DFS workspaces, clearing memory
-    COPY_CLEAR_PAGE loadLevelPageBackup1, &1700 
-    COPY_CLEAR_PAGE loadLevelPageBackup2, &1800
 
     \ switch to DFS
     LDX #LO(cmdDISK)
@@ -1292,27 +1257,18 @@ ENDMACRO
     JSR oscli
 
     \ load level file
-    LDX #LO(osfileBlock)
-    LDY #HI(osfileBlock)
-    LDA #&FF  
-    JSR osfile
-
-    \ restore code
-    COPY_PAGE &1700, loadLevelPageBackup1
-    COPY_PAGE &1800, loadLevelPageBackup2  
+    LDX #LO(cmdLoadLevel)
+    LDY #HI(cmdLoadLevel)
+    JSR oscli
 
     \ initialize level
     JMP initializeLevel \ implicit RTS
 
+.cmdLoadLevel
+    EQUS "LOAD level1", 13
+
 .cmdDISK
     EQUS "DISK", 13
-
-.filename
-    EQUS "level1", 13
-
-.osfileBlock
-    EQUW filename, levelLoadAddr, 0, 0
-    EQUW 0, 0  \ +6 zero bytes from vduCommands below
 }
 
 \
@@ -1395,11 +1351,11 @@ SAVE "program", start, end
 ORG &8000
 INCBIN "data\\pcm_primary.dat"
 
-SAVE "pcmP1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE)
-SAVE "pcmP2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE)
-SAVE "pcmP3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE)
-SAVE "pcmP4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE)
-SAVE "pcmP5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcmP1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmP2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmP3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmP4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmP5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 
 \
 \ secondary pcm data --> SSD 
@@ -1408,11 +1364,11 @@ CLEAR &8000, &C000
 ORG &8000
 INCBIN "data\\pcm_secondary.dat"
 
-SAVE "pcmS1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE)
-SAVE "pcmS2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE)
-SAVE "pcmS3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE)
-SAVE "pcmS4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE)
-SAVE "pcmS5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE)
+SAVE "pcmS1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmS2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmS3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmS4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmS5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 
 \
 \ level 1 --> SSD

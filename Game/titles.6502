@@ -369,19 +369,13 @@ INCBIN "data\\instructions.bin"
 \   Accumulator ROM selector
 \   X register  File qualifier: 'P' for primary, 'S' for secondary
 \
-ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
-
 .populateSidewaysRAM
 {
     \ save ROM selector in local
     STA sidewaysRamROMSEL
 
     \ set file qualifier
-    STX filename+3
-
-    \ backup code which resides in DFS workspaces, clearing memory
-    COPY_CLEAR_PAGE loadLevelPageBackup1, &1700 
-    COPY_CLEAR_PAGE loadLevelPageBackup2, &1800
+    STX cmdLoadPCMData+8
 
     \ switch to DFS
     LDX #LO(cmdDISK)
@@ -402,25 +396,12 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
 
     .loop
         \ update filename
-        LDA index : STA filename+4
+        LDA index : STA cmdLoadPCMData+9
 
-        \ initialize osfile parameter block, as previous call modifies this
-        LDA #0
-        LDY #4
-        .innerLoop
-            STA osfileParamBlock, Y
-            INY
-            CPY #18
-            BNE innerLoop
-
-        LDA #LO(pcmDataLoadBuffer) : STA osfileParamBlock+2
-        LDA #HI(pcmDataLoadBuffer) : STA osfileParamBlock+3
-
-        \ invoke osfile
-        LDX #LO(osfileParamBlock)
-        LDY #HI(osfileParamBlock)
-        LDA #&FF  
-        JSR osfile
+        \ load level file
+        LDX #LO(cmdLoadPCMData)
+        LDY #HI(cmdLoadPCMData)
+        JSR oscli
 
         \ select sideways RAM
         LDA sidewaysRamROMSEL
@@ -441,20 +422,13 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
         CMP #'6'
         BNE loop
 
-    \ restore code
-    COPY_PAGE &1700, loadLevelPageBackup1
-    COPY_PAGE &1800, loadLevelPageBackup2  
-
     RTS
 
 .cmdDISK
     EQUS "DISK", 13
 
-.filename
-    EQUS "pcmTN", 13
-
-.osfileParamBlock
-    EQUW filename, 0, 0, 0, 0, 0, 0, 0, 0
+.cmdLoadPCMData
+    EQUS "LOAD pcmTN", 13
 
 .sidewaysRamROMSEL  SKIP 1
 .dfsROMSEL          SKIP 1
