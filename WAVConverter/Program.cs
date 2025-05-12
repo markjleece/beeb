@@ -1,4 +1,11 @@
 ﻿// This file is Copyright © 2025 - Mark John Leece - All rights reserved
+//
+// This console app converts 8/8k WAV files into two packed 4/8k PCM files which
+// are packaged within the game image.
+// 
+// The app also prints address tables which are embedded in sound.6503.  If the 
+// WAV files change, the tables in sound.6502 will need updating.
+//
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
 

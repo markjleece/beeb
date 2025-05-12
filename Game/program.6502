@@ -88,7 +88,7 @@
 \   &1100    7680  Program code
 \   &2BA0    864   9 K9 sprites*
 \   &2F00    96	   4 elevator sprites*
-\   &2F60    224   Gamebar sprites*
+\   &2F60    224   Gamebar sprites* (or sample.6502 if 16K+ of sideways RAM exists)
 \   &3040    1984  Level tiles*
 \   &3800    2048  Level tile grid*
 \   &4000    16K   256x256 4-color screen**
@@ -375,8 +375,12 @@ levelObjectsLoaded = &4037              \ 48 x 3 byte objects descriptors (used 
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
 drawObject_tailJumpTbl = &10F6          \ 10 byte tail jump offset table (repurposes DFS &10E0-&10FF workspace)
 
-\ PCM data load address
-pcmDataLoadBuffer = &7C00 - PCM_DATA_LOAD_BUFFER_SIZE \ buffer is located below Mode-7 screen memory
+\ loadLevel page backup locations (located below Mode-7 screen memory)
+loadLevelPageBackup1 = &7A00
+loadLevelPageBackup2 = &7B00
+
+\ PCM data load address (located below loadLevel page backups)
+pcmDataLoadBuffer = &7A00 - PCM_DATA_LOAD_BUFFER_SIZE
 
 \ zero page MOS location
 zeroPageMOS = &90
@@ -1371,11 +1375,7 @@ INCLUDE "level.6502" \ packaged level code
 INCLUDE "titles.6502"
 INCLUDE "music.6502"
 
-\
-\ page backups (see loadLevel)
-\
-.loadLevelPageBackup1 SKIP 256
-.loadLevelPageBackup2 SKIP 256
+.lastStartupCodeAddr \ last startup code address
 
 \ guard PCM data load buffer through &7FFF
 FOR addr, pcmDataLoadBuffer, &7FFF
@@ -1457,3 +1457,4 @@ SAVE "level3", levelLoadAddr, levelEnd
 \ Report unused memory
 PRINT "Unused zero-page bytes: ", (zeroPageMOS - lastZeroPageAddr)
 PRINT "Unused code bytes: ", (k9Atlas3 - lastCodeAddr)
+PRINT "Unused code bytes (startup): ", (pcmDataLoadBuffer - lastStartupCodeAddr)

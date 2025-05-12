@@ -1,5 +1,11 @@
-﻿
-// This file is Copyright © 2025 - Mark John Leece - All rights reserved
+﻿// This file is Copyright © 2025 - Mark John Leece - All rights reserved
+//
+// This console app converts the a type-0 MIDI file (music.mid) to a 
+// Beeb friendly and compact format (music.dat) which is played
+// during titles, by music.6502.
+//
+// The app also prints a pitch table which is embedded in music.6502.
+//
 using System.Diagnostics;
 
 namespace MIDIConverter
