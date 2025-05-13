@@ -155,6 +155,7 @@
     <None Include="door.6502" />
     <None Include="draw.6502" />
     <None Include="enemy.6502" />
+    <None Include="finale.6502" />
     <None Include="k9.6502" />
     <None Include="level.6502" />
     <None Include="elevator.6502" />

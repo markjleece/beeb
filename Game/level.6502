@@ -148,11 +148,37 @@
 \
 .setCustomScreenMode
 {
+    \
+    \ first, clear the screen
+    \
+
+    \ make changes after a v-sync
+    JSR waitForVSync
+
+    \ fill Mode 7 screen memory with spaces
+    LDA #&20 \ space
+    LDY #4
+    LDX #0
+    .loop1
+        STA &7C00, X
+        INX
+        BNE loop1
+        INC loop1+2
+        DEY
+        BNE loop1
+
+    \
+    \ next, set custom screen mode (with palette set to black)
+    \
+
+    \ make changes after a v-sync
+    JSR waitForVSync
+
     \ set up video 6845 CRTC
     LDX #13
     .loop
         STX &FE00
-        LDA crtcRegs,X
+        LDA crtcRegs, X
         STA &FE01
         DEX
         BPL loop
@@ -161,12 +187,19 @@
     LDA #&D8
     STA &FE20
 
+    \ set black palette
+    JSR setBlackPalette
+
     \ set screen wrap to 16K
     SEI
     LDA #&0F : STA &FE42 \ set data direction register B (bits 0..3 write)
     LDA #4 : STA &FE40   \ clear screen wraps bit 4
     LDA #5 : STA &FE40   \ clear screen wraps bit 5
     CLI
+
+    \
+    \ finally, set game variables
+    \
 
     \ initialize screen address
     LDA #LO(&4000 + &200) : STA scrnAddr

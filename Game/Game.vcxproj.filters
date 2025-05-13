@@ -15,5 +15,6 @@
     <None Include="sound.6502" />
     <None Include="music.6502" />
     <None Include="sample.6502" />
+    <None Include="finale.6502" />
   </ItemGroup>
 </Project>

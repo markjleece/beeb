@@ -295,9 +295,10 @@ AMPLITUDE_PHASE_RELEASE = 3
     LDA #LO(music_irq) : STA IRQ1V
     LDA #HI(music_irq) : STA IRQ1V+1
 
-    \ disable all System-VIA interrupts
+    \ disable all System-VIA and User-VIA interrupts
     LDA #&7F
     STA &FE4E
+    STA &FE6E
 
     \ enable System-VIA Timer1 & Timer2
     LDA #&E0

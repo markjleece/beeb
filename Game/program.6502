@@ -1150,17 +1150,64 @@ INCLUDE "tilegrid.6502"
     JSR printMode7Text
 
     JSR waitForSpaceKeyPress
+    JSR clearPromptText
 
     \ reload level
     JMP reloadLevel \ implicit RTS
 
 .k9DiedText
-    EQUS 13, 7
+    EQUS 13, 6
     EQUS 141, "        K9's battery is flat!", 13, 1
     EQUS 13, 1
-    EQUS 141, "Your failed helping K9 find the TARDIS", 13, 1
+    EQUS 134, "   Your efforts to help K9 find the", 13, 0
+    EQUS 13, 0
+    EQUS 134, "   TARDIS have not been successful", 13, 0
     EQUS 13, 5
-    EQUS 134, "<< Press", 133, "space", 134, "key to restart level >>", 0, 0
+    EQUS 134, "<< Press", 133, "space", 134, "key to restart level >>", 0, 0 \ line 21
+}
+
+\
+\ selectDFS
+\
+\ select DFS
+\
+.selectDFS
+{
+    LDX #LO(cmdDISK)
+    LDY #HI(cmdDISK)
+    JSR oscli
+    RTS
+
+.cmdDISK
+    EQUS "DISK", 13
+}
+
+\
+\ gameComplete
+\
+\ game completed
+\
+.gameComplete
+{
+    \ silence sound effects
+    JSR silenceSoundEffects
+
+    \ set palette back, so loaded code /data does not show
+    JSR setBlackPalette
+
+    \ switch to DFS
+    JSR selectDFS
+
+    \ load finale file
+    LDX #LO(cmdLoadFinale)
+    LDY #HI(cmdLoadFinale)
+    JSR oscli
+
+    \ invoke finale
+    JMP finale \ implicit RTS
+
+.cmdLoadFinale
+    EQUS "LOAD finale", 13
 }
 
 \
@@ -1168,16 +1215,16 @@ INCLUDE "tilegrid.6502"
 \
 .levelComplete
 {
+    \ game completed?
+    LDA level
+    CMP #LEVEL_COUNT
+    BEQ gameComplete
+
     \ preamble
     JSR levelEndPreamble
 
     \ invoke sound effect
     JSR levelCompleteSoundEffect
-
-    \ game completed?
-    LDA level
-    CMP #LEVEL_COUNT
-    BEQ gameComplete
 
     \ print level complete text
     LDX #LO(levelCompleteText)
@@ -1185,6 +1232,7 @@ INCLUDE "tilegrid.6502"
     JSR printMode7Text
 
     JSR waitForSpaceKeyPress
+    JSR clearPromptText
 
     \ silence sound effects
     JSR silenceSoundEffects
@@ -1194,28 +1242,29 @@ INCLUDE "tilegrid.6502"
     LDA level
     JMP loadLevel \ implicit RTS
 
-.gameComplete
-    \ print game completed text
-    LDX #LO(gameCompleteText)
-    LDY #HI(gameCompleteText)
-    JSR printMode7Text
-
-    \ loop forever
-    .forever NOP : JMP forever
-
 .levelCompleteText
     EQUS 13, 7
     EQUS 141, "     Congrats! You've saved K9!", 13, 1
     EQUS 13, 1
     EQUS 141, "  Are you ready for the next level?", 13, 1
     EQUS 13, 5
-    EQUS 134, "  << Press", 133, "space", 134, "key to continue >>", 0, 0
+    EQUS 134, "  << Press", 133, "space", 134, "key to continue >>", 0, 0 \ line 21
+}
 
-.gameCompleteText
-    EQUS 13, 7
-    EQUS 141, "           Congratulations!", 13, 1
-    EQUS 13, 5
-    EQUS 141, "     You have completed the game!", 13, 1, 0
+\
+\ clearPromptText
+\ 
+\ clear prompt
+\
+.clearPromptText
+{
+    LDA #&20 \ space
+    LDY #39
+    .loop2
+        STA &7C00+(20*40), Y
+        DEY
+        BPL loop2
+    RTS
 }
 
 \
@@ -1252,9 +1301,7 @@ INCLUDE "tilegrid.6502"
     JSR setBlackPalette
 
     \ switch to DFS
-    LDX #LO(cmdDISK)
-    LDY #HI(cmdDISK)
-    JSR oscli
+    JSR selectDFS
 
     \ load level file
     LDX #LO(cmdLoadLevel)
@@ -1266,9 +1313,6 @@ INCLUDE "tilegrid.6502"
 
 .cmdLoadLevel
     EQUS "LOAD level1", 13
-
-.cmdDISK
-    EQUS "DISK", 13
 }
 
 \
@@ -1276,14 +1320,8 @@ INCLUDE "tilegrid.6502"
 \
 \ switch to mode 7 (with no blinking cursor)
 \
+.setMode7
 {
-.vduCommands \ declared in reverse order
-    EQUB 0, 0, 0
-    EQUB 0, 0, 0
-    EQUB 32, 10, 0, 23  \ set 6845 register R10 = 32
-    EQUB 7, 22          \ set mode 7
-
-.^setMode7
     LDY #11
     .loop
         LDA vduCommands, Y
@@ -1291,6 +1329,12 @@ INCLUDE "tilegrid.6502"
         DEY
         BPL loop
     RTS
+
+.vduCommands \ declared in reverse order
+    EQUB 0, 0, 0
+    EQUB 0, 0, 0
+    EQUB 32, 10, 0, 23  \ set 6845 register R10 = 32
+    EQUB 7, 22          \ set mode 7
 }
 
 .lastCodeAddr \ last code address
@@ -1331,19 +1375,28 @@ INCLUDE "level.6502" \ packaged level code
 INCLUDE "titles.6502"
 INCLUDE "music.6502"
 
-.lastStartupCodeAddr \ last startup code address
+.end
 
 \ guard PCM data load buffer through &7FFF
 FOR addr, pcmDataLoadBuffer, &7FFF
     GUARD addr
 NEXT
 
-.end
-
 \
 \ program --> SSD
 \
 SAVE "program", start, end
+
+\
+\ finale --> SSD
+\
+CLEAR titles, titlesEnd
+GUARD titlesEnd
+ORG titles
+INCLUDE "finale.6502" \ replaces titles.6502
+\INCLUDE "music.6502" \ packaged music code/data (INCLUDE statement unnecessary)
+
+SAVE "finale", levelEnd, end
 
 \
 \ primary pcm data --> SSD 
@@ -1413,4 +1466,5 @@ SAVE "level3", levelLoadAddr, levelEnd
 \ Report unused memory
 PRINT "Unused zero-page bytes: ", (zeroPageMOS - lastZeroPageAddr)
 PRINT "Unused code bytes: ", (k9Atlas3 - lastCodeAddr)
-PRINT "Unused code bytes (startup): ", (pcmDataLoadBuffer - lastStartupCodeAddr)
+
+\ end file

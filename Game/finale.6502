@@ -1,0 +1,81 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ Finale routines and data
+\
+
+\
+\ finale
+\
+\ show final screen
+\
+.finale
+{
+    JSR showFinaleScreen
+    JSR playMusic
+    .loop NOP : JMP loop \ loop forever
+}
+
+\
+\ showFinaleScreen()
+\
+\ Note that this routine is overwritten
+\
+.showFinaleScreen
+{
+    \ switch to mode 7
+    JSR setMode7
+
+    \ populate screen memory
+    LDA #LO(finaleTeletext) : STA srcAddr
+    LDA #HI(finaleTeletext) : STA srcAddr+1
+    JMP memcpyToScreen \ implicit RTS
+
+.finaleTeletext
+INCBIN "data\\finale.bin"
+}
+
+\
+\ memcpyToScreen(srcAddr)
+\
+\ params:
+\   srcAddr Source address
+\
+\ Modifies:
+\   dstAddr, srcAddr
+\
+.memcpyToScreen
+{
+    LDA #LO(&7C00) : STA dstAddr
+    LDA #HI(&7C00): STA dstAddr+1
+
+    \ copy pages
+    LDX #HI(1000)
+    .loop1
+        LDY #0
+        .innerloop
+            LDA (srcAddr),Y
+            STA (dstAddr),Y
+            INY
+            BNE innerloop
+
+        INC srcAddr+1
+        INC dstAddr+1
+
+        DEX
+        BNE loop1
+
+    \ copy sub-page
+    LDX #LO(1000)
+    LDY #0
+    .loop2
+        LDA (srcAddr),Y
+        STA (dstAddr),Y
+        INY
+
+        DEX
+        BNE loop2
+    RTS
+}
+
+\ end file
