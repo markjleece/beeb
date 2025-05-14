@@ -1254,7 +1254,7 @@ INCLUDE "tilegrid.6502"
 \
 \ clearPromptText
 \ 
-\ clear prompt
+\ clear prompt (line 21)
 \
 .clearPromptText
 {
@@ -1375,12 +1375,12 @@ INCLUDE "level.6502" \ packaged level code
 INCLUDE "titles.6502"
 INCLUDE "music.6502"
 
-.end
-
 \ guard PCM data load buffer through &7FFF
 FOR addr, pcmDataLoadBuffer, &7FFF
     GUARD addr
 NEXT
+
+.end
 
 \
 \ program --> SSD
@@ -1391,12 +1391,11 @@ SAVE "program", start, end
 \ finale --> SSD
 \
 CLEAR titles, titlesEnd
-GUARD titlesEnd
 ORG titles
-INCLUDE "finale.6502" \ replaces titles.6502
-\INCLUDE "music.6502" \ packaged music code/data (INCLUDE statement unnecessary)
+INCLUDE "finale.6502"   \ replaces titles.6502
+\INCLUDE "music.6502"   \ packaged music code and data (INCLUDE statement unnecessary)
 
-SAVE "finale", levelEnd, end
+SAVE "finale", finale, end
 
 \
 \ primary pcm data --> SSD 
@@ -1413,7 +1412,7 @@ SAVE "pcmP5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOA
 \
 \ secondary pcm data --> SSD 
 \
-CLEAR &8000, &C000
+CLEAR &8000, &CF00
 ORG &8000
 INCBIN "data\\pcm_secondary.dat"
 
