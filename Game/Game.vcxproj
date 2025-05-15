@@ -166,6 +166,7 @@
     <None Include="sound.6502" />
     <None Include="tilegrid.6502" />
     <None Include="titles.6502" />
+    <None Include="transition.6502" />
     <None Include="utils.6502" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

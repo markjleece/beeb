@@ -1,5 +1,6 @@
 // This file is Copyright © 2025 - Mark John Leece - All rights reserved
 using System.Diagnostics;
+using static LevelEditor.Tile;
 
 namespace LevelEditor
 {
@@ -12,8 +13,7 @@ namespace LevelEditor
         internal Settings Settings;
 
         internal const int ObjectCount = 48;
-        internal const int TileCount = 32;
-        internal const int PageCount = 8;
+        internal const int TileCount = 30;
 
         internal Level()
         {
@@ -30,7 +30,7 @@ namespace LevelEditor
 
         internal Level Clone()
         {
-            Level clone = new Level();
+            Level clone = new();
 
             clone.FilePathName = FilePathName;
 
@@ -59,7 +59,10 @@ namespace LevelEditor
 
         internal void Read(FileStream fs)
         {
-            // 31 x 64 byte tiles
+            // 16 byte palette
+            Palette.Read(fs);
+
+            // 29 x 64 byte tiles
             for (int i = 1; i < TileCount; i++)
             {
                 Tiles[i].Read(fs);
@@ -82,9 +85,6 @@ namespace LevelEditor
                 Tiles[i].Type = (Tile.TileType)tileTypes[i];
             }
 
-            // 16 byte palette
-            Palette.Read(fs);
-
             // 6 byte settings
             Settings.Read(fs);
 
@@ -101,7 +101,10 @@ namespace LevelEditor
 
         internal void Write(FileStream fs)
         {
-            // 31 x 64 byte tiles (loaded @ 0x3040) 
+            // 16 byte palette (loaded @ 30B0)
+            Palette.Write(fs);
+
+            // 29 x 64 byte tiles
             for (int i = 1; i < TileCount; i++)
             {
                 Tiles[i].Write(fs);
@@ -114,21 +117,18 @@ namespace LevelEditor
             fs.WriteByte((byte)TileGrid.Width);
             fs.WriteByte((byte)TileGrid.Height);
 
-            // 32 x 1 byte tile types
+            // 30 x 1 byte tile types
             foreach (Tile tile in Tiles)
             {
                 fs.WriteByte((byte)tile.Type);
             }
-
-            // 16 byte palette
-            Palette.Write(fs);
 
             // 6 byte settings
             Settings.Write(fs);
 
             // 48 x 3 byte objects
             Object[] objects = CollectObjects();
-            Object empty = new Object(0, 0, Object.Type_Unknown);
+            Object empty = new(0, 0, Object.Type_Unknown);
             for (int i = 0; i < ObjectCount; i++)
             {
                 if (i < objects.Length)
@@ -172,7 +172,7 @@ namespace LevelEditor
                 for (int tileX = 0; tileX < TileGrid.Width; tileX++)
                 {
                     int tileIndex = TileGrid[tileX, tileY];
-                    if (tileIndex < 32)
+                    if (tileIndex < Level.TileCount)
                     {
                         continue;
                     }
@@ -221,7 +221,7 @@ namespace LevelEditor
                 for (int tileX = 0; tileX < TileGrid.Width; tileX++)
                 {
                     int tileIndex = TileGrid[tileX, tileY];
-                    if (tileIndex >= 32)
+                    if (tileIndex >= Level.TileCount)
                     {
                         continue; // not an elevator
                     }
@@ -246,7 +246,7 @@ namespace LevelEditor
                 for (int tileY = 0; tileY < TileGrid.Height; tileY++)
                 {
                     int tileIndex = TileGrid[tileX, tileY];
-                    if (tileIndex >= 32)
+                    if (tileIndex >= Level.TileCount)
                     {
                         continue; // not a door
                     }

@@ -1,0 +1,229 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ transition routines
+\
+
+\ transition constants
+.transitionOpenConstants
+    EQUW 156 * 64       \ transitionUpperTimer
+    EQUW 4 * 64         \ transitionLowerTimer
+    EQUB HI(-8 * 64)    \ transitionUpperTimerDelta
+    EQUB 30             \ transitionCounter
+    EQUB HI(16 * 64)    \ transitionLowerTimerDelta
+    EQUB 0              \ transitionComplete
+
+.transitionCloseConstants
+    EQUW 30 * 64        \ transitionUpperTimer
+    EQUW 256 * 64       \ transitionLowerTimer
+    EQUB HI(8 * 64)     \ transitionLowerTimerDelta
+    EQUB 30             \ transitionCounter
+    EQUB HI(-16 * 64)   \ transitionLowerTimerDelta
+    EQUB 0              \ transitionComplete
+
+\
+\ updateTransition
+\
+\ invoked from the game loop.  The routine invokes the transition callback when 
+\ the transition completes
+\
+.updateTransition
+{
+    LDA transitionComplete : BEQ return
+        LDA #0
+        STA transitionComplete
+        JMP (transitionCallback) \ implicit RTS
+    .return
+    RTS
+}
+
+\
+\ cropCloseTransition
+\
+\ crop open transition
+\
+.cropCloseTransition
+{
+    \ initiate transition
+    LDX #LO(transitionCloseConstants)
+    LDY #HI(transitionCloseConstants)
+    JSR cropTransition
+
+    \ wait for completion
+    .loop
+        LDA transitionComplete
+        BEQ loop
+
+    LDA #0
+    STA transitionComplete
+
+    .return
+    RTS
+}
+
+\
+\ cropOpenTransition
+\
+\ crop open transition
+\
+.cropOpenTransition
+{
+    STX transitionCallback
+    STY transitionCallback+1
+    LDX #LO(transitionOpenConstants)
+    LDY #HI(transitionOpenConstants)
+    \ fall through to cropTransition
+}
+
+\
+\ startCropTransition
+\
+.cropTransition
+{
+    SEI \ disable interupts
+
+    \ initialize variables
+    STX srcAddr
+    STY srcAddr+1
+    LDY #7
+    .loop
+        LDA (srcAddr), Y
+        STA transitionVariables, Y
+        DEY
+        BPL loop
+
+    \ save IRQ (will be either ingame_irq or ingame_sample_irq)
+    LDA IRQ1V : STA transitionPreviousIRQ
+    LDA IRQ1V+1 : STA transitionPreviousIRQ+1
+
+    \ set IRQ 
+    LDA #LO(cropTransition_irq) : STA IRQ1V
+    LDA #HI(cropTransition_irq) : STA IRQ1V+1
+
+    \ switch System-VIA Timer1 to continous mode
+    LDA #&40
+    STA &FE4B
+    
+    \ set System-VIA Timer1 default length
+    LDA #&FF
+    STA &FE44
+    STA &FE45
+   
+    \ re-enable interrupts
+    CLI
+
+    RTS
+}
+
+\
+\ crop transition interrupt request routine
+\
+.cropTransition_irq
+{
+    \ save accumalator
+    LDA &FC : PHA
+
+    \ System-VIA vsync irq?
+    LDA &FE4D 
+    AND #2
+    BEQ try_timer_one
+        \
+        \ Handle v-sync
+        \
+        STA &FE4D \ mark interrupt as handled
+    
+        \ signal vsync
+        INC vsync
+
+        \ initiate timer for crop effect
+        LDA transitionUpperTimer : STA &FE44
+        LDA transitionUpperTimer+1 : STA &FE45
+        LDA transitionLowerTimer : STA &FE46
+        LDA transitionLowerTimer+1 : STA &FE47
+
+        \ return with RTI
+        JMP return_rti
+
+    \ System-VIA Timer1 irq?
+    .try_timer_one
+    LDA &FE4D
+    AND #&40
+    BEQ try_mos
+        \
+        \ Handle Timer1
+        \
+        LDA &FE44 \ mark interrupt as handled
+
+        \ decrement counter
+        DEC transitionCounter
+        BEQ stop_transition
+
+        \ save Y
+        TYA : PHA
+
+        \ set palette
+        LDA transitionCounter
+        AND #1 : BEQ else
+
+            JSR setLevelPalette
+
+            \ restore Y
+            PLA : TAY
+
+            \ return with RTI
+            JMP return_rti
+
+        .else
+            JSR setBlackPalette
+
+            \ transitionUpperTimer += transitionUpperTimerDelta
+            \ transitionLowerTimer += transitionLowerTimerDelta
+            LDY #2
+            .loop
+                CLC
+                LDA transitionUpperTimer+1, Y
+                ADC transitionUpperTimerDelta, Y
+                STA transitionUpperTimer+1, Y
+                DEY
+                DEY
+                BPL loop
+
+            \ restore Y
+            PLA : TAY
+
+            \ set default timer
+            LDA #&FF
+            STA &FE44
+            STA &FE45
+
+    .try_mos
+
+    \ restore accumulator, updating &FC
+    PLA : STA &FC
+
+    \ pass System-VIA Timer1 irq to MOS, which processes sounds using this timer
+    JMP (mosIRQ1V) \ implicit RTI
+
+.stop_transition
+    \ restore IRQ
+    LDA transitionPreviousIRQ : STA IRQ1V
+    LDA transitionPreviousIRQ+1 : STA IRQ1V+1
+
+    \ restore System-VIA Timer1 to one-shot mode
+    LDA #0
+    STA &FE4B
+
+    \ mark transition as complete
+    INC transitionComplete
+
+    \ fall through to return RTI
+
+.return_rti
+    \ restore accumulator, updating &FC
+    PLA : STA &FC
+
+    \ just return (we don't want MOS to process System-VIA v-sync irqs)
+    RTI
+}
+
+\ end file

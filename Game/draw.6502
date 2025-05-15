@@ -83,7 +83,7 @@ ELSE
 
     RTS
 
-    SKIP 155 \ report same number of unsued code/data bytes
+    SKIP 144 \ report same number of unsued code/data bytes
 ENDIF
 }
 
@@ -408,8 +408,8 @@ ENDIF
 .drawVertTileScrollStrip
 {
     \ offsetY = 0
-    \ offsetX = scroll-down ? 248 : 0
-    \ X/Y = LO/HI(scroll-down ? 512-16 : 0)
+    \ offsetX = scroll-right ? 248 : 0
+    \ X/Y = LO/HI(scroll-right ? 512-16 : 0)
     LDA #0 : STA offsetY
     TAX : TAY
     BIT scrollDirection : BMI skip

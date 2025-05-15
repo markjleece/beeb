@@ -7,8 +7,8 @@ namespace LevelEditor
         {
             LevelData = levelData;
             TileIndex = tileIndex;
-            OldTile = levelData.Tiles[tileIndex < 32 ? tileIndex : 0].Clone();
-            NewTile = levelData.Tiles[tileIndex < 32 ? tileIndex : 0].Clone();
+            OldTile = levelData.Tiles[tileIndex < Level.TileCount ? tileIndex : 0].Clone();
+            NewTile = levelData.Tiles[tileIndex < Level.TileCount ? tileIndex : 0].Clone();
         }
 
         internal override bool Execute()

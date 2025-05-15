@@ -292,7 +292,7 @@ namespace LevelEditor
             int tileIndex = TileSelectedPanel_HitTest(e.X, e.Y);
             if (tileIndex != -1 && tileIndex != SelectedTileIndex)
             {
-                bool updateButtons = ((tileIndex < 32) != (SelectedTileIndex < 32));
+                bool updateButtons = ((tileIndex < Level.TileCount) != (SelectedTileIndex < Level.TileCount));
 
                 Rectangle rect = GetTileSelectorRect(SelectedTileIndex);
                 tileSelectorPanel.Invalidate(rect);
@@ -317,7 +317,7 @@ namespace LevelEditor
             }
 
             // regenerate bitmaps
-            for (int i = 0; i < 32; i++)
+            for (int i = 0; i < Level.TileCount; i++)
             {
                 CachedTileSelectorBitmaps[i] = GenerateCachedBitmap(
                     LevelData.Tiles[i],
@@ -328,7 +328,7 @@ namespace LevelEditor
 
             for (int i = 0; i < 6; i++)
             {
-                CachedTileSelectorBitmaps[i + 32] = GeneratorCachedObjectBitmap(
+                CachedTileSelectorBitmaps[i + Level.TileCount] = GenerateCachedObjectBitmap(
                     i,
                     TileSelectorTileSize,
                     TileSelectorTileSize,
@@ -458,7 +458,7 @@ namespace LevelEditor
 
         private void TileGridPanel_MouseMove(object sender, MouseEventArgs e)
         {
-            if (SelectedTileIndex >= 32)
+            if (SelectedTileIndex >= Level.TileCount)
             {
                 return; // object tile!
             }
@@ -643,7 +643,7 @@ namespace LevelEditor
             }
 
             // regenerate bitmaps
-            for (int i = 0; i < 32; i++)
+            for (int i = 0; i < Level.TileCount; i++)
             {
                 CachedTileGridBitmaps[i] = GenerateCachedBitmap(
                     LevelData.Tiles[i],
@@ -654,7 +654,7 @@ namespace LevelEditor
 
             for (int i = 0; i < 6; i++)
             {
-                CachedTileGridBitmaps[i + 32] = GeneratorCachedObjectBitmap(
+                CachedTileGridBitmaps[i + Level.TileCount] = GenerateCachedObjectBitmap(
                     i,
                     TileGridTileSize,
                     TileGridTileSize,
@@ -692,7 +692,7 @@ namespace LevelEditor
             return cachedBitmap;
         }
 
-        CachedBitmap GeneratorCachedObjectBitmap(int index, int width, int height, Graphics graphics)
+        CachedBitmap GenerateCachedObjectBitmap(int index, int width, int height, Graphics graphics)
         {
             Bitmap scaledBitmap = new(ObjectBitmaps[index], width, height);
             return new CachedBitmap(scaledBitmap, graphics);
@@ -953,9 +953,9 @@ namespace LevelEditor
             undoButton.Enabled = UndoRedoHistory.CanUndo();
             redoButton.Enabled = UndoRedoHistory.CanRedo();
 
-            freeformModeButton.Enabled = (SelectedTileIndex < 32);
-            lineModeButton.Enabled = (SelectedTileIndex < 32);
-            rectModeButton.Enabled = (SelectedTileIndex < 32);
+            freeformModeButton.Enabled = (SelectedTileIndex < Level.TileCount);
+            lineModeButton.Enabled = (SelectedTileIndex < Level.TileCount);
+            rectModeButton.Enabled = (SelectedTileIndex < Level.TileCount);
 
             freeformModeButton.Checked = (_DrawMode == DrawMode.Freeform);
             lineModeButton.Checked = (_DrawMode == DrawMode.Line);
@@ -968,7 +968,7 @@ namespace LevelEditor
                 "The main panel shows the design of the level. Its layout can be modified by using the 'Select Layout' button.\n\n" +
                 "Tiles can be set by first selecting a tile from the left palette, and then clicking and draging within the main panel.\n\n" +
                 "The current draw mode (freeform, line, rectangle) effects how tiles are drawn when dragging the mouse.\n\n" +
-                "The left panel shows a palette of 32 tiles, plus six 'object' tiles which can be used to place K9 and enemies.\n\n" +
+                "The left panel shows a palette of 30 tiles, plus six 'object' tiles which can be used to place K9 and enemies.\n\n" +
                 "The background tile is implicitly selected when the right mouse button is used.\n\n" +
                 "Tiles can be edited by double clicking on them within the left palette. The background tile and object tiles cannot be edited.\n\n" +
                 "Tiles also have a type, which effects their behavior within the game.\n\n" +
@@ -1001,7 +1001,7 @@ namespace LevelEditor
         private CachedBitmap[] CachedTileGridBitmaps = new CachedBitmap[TileSelectorCount];
         private readonly Bitmap[] ObjectBitmaps = new Bitmap[6];
 
-        private const int TileSelectorCount = 38; // 32 regular tiles + 6 object tiles
+        private const int TileSelectorCount = 36; // 30 regular tiles + 6 object tiles
     }
 
     public partial class TileSelectorPanel : Panel

@@ -369,6 +369,9 @@ INCBIN "data\\instructions.bin"
 \   Accumulator ROM selector
 \   X register  File qualifier: 'P' for primary, 'S' for secondary
 \
+
+ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
+
 .populateSidewaysRAM
 {
     \ save ROM selector in local
@@ -377,10 +380,11 @@ INCBIN "data\\instructions.bin"
     \ set file qualifier
     STX cmdLoadPCMData+8
 
+    \ backup code which resides in DFS workspaces, clearing memory
+    COPY_CLEAR_PAGE loadLevelPageBackup, &1700 
+
     \ switch to DFS
-    LDX #LO(cmdDISK)
-    LDY #HI(cmdDISK)
-    JSR oscli
+    JSR selectDFS
 
     \ save DFS ROM selector
     LDA &F4 : STA dfsROMSEL
@@ -422,10 +426,10 @@ INCBIN "data\\instructions.bin"
         CMP #'6'
         BNE loop
 
-    RTS
+    \ restore code
+    COPY_PAGE &1700, loadLevelPageBackup
 
-.cmdDISK
-    EQUS "DISK", 13
+    RTS
 
 .cmdLoadPCMData
     EQUS "LOAD pcmTN", 13

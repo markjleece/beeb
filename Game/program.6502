@@ -16,10 +16,10 @@
 \   | Paged ROMs                      |
 \   +---------------------------------+ &8000
 \   | Screen (256x256, 4 color mode)  |
-\   +---------------------------------+ &4000 
+\   +---------------------------------+ &4000
 \   | Game data (portions reloaded)   |
-\   +---------------------------------+ &2BA0
-\   | Game code (7680 bytes)          |
+\   +---------------------------------+ &2C10
+\   | Game code (7792 bytes)          |
 \   +---------------------------------+ &1100
 \   | Game data (portions reloaded)   | 
 \   +---------------------------------+ &10E0
@@ -68,7 +68,7 @@
 \   &05E0    48    Game object order array*
 \   &0610    384   2 enemy sprites*
 \   &0790    96    1 K9 sprite*
-\   &07F0    16    Level palette*
+\   &07F0    16    Black palette*
 \   &0800    128   MOS workspace
 \   &0880    64    Sprite address table* (repurposed MOS printer buffer)
 \   &08C0    64    MOS workspace
@@ -85,11 +85,12 @@
 \   &10C0    32    DFS workspace
 \   &10E0    12    Sprite health bar table* (repurposed transient DFS memory)
 \   &10EC    20    Draw object jump tables* (repurposed transient DFS memory)
-\   &1100    7680  Program code
-\   &2BA0    864   9 K9 sprites*
-\   &2F00    96    4 elevator sprites*
-\   &2F60    224   Gamebar sprites* (or sample.6502 if 16K+ of sideways RAM exists)
-\   &3040    1984  Level tiles*
+\   &1100    7792  Program code
+\   &2C10    864   9 K9 sprites*
+\   &2F70    96    4 elevator sprites*
+\   &2FD0    224   Gamebar sprites* (or sample.6502 if 16K+ of sideways RAM exists)
+\   &30B0    16    Level palette*
+\   &30C0    1856  Level tiles*
 \   &3800    2048  Level tile grid*
 \   &4000    16K   256x256 4-color screen**
 \
@@ -336,11 +337,11 @@ enemyAtlas5 = &E00
 doorAtlas1 = &3C0
 doorAtlas2 = &CC0
 doorAtlas3 = &F80
-elevatorAtlas = &2F00
+elevatorAtlas = &2F70
 k9Atlas1 = &790
 k9Atlas2 = &FA0
-k9Atlas3 = &2BA0
-gamebarAtlas = &2F60
+k9Atlas3 = &2C10
+gamebarAtlas = &2FD0
 gamebarAtlas_sidewaysRAM = &BF20        \ location when 16K sideways RAM is detected
 healthBarAtlas = &0D02                  \ 30 byte atlas (repurposes NMI workspace)
 
@@ -351,32 +352,35 @@ soundEffects = &1090                    \ 44 byte sound effect data (repurposes 
 spriteAddrTbl = &0880                   \ 64 byte sprite address table (repurposes MOS printer buffer)
 spriteHealthBarTbl = &10E0              \ 12 byte sprite health bar table (repurposes DFS &10E0-&10FF workspace)
 tileAddrTbl = &0D20                     \ 64 byte tile address table (repurposes NMI workspace)
+blackPalette = &07F0
 
 \ level data locations
-levelLoadAddr = &3040                   \ address where level data is loaded
-levelTiles = &3040                      \ 31 x 64 byte tiles.  Each tile contain two character rows of texel quads. Tiles are indexed from 1. Tile 0 is implicitly filled with zeros.
+levelLoadAddr = &30B0                   \ address where level data is loaded
+levelPalette = &30B0                    \ 16 byte level palette
+levelTiles = &30C0                      \ 29 x 64 byte tiles.  Each tile contain two character rows of texel quads. Tiles are indexed from 1. Tile 0 is implicitly filled with zeros.
 levelTileGrid = &3800                   \ 2K of tile values (flags/indicies)
 levelTileTypes = &03E0                  \ 32 x 1-byte tile types (repurposes MOS keyboard buffer)
-levelPalette = &07F0                    \ 16 byte level palette
 
 \ level load locations (data loaded into screen memory and relocated)
 levelHorzTileCountLoaded = &4000        \ level width in tiles (copied to horzTileCount)
 levelVertTileCountLoaded = &4001        \ level height in tiles (used to calculate scrnTopHiMaxMinusOne)
 levelTileTypesLoaded = &4002            \ level tile types (relocated to levelTileTypes)
-levelPaletteLoaded = &4022              \ level palette (relocated to levelPalette)
-levelEnemyWeaponStrengthLoaded = &4032  \ level enemy weapon strength (relocated to enemyWeaponStrength)
-levelLaserStrengthLoaded = &4033        \ level laser strength (relocated to laserStrength)
-levelLaserHealthDrainLoaded = &4034     \ level laser health drain (relocated to laserHealthDrain)
-levelJewelHealthGainHiLoaded = &4035    \ level jewel health gain (relocated to jewelHealthGainHi)
-levelSampleSoundsEnabledLoaded = &4036  \ level sound samples enabled flag (used in setting primarySamplesEnabled and secondarySamplesEnabled)
-levelObjectsLoaded = &4037              \ 48 x 3 byte objects descriptors (used to populate game objects)
+levelEnemyWeaponStrengthLoaded = &4020  \ level enemy weapon strength (relocated to enemyWeaponStrength)
+levelLaserStrengthLoaded = &4021        \ level laser strength (relocated to laserStrength)
+levelLaserHealthDrainLoaded = &4022     \ level laser health drain (relocated to laserHealthDrain)
+levelJewelHealthGainHiLoaded = &4023    \ level jewel health gain (relocated to jewelHealthGainHi)
+levelSampleSoundsEnabledLoaded = &4024  \ level sound samples enabled flag (used in setting primarySamplesEnabled and secondarySamplesEnabled)
+levelObjectsLoaded = &4025              \ 48 x 3 byte objects descriptors (used to populate game objects)
 
 \ drawObject head and tail jump offset tables
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
 drawObject_tailJumpTbl = &10F6          \ 10 byte tail jump offset table (repurposes DFS &10E0-&10FF workspace)
 
-\ PCM data load address (located below Mode 7 screen memory)
-pcmDataLoadBuffer = &7C00 - PCM_DATA_LOAD_BUFFER_SIZE
+\ loadLevel page backup (see loadLevel)
+loadLevelPageBackup = &7B00
+
+\ PCM data load address (located below page backup)
+pcmDataLoadBuffer = &7B00 - PCM_DATA_LOAD_BUFFER_SIZE
 
 \ zero page MOS location
 zeroPageMOS = &90
@@ -388,7 +392,6 @@ ORG 0
 
 \ persistent data (values persist across frames)
 .zeroMemory32               SKIP 32 \ 32-byte zero memory (located here to catch errant writes)
-.blackPalette               SKIP 16 \ black palette (resides here as there is space)
 .mosIRQ1V                   SKIP 2  \ MOS IRQ vector
 .pcmDataAddr                SKIP 2  \ PCM data address
 .scrnAddr                   SKIP 2  \ top left screen address
@@ -436,6 +439,15 @@ ORG 0
 .primarySamplesROMSEL       SKIP 1  \ primary samples ROM selector (zero denotes no sideways RAM)
 .secondarySamplesEnabled    SKIP 1  \ secondary samples enabled flag
 .secondarySamplesROMSEL     SKIP 1  \ secondary samples ROM selector (zero denotes no additional sideways RAM)
+.transitionVariables                \ transition variables (the next six variables should not be moved or reordered)
+.transitionUpperTimer       SKIP 2  \ timer for controlling position of upper palette change
+.transitionLowerTimer       SKIP 2  \ timer for controlling position of lower palette change
+.transitionUpperTimerDelta  SKIP 1  \ delta time for adjusting upper position timer
+.transitionCounter          SKIP 1  \ transition counter
+.transitionLowerTimerDelta  SKIP 1  \ delta time for adjusting lower position timer
+.transitionComplete         SKIP 1  \ transition complete flag
+.transitionPreviousIRQ      SKIP 2  \ IRQ1V prior to invoking transition
+.transitionCallback         SKIP 2  \ transition callback, invoked when crop open transition completes
 
 \ transient data (values do not persist across frames)
 .soundParams                SKIP 8  
@@ -452,10 +464,10 @@ ORG 0
 .rightHi                    SKIP 1
 .bottomLo                   SKIP 1
 .bottomHi                   SKIP 1
-.sizeLo                     SKIP 0
 .offsetX                    SKIP 1
-.sizeHi                     SKIP 0
 .offsetY                    SKIP 1
+.sizeLo                     SKIP 1
+.sizeHi                     SKIP 1
 .index                      SKIP 1
 .outerIndex                 SKIP 1
 .stride                     SKIP 1
@@ -520,6 +532,7 @@ ORG &1100
         JSR enemyAI
         JSR updateObjects
         JSR updateSoundEffects
+        JSR updateTransition
         JMP gameLoop
 }
 
@@ -536,6 +549,7 @@ INCLUDE "enemy.6502"
 INCLUDE "elevator.6502"
 INCLUDE "door.6502"
 INCLUDE "tilegrid.6502"
+INCLUDE "transition.6502"
 
 \
 \ in-game interrupt request routine
@@ -588,11 +602,14 @@ INCLUDE "tilegrid.6502"
     \ draw tile background
     JSR drawTileBackground
 
-    \ wait for v-sync before switching palette
-    JSR waitForVSync
+    \ start crop open transition
+    LDX #LO(callback)
+    LDY #HI(callback)
+    JMP cropOpenTransition \ implicit RTS
 
+.callback
     \ set level palette
-    JSR setLevelPalette 
+    JSR setLevelPalette
 
     \ invoke sound effect
     JMP (secondarySoundVector_startLevel) \ implicit RTS
@@ -1105,6 +1122,12 @@ INCLUDE "tilegrid.6502"
 \ 
 .levelEndPreamble
 {
+    \ close transition
+    JSR cropCloseTransition
+
+    \ set palette black
+    JSR setBlackPalette
+
     \ wait for v-sync
     JSR waitForVSync
 
@@ -1170,12 +1193,6 @@ INCLUDE "tilegrid.6502"
 \
 .gameComplete
 {
-    \ silence sound effects
-    JSR silenceSoundEffects
-
-    \ set palette back, so loaded code /data does not show
-    JSR setBlackPalette
-
     \ switch to DFS
     JSR selectDFS
 
@@ -1196,13 +1213,13 @@ INCLUDE "tilegrid.6502"
 \
 .levelComplete
 {
+    \ preamble
+    JSR levelEndPreamble
+
     \ game completed?
     LDA level
     CMP #LEVEL_COUNT
     BEQ gameComplete
-
-    \ preamble
-    JSR levelEndPreamble
 
     \ invoke sound effect
     JSR levelCompleteSoundEffect
@@ -1253,6 +1270,9 @@ INCLUDE "tilegrid.6502"
 \
 .reloadLevel
 {
+    \ close transition
+    JSR cropCloseTransition
+
     \ silence sound effects
     JSR silenceSoundEffects
 
@@ -1269,6 +1289,33 @@ INCLUDE "tilegrid.6502"
 \ params:
 \   A (accumulator)  Level number (1..N)
 \
+
+ASSERT (HI(P%) > &18) \ ensure loadLevel is assembled after &18FF
+
+MACRO COPY_CLEAR_PAGE toAddr, fromAddr 
+{
+    LDX #0
+    .loop
+        LDA fromAddr, X
+        STA toAddr, X
+        LDA #0
+        STA fromAddr, X
+        INX
+        BNE loop
+}
+ENDMACRO
+
+MACRO COPY_PAGE toAddr, fromAddr 
+{
+    LDX #0
+    .loop
+        LDA fromAddr, X
+        STA toAddr, X
+        INX
+        BNE loop
+}
+ENDMACRO
+
 .loadLevel
 {
     STA level \ store level
@@ -1281,6 +1328,9 @@ INCLUDE "tilegrid.6502"
     \ set black palette
     JSR setBlackPalette
 
+    \ backup code which resides in DFS workspaces, clearing memory
+    COPY_CLEAR_PAGE loadLevelPageBackup, &1700 
+
     \ switch to DFS
     JSR selectDFS
 
@@ -1288,6 +1338,9 @@ INCLUDE "tilegrid.6502"
     LDX #LO(cmdLoadLevel)
     LDY #HI(cmdLoadLevel)
     JSR oscli
+
+    \ restore code
+    COPY_PAGE &1700, loadLevelPageBackup
 
     \ initialize level
     JMP initializeLevel \ implicit RTS

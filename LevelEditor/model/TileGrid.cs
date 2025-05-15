@@ -58,7 +58,7 @@ namespace LevelEditor
                 }
 
                 // get opacity and collectable flags
-                int flags = (int)(tiles[index].Type) & TileFlagsMask;
+                int flags = (int)tiles[index].Type & TileFlagsMask;
 
                 fs.WriteByte((byte)(flags | index));
             }
@@ -117,11 +117,11 @@ namespace LevelEditor
         internal byte[] TileIndices;
 
         // special indices
-        internal const int K9LookLeft = 32;
-        internal const int K9LookRight = 33;
-        internal const int EnemyLookLeft = 34;
-        internal const int EnemyLookRight = 35;
-        internal const int EnemyMoveLeft = 36;
-        internal const int EnemyMoveRight = 37;
+        internal const int K9LookLeft = 30;
+        internal const int K9LookRight = 31;
+        internal const int EnemyLookLeft = 32;
+        internal const int EnemyLookRight = 33;
+        internal const int EnemyMoveLeft = 34;
+        internal const int EnemyMoveRight = 35;
     }
 }

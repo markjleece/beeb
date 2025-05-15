@@ -442,20 +442,6 @@
 .relocateLevelData
 {
     \
-    \ relocate palette
-    \
-    LDA #LO(levelPaletteLoaded) : STA srcAddr
-    LDA #HI(levelPaletteLoaded) : STA srcAddr+1
-
-    LDA #LO(levelPalette) : STA dstAddr
-    LDA #HI(levelPalette) : STA dstAddr+1
-
-    LDA #LO(16) : STA sizeLo
-    LDA #HI(16) : STA sizeHi
-
-    JSR memcpy
-
-    \
     \ relocate tile types
     \
     LDA #LO(levelTileTypesLoaded) : STA srcAddr
@@ -464,8 +450,8 @@
     LDA #LO(levelTileTypes) : STA dstAddr
     LDA #HI(levelTileTypes) : STA dstAddr+1
 
-    LDA #LO(32) : STA sizeLo
-    LDA #HI(32) : STA sizeHi
+    LDA #LO(30) : STA sizeLo
+    LDA #HI(30) : STA sizeHi
 
     JSR memcpy
 
