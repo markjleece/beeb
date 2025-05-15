@@ -322,6 +322,11 @@ SAMPLE_TARDIS_DOOR = 5
 \ frame counter used to repeat exterminate sample
 SAMPLE_EXTERMINATE_FRAME_COUNT = 100
 
+\ crop transition flags
+TRANSITION_VOID = 0
+TRANSITION_RUNNING = 1
+TRANSITION_COMPLETE = -1
+
 \ frame counter used to inhibit move sound effects
 INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT = 30
 
@@ -445,8 +450,8 @@ ORG 0
 .transitionUpperTimerDelta  SKIP 1  \ delta time for adjusting upper position timer
 .transitionCounter          SKIP 1  \ transition counter
 .transitionLowerTimerDelta  SKIP 1  \ delta time for adjusting lower position timer
-.transitionComplete         SKIP 1  \ transition complete flag
-.transitionPreviousIRQ      SKIP 2  \ IRQ1V prior to invoking transition
+.transitionState            SKIP 1  \ transition state: TRANSITION_VOID, TRANSITION_RUNNING, TRANSITION_COMPLETE
+.transitionPreviousIRQ1V    SKIP 2  \ IRQ1V prior to invoking transition
 .transitionCallback         SKIP 2  \ transition callback, invoked when crop open transition completes
 
 \ transient data (values do not persist across frames)
@@ -532,7 +537,7 @@ ORG &1100
         JSR enemyAI
         JSR updateObjects
         JSR updateSoundEffects
-        JSR updateTransition
+        JSR transitionCallbackNotifier
         JMP gameLoop
 }
 
@@ -605,7 +610,7 @@ INCLUDE "transition.6502"
     \ start crop open transition
     LDX #LO(callback)
     LDY #HI(callback)
-    JMP cropOpenTransition \ implicit RTS
+    JMP startCropOpenTransition \ implicit RTS
 
 .callback
     \ set level palette
@@ -1122,7 +1127,7 @@ INCLUDE "transition.6502"
 \ 
 .levelEndPreamble
 {
-    \ close transition
+    \ crop close transition
     JSR cropCloseTransition
 
     \ set palette black
@@ -1191,6 +1196,8 @@ INCLUDE "transition.6502"
 \
 \ game completed
 \
+ASSERT (HI(P%) > &17) \ ensure gameComplete is assembled after &17FF
+
 .gameComplete
 {
     \ switch to DFS
@@ -1262,6 +1269,15 @@ INCLUDE "transition.6502"
         STA &7C00+(20*40), Y
         DEY
         BPL loop2
+
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_8
+{
     RTS
 }
 
@@ -1270,11 +1286,14 @@ INCLUDE "transition.6502"
 \
 .reloadLevel
 {
-    \ close transition
-    JSR cropCloseTransition
+    \ return if a crop transition is in progress
+    LDA transitionState : BNE rts_8
 
     \ silence sound effects
     JSR silenceSoundEffects
+
+    \ crop close transition
+    JSR cropCloseTransition
 
     LDA level
     \ fall through to loadLevel
@@ -1289,8 +1308,7 @@ INCLUDE "transition.6502"
 \ params:
 \   A (accumulator)  Level number (1..N)
 \
-
-ASSERT (HI(P%) > &18) \ ensure loadLevel is assembled after &18FF
+ASSERT (HI(P%) > &17) \ ensure loadLevel is assembled after &17FF
 
 MACRO COPY_CLEAR_PAGE toAddr, fromAddr 
 {
@@ -1354,6 +1372,8 @@ ENDMACRO
 \
 \ switch to mode 7 (with no blinking cursor)
 \
+ASSERT (HI(P%) > &17) \ ensure setMode7 is assembled after &17FF
+
 .setMode7
 {
     LDY #11

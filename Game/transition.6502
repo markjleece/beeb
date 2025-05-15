@@ -6,41 +6,46 @@
 
 \ transition constants
 .transitionOpenConstants
-    EQUW 156 * 64       \ transitionUpperTimer
-    EQUW 4 * 64         \ transitionLowerTimer
-    EQUB HI(-8 * 64)    \ transitionUpperTimerDelta
-    EQUB 30             \ transitionCounter
-    EQUB HI(16 * 64)    \ transitionLowerTimerDelta
-    EQUB 0              \ transitionComplete
+    EQUW 156 * 64           \ transitionUpperTimer
+    EQUW 4 * 64             \ transitionLowerTimer
+    EQUB HI(-8 * 64)        \ transitionUpperTimerDelta
+    EQUB 30                 \ transitionCounter
+    EQUB HI(16 * 64)        \ transitionLowerTimerDelta
+    EQUB TRANSITION_RUNNING \ transitionState
 
 .transitionCloseConstants
-    EQUW 30 * 64        \ transitionUpperTimer
-    EQUW 256 * 64       \ transitionLowerTimer
-    EQUB HI(8 * 64)     \ transitionLowerTimerDelta
-    EQUB 30             \ transitionCounter
-    EQUB HI(-16 * 64)   \ transitionLowerTimerDelta
-    EQUB 0              \ transitionComplete
+    EQUW 30 * 64            \ transitionUpperTimer
+    EQUW 256 * 64           \ transitionLowerTimer
+    EQUB HI(8 * 64)         \ transitionLowerTimerDelta
+    EQUB 30                 \ transitionCounter
+    EQUB HI(-16 * 64)       \ transitionLowerTimerDelta
+    EQUB TRANSITION_RUNNING \ transitionState
 
 \
-\ updateTransition
+\ transitionCallbackNotifier
 \
-\ invoked from the game loop.  The routine invokes the transition callback when 
-\ the transition completes
+\ invoked by the game loop
 \
-.updateTransition
+\ The routine invokes the transition callback when 
+\ an crop open transition completes
+\
+.transitionCallbackNotifier
 {
-    LDA transitionComplete : BEQ return
-        LDA #0
-        STA transitionComplete
-        JMP (transitionCallback) \ implicit RTS
-    .return
-    RTS
+    \ if (transitionState == COMPLETE) return
+    LDA transitionState : BPL rts_9
+
+    \ transitionState == TRANSITION_VOID
+    LDA #TRANSITION_VOID
+    STA transitionState
+
+    \ invoke callback
+    JMP (transitionCallback) \ implicit RTS
 }
 
 \
 \ cropCloseTransition
 \
-\ crop open transition
+\ performs a crop close transition, returning when the transition completes
 \
 .cropCloseTransition
 {
@@ -49,27 +54,41 @@
     LDY #HI(transitionCloseConstants)
     JSR cropTransition
 
-    \ wait for completion
+    \ wait for until transitionState is TRANSITION_COMPLETE
     .loop
-        LDA transitionComplete
-        BEQ loop
+        LDA transitionState
+        BPL loop
 
-    LDA #0
-    STA transitionComplete
+    \ transitionState == TRANSITION_VOID
+    LDA #TRANSITION_VOID
+    STA transitionState
 
-    .return
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_9
+{
     RTS
 }
 
 \
-\ cropOpenTransition
+\ startCropOpenTransition(callback)
 \
-\ crop open transition
+\ starts a crop open transition. The passed callback is invoked by the 
+\ transitionCallbackNotifier routine when the transition completes
 \
-.cropOpenTransition
+\ params:
+\   X register      Callback address (low byte)
+\   Y register      Callback address (high byte)
+\
+.startCropOpenTransition
 {
     STX transitionCallback
     STY transitionCallback+1
+
     LDX #LO(transitionOpenConstants)
     LDY #HI(transitionOpenConstants)
     \ fall through to cropTransition
@@ -77,6 +96,10 @@
 
 \
 \ startCropTransition
+\
+\ params:
+\   X register      Transition constants (low byte)
+\   Y register      Transition constants (high byte)
 \
 .cropTransition
 {
@@ -93,8 +116,8 @@
         BPL loop
 
     \ save IRQ (will be either ingame_irq or ingame_sample_irq)
-    LDA IRQ1V : STA transitionPreviousIRQ
-    LDA IRQ1V+1 : STA transitionPreviousIRQ+1
+    LDA IRQ1V : STA transitionPreviousIRQ1V
+    LDA IRQ1V+1 : STA transitionPreviousIRQ1V+1
 
     \ set IRQ 
     LDA #LO(cropTransition_irq) : STA IRQ1V
@@ -132,7 +155,7 @@
         \
         STA &FE4D \ mark interrupt as handled
     
-        \ signal vsync
+        \ signal vsync (so game loop can continue to run)
         INC vsync
 
         \ initiate timer for crop effect
@@ -141,7 +164,7 @@
         LDA transitionLowerTimer : STA &FE46
         LDA transitionLowerTimer+1 : STA &FE47
 
-        \ return with RTI
+        \ return with RTI (we don't want MOS processing v-syncs)
         JMP return_rti
 
     \ System-VIA Timer1 irq?
@@ -156,24 +179,32 @@
 
         \ decrement counter
         DEC transitionCounter
-        BEQ stop_transition
+        BEQ stop_transition \ end transition?
 
         \ save Y
         TYA : PHA
 
-        \ set palette
         LDA transitionCounter
         AND #1 : BEQ else
+            \
+            \ Top crop boundary
+            \
 
+            \ set palette
             JSR setLevelPalette
 
             \ restore Y
             PLA : TAY
 
-            \ return with RTI
+            \ return with RTI (we don't want MOS processing sounds at the top crop boundary)
             JMP return_rti
 
         .else
+            \
+            \ Bottom crop boundary
+            \
+
+            \ set palette
             JSR setBlackPalette
 
             \ transitionUpperTimer += transitionUpperTimerDelta
@@ -191,10 +222,12 @@
             \ restore Y
             PLA : TAY
 
-            \ set default timer
+            \ set default timer (so no further interrupts occur this frame)
             LDA #&FF
             STA &FE44
             STA &FE45
+
+            \ fall through to let MOS process sounds at the bottom crop boundary
 
     .try_mos
 
@@ -205,20 +238,23 @@
     JMP (mosIRQ1V) \ implicit RTI
 
 .stop_transition
+
     \ restore IRQ
-    LDA transitionPreviousIRQ : STA IRQ1V
-    LDA transitionPreviousIRQ+1 : STA IRQ1V+1
+    LDA transitionPreviousIRQ1V : STA IRQ1V
+    LDA transitionPreviousIRQ1V+1 : STA IRQ1V+1
 
     \ restore System-VIA Timer1 to one-shot mode
     LDA #0
     STA &FE4B
 
-    \ mark transition as complete
-    INC transitionComplete
+    \ mark transition as complete (TRANSITION_RUNNING -> TRANSITION_COMPLETE)
+    DEC transitionState
+    DEC transitionState
 
     \ fall through to return RTI
 
 .return_rti
+
     \ restore accumulator, updating &FC
     PLA : STA &FC
 

@@ -310,7 +310,6 @@ ENDIF
     TAX : TAY
     BIT scrollDirection : BMI skip
         LDA #248
-        LDX #LO(31*512)
         LDY #HI(31*512)
     .skip
     STA offsetY
@@ -457,7 +456,6 @@ ENDIF
             STA srcAddr+1
 
             \ stride = 0
-            LDA #0
         .skip1
         STA stride 
         
