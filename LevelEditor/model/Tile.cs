@@ -5,9 +5,10 @@ namespace LevelEditor
     {
         internal Tile Clone()
         {
-            Tile clone = new();
-
-            clone.Type = Type;
+            Tile clone = new()
+            {
+                Type = Type
+            };
 
             for (int i = 0; i < TileWidth * TileHeight; i++)
             {

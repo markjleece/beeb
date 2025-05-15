@@ -24,19 +24,19 @@ namespace LevelEditor
             Tiles = new Tile[TileCount];
             for (int i = 0; i < TileCount; i++)
             {
-                Tiles[i] = new Tile();
+                Tiles[i] = new();
             }
         }
 
         internal Level Clone()
         {
-            Level clone = new();
-
-            clone.FilePathName = FilePathName;
-
-            clone.Palette = Palette.Clone();
-            clone.Settings = Settings.Clone();
-            clone.TileGrid = TileGrid.Clone();
+            Level clone = new()
+            {
+                FilePathName = FilePathName,
+                Palette = Palette.Clone(),
+                Settings = Settings.Clone(),
+                TileGrid = TileGrid.Clone()
+            };
 
             for (int i = 0; i < TileCount; i++)
             {
@@ -159,10 +159,11 @@ namespace LevelEditor
 
         internal Object[] CollectObjects()
         {
-            List<Object> objects = new List<Object>();
-
-            // create first slot for k9 (will be populated later)
-            objects.Add(new Object(0, 0, Object.Type_Unknown));
+            List<Object> objects =
+            [
+                // create first slot for k9 (will be populated later)
+                new Object(0, 0, Object.Type_Unknown),
+            ];
 
             //
             // first pass - collect k9 & enemies
@@ -263,7 +264,7 @@ namespace LevelEditor
                 }
             }
 
-            return objects.ToArray();
+            return [.. objects];
         }
 
         private void PropagateObjects(Object[] objects)
@@ -364,7 +365,7 @@ namespace LevelEditor
         {
             try
             {
-                Level levelData = new Level();
+                Level levelData = new();
 
                 using (FileStream fs = File.OpenRead(filePathName))
                 {

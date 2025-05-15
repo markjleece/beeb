@@ -9,12 +9,14 @@ namespace LevelEditor
 
         internal Settings Clone()
         {
-            Settings clone = new();
-            clone.EnemyWeaponStrength = EnemyWeaponStrength;
-            clone.JewelHealthGain = JewelHealthGain;
-            clone.LaserHealthDrain = LaserHealthDrain;
-            clone.LaserStrength = LaserStrength;
-            clone.SampleSoundsEnabled = SampleSoundsEnabled;
+            Settings clone = new()
+            {
+                EnemyWeaponStrength = EnemyWeaponStrength,
+                JewelHealthGain = JewelHealthGain,
+                LaserHealthDrain = LaserHealthDrain,
+                LaserStrength = LaserStrength,
+                SampleSoundsEnabled = SampleSoundsEnabled
+            };
             return clone;
         }
 
