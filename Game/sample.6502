@@ -82,6 +82,10 @@
             \ at end of second half, so disable User-VIA Timer1
             LDA #&40
             STA &FE6E
+            
+            \ sampling = false
+            LDA #0 
+            STA sampling
         .endif
     .skip
 
@@ -135,6 +139,9 @@
     LDA #&C0
     STA &FE6E
 
+    \ sampling = true
+    INC sampling
+
     CLI \ re-enable interrupts
 
     RTS
@@ -155,6 +162,10 @@
     \ disable User-VIA Timer1
     LDA #&40
     STA &FE6E
+
+    \ sampling = false
+    LDA #0 
+    STA sampling
 
     CLI \ re-enable interrupts
 

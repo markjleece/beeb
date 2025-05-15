@@ -440,6 +440,7 @@ ORG 0
 .laserStrength              SKIP 1  \ laser strength
 .laserHealthDrain           SKIP 1  \ laser health drain
 .jewelHealthGainHi          SKIP 1  \ jewel health gain (high byte)
+.sampling                   SKIP 1  \ sampling flag (set when a sample is being played)
 .primarySamplesEnabled      SKIP 1  \ primary samples enabled flag
 .primarySamplesROMSEL       SKIP 1  \ primary samples ROM selector (zero denotes no sideways RAM)
 .secondarySamplesEnabled    SKIP 1  \ secondary samples enabled flag
@@ -875,6 +876,13 @@ INCLUDE "transition.6502"
 \ params:
 \   X register   Object index
 \
+
+.^objectTypeWidths
+    EQUB K9_SPRITE_WIDTH, ENEMY_SPRITE_WIDTH, ELEVATOR_SPRITE_WIDTH, DOOR_SPRITE_WIDTH
+
+.^objectTypeHeights
+    EQUB K9_SPRITE_HEIGHT, ENEMY_SPRITE_HEIGHT, ELEVATOR_SPRITE_HEIGHT, DOOR_SPRITE_HEIGHT
+
 .cacheObjectExtents
 {
     LDA objectType, X
@@ -892,13 +900,15 @@ INCLUDE "transition.6502"
     SBC #1
     STA heightMinusOne
 
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_10
+{
     RTS
-
-.^objectTypeWidths
-    EQUB K9_SPRITE_WIDTH, ENEMY_SPRITE_WIDTH, ELEVATOR_SPRITE_WIDTH, DOOR_SPRITE_WIDTH
-
-.^objectTypeHeights
-    EQUB K9_SPRITE_HEIGHT, ENEMY_SPRITE_HEIGHT, ELEVATOR_SPRITE_HEIGHT, DOOR_SPRITE_HEIGHT
 }
 
 \
@@ -912,8 +922,13 @@ INCLUDE "transition.6502"
     LDA frameCount
     AND #&1F
     CMP #8
-    BEQ sortObjectDrawOrder
-    RTS
+    BNE rts_10
+
+    \ don't sort if sample is being played
+    LDA sampling
+    BNE rts_10
+
+    \ fall through to sortObjectDrawOrder
 }
 
 \
@@ -1302,8 +1317,8 @@ ASSERT (HI(P%) > &17) \ ensure gameComplete is assembled after &17FF
 \
 \ loadLevel(A)
 \
-\ Loads a level named level1..levelN.  The routine saves and restores pages 
-\ &17, and &18, which DFS uses as workspace.
+\ Loads a level named level1..levelN.  The routine saves and restores page
+\ &17 which DFS uses as workspace.
 \ 
 \ params:
 \   A (accumulator)  Level number (1..N)

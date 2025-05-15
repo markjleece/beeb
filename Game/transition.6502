@@ -31,7 +31,7 @@
 \
 .transitionCallbackNotifier
 {
-    \ if (transitionState == COMPLETE) return
+    \ if (transitionState != TRANSITION_COMPLETE) return
     LDA transitionState : BPL rts_9
 
     \ transitionState == TRANSITION_VOID
@@ -86,6 +86,7 @@
 \
 .startCropOpenTransition
 {
+    \ store callback
     STX transitionCallback
     STY transitionCallback+1
 

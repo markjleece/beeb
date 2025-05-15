@@ -956,7 +956,7 @@ ENDIF
 \ returns non-zero if object is fully clipped, otherwise zero
 \
 \ params:
-\   leftLo/Hi       top coordinate (level coords)
+\   leftLo/Hi       left coordinate (level coords)
 \   topLo/Hi        top coordinate (level coords)
 \   width           width in pixels
 \   height          height in pixels

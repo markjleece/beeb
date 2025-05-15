@@ -10,8 +10,9 @@
 .scrollUp
 {
     \ if (scrnTop == 0) return
-    LDA scrnTopLo : BNE skip1
-    LDA scrnTopHi : BNE skip1
+    LDA scrnTopLo
+    ORA scrnTopHi
+    BNE skip1
         RTS
     .skip1
 
