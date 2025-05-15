@@ -691,51 +691,34 @@ INCLUDE "tilegrid.6502"
 {
     \ check reload level keys (1..LEVEL_COUNT)
     LDX #LEVEL_COUNT
-    .loop
+    .loop1
         LDA keyTbl + KEY_1 - 1, X
-        BPL nopress
+        BPL nopress1
             TXA
             JMP loadLevel \ implicit RTS
-        .nopress
+        .nopress1
         DEX
-        BNE loop
+        BNE loop1
 
     \ don't process arrow keys if scroll counter is odd
     LDA scrollCounter : AND #1 : BNE return
 
-    \ left arrow key...
-    LDA keyTbl + KEY_LEFT
-    BPL nopress_left
-        LDA #LO(DIRECTION_LEFT)
-        BNE scroll
-    .nopress_left
-
-    \ right arrow key...
-    LDA keyTbl + KEY_RIGHT
-    BPL nopress_right
-        LDA #LO(DIRECTION_RIGHT)
-        BNE scroll
-    .nopress_right
-
-    \ up arrow key...
-    LDA keyTbl + KEY_UP
-    BPL nopress_up
-        LDA #LO(DIRECTION_UP)
-        BNE scroll
-    .nopress_up
-
-    \ down arrow key...
-    LDA keyTbl + KEY_DOWN
-    BPL return
-        LDA #LO(DIRECTION_DOWN)
-        \ fall through...
-
-.scroll
-    STA scrollDirection
-    LDA #2 : STA scrollCounter
-
+    \ arrow keys
+    LDX #3
+    .loop2
+        LDA keyTbl + KEY_UP, X
+        BPL nopress2
+            LDA directionTbl, X : STA scrollDirection
+            LDA #2 : STA scrollCounter
+            RTS
+        .nopress2
+        DEX
+        BPL loop2
+    
 .return
     RTS
+
+.directionTbl EQUB LO(DIRECTION_UP), LO(DIRECTION_DOWN), LO(DIRECTION_LEFT), LO(DIRECTION_RIGHT)
 }
 
 \
@@ -1156,12 +1139,10 @@ INCLUDE "tilegrid.6502"
     JMP reloadLevel \ implicit RTS
 
 .k9DiedText
-    EQUS 13, 6
-    EQUS 141, "        K9's battery is flat!", 13, 1
+    EQUS 13, 7
+    EQUS 141, "         K9's battery is flat!", 13, 1
     EQUS 13, 1
-    EQUS 134, "   Your efforts to help K9 find the", 13, 0
-    EQUS 13, 0
-    EQUS 134, "   TARDIS have not been successful", 13, 0
+    EQUS 141, " Your efforts have not been successful", 13, 1
     EQUS 13, 5
     EQUS 134, "<< Press", 133, "space", 134, "key to restart level >>", 0, 0 \ line 21
 }

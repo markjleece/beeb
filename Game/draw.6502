@@ -96,18 +96,9 @@ IF DEBUG_TILE_GRID_FLAGS = 1
     RTS
 ELSE
     \ dstAddr = scrnAddr + 384
-    LDA scrnAddr
-    CLC
-    ADC #LO(384)
-    STA dstAddr
-
-    LDA scrnAddr+1
-    ADC #HI(384)
-    BPL nowrap \ if (dstAddr >= &8000) -= &4000
-        SEC
-        SBC #&40
-    .nowrap
-    STA dstAddr+1
+    LDX #LO(384)
+    LDY #HI(384)
+    JSR calcScreenDstAddr
 
     \ srcBaseAddr, srcAddr = spriteAddrTbl[SPRITE_INDEX_GAMEBAR]
     LDA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)
@@ -312,25 +303,22 @@ ENDIF
 \
 .drawHorzTileScrollStrip
 {
-    \ dstAddr = scrnAddr
-    LDA scrnAddr : STA dstAddr
-    LDA scrnAddr+1
-    BIT scrollDirection : BMI endif1 \ scroll down?
-        CLC
-        ADC #&3E        \ dstAddr += (31*512)
-        BPL endif1      \ dstAddr >= &8000 ?
-            SEC         \ dstAddr -= &4000
-            SBC #&40
-    .endif1
-    STA dstAddr+1
-
-    \ get gridTileAddr at screen[0, (scroll-down ? 248 : 0)]
+    \ offsetX = 0
+    \ offsetY = scroll-down ? 248 : 0
+    \ X/Y = LO/HI(scroll-down ? 31*512 : 0)
     LDA #0 : STA offsetX
-    BIT scrollDirection : BMI endif2 \ scroll down?
+    TAX : TAY
+    BIT scrollDirection : BMI skip
         LDA #248
-    .endif2
+        LDX #LO(31*512)
+        LDY #HI(31*512)
+    .skip
     STA offsetY
 
+    \ dstAddr = scrnAddr + X/Y
+    JSR calcScreenDstAddr
+
+    \ get tile grid address at [offsetX, offsetY]
     JSR getScreenTileGridAddr
 
     \ offset = 0 | 32
@@ -419,34 +407,22 @@ ENDIF
 \
 .drawVertTileScrollStrip
 {
-    BIT scrollDirection : BMI else1 \ scroll right?
-        \ dstAddr = scrnAddr + (512-16)
-        LDA scrnAddr
-        CLC
-        ADC #LO(512-16)
-        STA dstAddr
-
-        LDA scrnAddr+1
-        ADC #HI(512-16)
-
-        BPL endif1  \ dstAddr >= &8000 ?
-            SEC     \ dstAddr -= -&4000
-            SBC #&40       
-            BNE endif1
-    .else1
-        \ dstAddr = scrnAddr
-        LDA scrnAddr : STA dstAddr
-        LDA scrnAddr+1
-    .endif1
-    STA dstAddr+1
-
-    \ get gridTileAddr
+    \ offsetY = 0
+    \ offsetX = scroll-down ? 248 : 0
+    \ X/Y = LO/HI(scroll-down ? 512-16 : 0)
     LDA #0 : STA offsetY
-    BIT scrollDirection : BMI endif2 \ scroll right?
+    TAX : TAY
+    BIT scrollDirection : BMI skip
         LDA #248
-    .endif2
+        LDX #LO(512-16)
+        LDY #HI(512-16)
+    .skip
     STA offsetX
+    
+    \ dstAddr = scrnAddr + X/Y
+    JSR calcScreenDstAddr
 
+    \ get grid tile address at [offsetX, offsetY]
     JSR getScreenTileGridAddr
 
     \ offset = 0 | 16
@@ -536,18 +512,9 @@ ENDIF
 .drawTileLeftOfGamebar
 {
     \ dstAddr = scrnAddr + (512-9*16)
-    LDA scrnAddr
-    CLC
-    ADC #LO(512-9*16)
-    STA dstAddr
-
-    LDA scrnAddr+1
-    ADC #HI(512-9*16)
-    BPL nowrap1 \ dstAddr >= &8000 ?
-        SEC     \ dstAddr -= -&4000
-        SBC #&40       
-    .nowrap1
-    STA dstAddr+1
+    LDX #LO(512-9*16)
+    LDY #HI(512-9*16)
+    JSR calcScreenDstAddr
 
     \ get gridTileAddr at [scrnLeft + (256-9*8), scrnTop + 0]
     LDA #LO(256-9*8) : STA offsetX
@@ -1062,6 +1029,31 @@ ENDIF
 
     .fullyClipped
     LDA #1
+    RTS
+}
+
+\
+\ calcScreenDstAddr(offset)
+\
+\ dstAddr = scrnAddr + offset
+\
+\ params:
+\   X register  offset (low-byte)
+\   Y register  offset (hi-byte)
+\
+.calcScreenDstAddr
+{
+    CLC
+    TXA \ <-- offset (low-byte)
+    ADC scrnAddr
+    STA dstAddr
+    TYA \ <-- offset (high-byte)
+    ADC scrnAddr+1
+    BPL nowrap  \ dstAddr >= &8000 ?
+        SEC     \ dstAddr -= -&4000
+        SBC #&40       
+    .nowrap
+    STA dstAddr+1
     RTS
 }
 
