@@ -19,7 +19,7 @@
 \   +---------------------------------+ &4000
 \   | Game data (portions reloaded)   |
 \   +---------------------------------+ &2C10
-\   | Game code (7792 bytes)          |
+\   | Game code (6928 bytes)          |
 \   +---------------------------------+ &1100
 \   | Game data (portions reloaded)   | 
 \   +---------------------------------+ &10E0
@@ -85,7 +85,7 @@
 \   &10C0    32    DFS workspace
 \   &10E0    12    Sprite health bar table* (repurposed transient DFS memory)
 \   &10EC    20    Draw object jump tables* (repurposed transient DFS memory)
-\   &1100    7792  Program code
+\   &1100    6928  Program code
 \   &2C10    864   9 K9 sprites*
 \   &2F70    96    4 elevator sprites*
 \   &2FD0    224   Gamebar sprites* (or sample.6502 if 16K+ of sideways RAM exists)
@@ -1142,6 +1142,9 @@ INCLUDE "transition.6502"
 \ 
 .levelEndPreamble
 {
+    \ silence sound effects
+    JSR silenceSoundEffects
+
     \ crop close transition
     JSR cropCloseTransition
 
@@ -1152,10 +1155,7 @@ INCLUDE "transition.6502"
     JSR waitForVSync
 
     \ switch to mode 7
-    JSR setMode7
-
-    \ silence sound effects
-    JMP silenceSoundEffects \ implicit RTS
+    JMP setMode7 \ implicit RTS
 }
 
 \
