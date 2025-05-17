@@ -1,8 +1,9 @@
 \ This file is Copyright © 2025 - Mark John Leece - All rights reserved
 
 \
-\ Finale routines and data
+\ Finale routines and data.  
 \
+
 
 \
 \ finale
@@ -11,28 +12,39 @@
 \
 .finale
 {
-    JSR showFinaleScreen
+    JSR showCongratsScreen
     JSR playMusic
+    JSR waitForSpaceKeyPress
+    JSR showCreditsScreen
     .loop NOP : JMP loop \ loop forever
 }
 
 \
-\ showFinaleScreen()
+\ showCongratsScreen()
 \
-\ Note that this routine is overwritten
-\
-.showFinaleScreen
+.showCongratsScreen
 {
-    \ switch to mode 7
-    JSR setMode7
-
     \ populate screen memory
-    LDA #LO(finaleTeletext) : STA srcAddr
-    LDA #HI(finaleTeletext) : STA srcAddr+1
+    LDA #LO(congratsTeletext) : STA srcAddr
+    LDA #HI(congratsTeletext) : STA srcAddr+1
     JMP memcpyToScreen \ implicit RTS
 
-.finaleTeletext
-INCBIN "data\\finale.bin"
+.congratsTeletext
+INCBIN "data\\congrats.bin"
+}
+
+\
+\ showCreditsScreen()
+\
+.showCreditsScreen
+{
+    \ populate screen memory
+    LDA #LO(creditsTeletext) : STA srcAddr
+    LDA #HI(creditsTeletext) : STA srcAddr+1
+    JMP memcpyToScreen \ implicit RTS
+
+.creditsTeletext
+INCBIN "data\\credits.bin"
 }
 
 \

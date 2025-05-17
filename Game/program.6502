@@ -322,16 +322,16 @@ SAMPLE_TARDIS_DOOR = 5
 \ frame counter used to repeat exterminate sample
 SAMPLE_EXTERMINATE_FRAME_COUNT = 100
 
-\ crop transition flags
-TRANSITION_VOID = 0
-TRANSITION_RUNNING = 1
-TRANSITION_COMPLETE = -1
-
 \ frame counter used to inhibit move sound effects
 INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT = 30
 
 \ PCM data load buffer size
 PCM_DATA_LOAD_BUFFER_SIZE = &C9A
+
+\ crop transition flags
+TRANSITION_VOID = 0
+TRANSITION_RUNNING = 1
+TRANSITION_COMPLETE = -1
 
 \ sprite atlas locations
 enemyAtlas1 = &100
@@ -440,7 +440,7 @@ ORG 0
 .laserStrength              SKIP 1  \ laser strength
 .laserHealthDrain           SKIP 1  \ laser health drain
 .jewelHealthGainHi          SKIP 1  \ jewel health gain (high byte)
-.sampling                   SKIP 1  \ sampling flag (set when a sample is being played)
+.playingSample              SKIP 1  \ playing sample flag (set when a sample is being played)
 .primarySamplesEnabled      SKIP 1  \ primary samples enabled flag
 .primarySamplesROMSEL       SKIP 1  \ primary samples ROM selector (zero denotes no sideways RAM)
 .secondarySamplesEnabled    SKIP 1  \ secondary samples enabled flag
@@ -546,7 +546,6 @@ ORG &1100
 \ includes...
 \
 
-INCLUDE "utils.6502"
 INCLUDE "sound.6502"
 INCLUDE "scroll.6502"
 INCLUDE "draw.6502"
@@ -556,6 +555,7 @@ INCLUDE "elevator.6502"
 INCLUDE "door.6502"
 INCLUDE "tilegrid.6502"
 INCLUDE "transition.6502"
+INCLUDE "utils.6502"
 
 \
 \ in-game interrupt request routine
@@ -925,7 +925,7 @@ INCLUDE "transition.6502"
     BNE rts_10
 
     \ don't sort if sample is being played
-    LDA sampling
+    LDA playingSample
     BNE rts_10
 
     \ fall through to sortObjectDrawOrder
@@ -1215,7 +1215,7 @@ ASSERT (HI(P%) > &17) \ ensure gameComplete is assembled after &17FF
 
 .gameComplete
 {
-    \ switch to DFS
+    \ switch to DFS (this will corrupt page &17)
     JSR selectDFS
 
     \ load finale file
@@ -1223,7 +1223,7 @@ ASSERT (HI(P%) > &17) \ ensure gameComplete is assembled after &17FF
     LDY #HI(cmdLoadFinale)
     JSR oscli
 
-    \ invoke finale
+    \ invoke finale experience (with page &17 corrupted)
     JMP finale \ implicit RTS
 
 .cmdLoadFinale

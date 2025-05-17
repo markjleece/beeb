@@ -83,9 +83,9 @@
             LDA #&40
             STA &FE6E
             
-            \ sampling = false
+            \ playingSample = false
             LDA #0 
-            STA sampling
+            STA playingSample
         .endif
     .skip
 
@@ -139,8 +139,8 @@
     LDA #&C0
     STA &FE6E
 
-    \ sampling = true
-    INC sampling
+    \ playingSample = true
+    INC playingSample
 
     CLI \ re-enable interrupts
 
@@ -163,9 +163,9 @@
     LDA #&40
     STA &FE6E
 
-    \ sampling = false
+    \ playingSample = false
     LDA #0 
-    STA sampling
+    STA playingSample
 
     CLI \ re-enable interrupts
 

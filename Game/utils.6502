@@ -41,6 +41,8 @@
 \ returns:
 \   Accumulator contains key scan code, bit 7 set if key pressed
 \
+ASSERT (HI(P%) > &17) \ ensure scanKey is assembled after &17FF
+
 .scanKey
 {
     TAY \ --> key scan code
@@ -75,6 +77,8 @@
 \
 \ waits for the space key to be pressed
 \
+ASSERT (HI(P%) > &17) \ ensure waitForSpaceKeyPress is assembled after &17FF
+
 .waitForSpaceKeyPress
 {
     \ wait for release
