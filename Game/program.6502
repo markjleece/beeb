@@ -1,4 +1,4 @@
-\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+ \ This file is Copyright © 2025 - Mark John Leece - All rights reserved
 
 \
 \ beebasm ref: https://github.com/stardot/beebasm
@@ -453,7 +453,7 @@ ORG 0
 .transitionCounter          SKIP 1  \ transition counter
 .transitionState            SKIP 1  \ transition state: TRANSITION_VOID, TRANSITION_RUNNING, TRANSITION_COMPLETE
 .transitionPreviousIRQ1V    SKIP 2  \ IRQ1V prior to invoking transition
-.transitionCompleteCallback         SKIP 2  \ transition callback, invoked when crop open transition completes
+.transitionCompleteCallback SKIP 2  \ transition callback, invoked when crop open transition completes
 
 \ transient data (values do not persist across frames)
 .soundParams                SKIP 8  
@@ -1042,8 +1042,8 @@ INCLUDE "utils.6502"
     LDA healthHi
     SBC #0
     STA healthHi
-    BEQ levelIncomplete\ implicit RTS
-    BCC levelIncomplete\ implicit RTS
+    BEQ levelIncomplete \ implicit RTS
+    BCC levelIncomplete \ implicit RTS
 
     \ toggle palettes and play sound effect
     TYA \ <-- k9DamageCounter (before decrement)
@@ -1148,11 +1148,11 @@ INCLUDE "utils.6502"
     \ crop close transition
     JSR cropCloseTransition
 
-    \ set palette black
-    JSR setBlackPalette
-
     \ wait for v-sync
     JSR waitForVSync
+
+    \ set palette black
+    JSR setBlackPalette
 
     \ switch to mode 7
     JMP setMode7 \ implicit RTS
