@@ -445,15 +445,15 @@ ORG 0
 .primarySamplesROMSEL       SKIP 1  \ primary samples ROM selector (zero denotes no sideways RAM)
 .secondarySamplesEnabled    SKIP 1  \ secondary samples enabled flag
 .secondarySamplesROMSEL     SKIP 1  \ secondary samples ROM selector (zero denotes no additional sideways RAM)
-.transitionVariables                \ transition variables (the next six variables should not be moved or reordered)
+.transitionVariables                \ transition variables (transitionUpperTimer..transitionState should not be moved or reordered)
 .transitionUpperTimer       SKIP 2  \ timer for controlling position of upper palette change
 .transitionLowerTimer       SKIP 2  \ timer for controlling position of lower palette change
 .transitionUpperTimerDelta  SKIP 1  \ delta time for adjusting upper position timer
-.transitionCounter          SKIP 1  \ transition counter
 .transitionLowerTimerDelta  SKIP 1  \ delta time for adjusting lower position timer
+.transitionCounter          SKIP 1  \ transition counter
 .transitionState            SKIP 1  \ transition state: TRANSITION_VOID, TRANSITION_RUNNING, TRANSITION_COMPLETE
 .transitionPreviousIRQ1V    SKIP 2  \ IRQ1V prior to invoking transition
-.transitionCallback         SKIP 2  \ transition callback, invoked when crop open transition completes
+.transitionCompleteCallback         SKIP 2  \ transition callback, invoked when crop open transition completes
 
 \ transient data (values do not persist across frames)
 .soundParams                SKIP 8  
@@ -526,6 +526,7 @@ ORG &1100
     JSR titles
     .gameLoop
         JSR waitForVSync
+        JSR completeTransition
         INC frameCount
         JSR inflictK9Damage
         JSR scrollScreen
@@ -538,7 +539,6 @@ ORG &1100
         JSR enemyAI
         JSR updateObjects
         JSR updateSoundEffects
-        JSR transitionCallbackNotifier
         JMP gameLoop
 }
 

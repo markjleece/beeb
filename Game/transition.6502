@@ -4,32 +4,40 @@
 \ transition routines
 \
 
+\ 39 character rows per frame
+\ 8 scanlines per character row
+\ each scanline is 64 micro seconds
+\ v-sync normally occurs at character row 35 
+\ v-sync interrupt occurs two scanlines later
+\ delay to first scanline is:
+VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
+
 \ transition constants
 .transitionOpenConstants
-    EQUW 156 * 64           \ transitionUpperTimer
-    EQUW 4 * 64             \ transitionLowerTimer
-    EQUB HI(-8 * 64)        \ transitionUpperTimerDelta
-    EQUB 30                 \ transitionCounter
-    EQUB HI(16 * 64)        \ transitionLowerTimerDelta
-    EQUB TRANSITION_RUNNING \ transitionState
+    EQUW VSYNC_DELAY + 124 * 64 \ transitionUpperTimer
+    EQUW 8 * 64                 \ transitionLowerTimer
+    EQUB HI(-8 * 64)            \ transitionUpperTimerDelta
+    EQUB HI(16 * 64)            \ transitionLowerTimerDelta
+    EQUB 32                     \ transitionCounter
+    EQUB TRANSITION_RUNNING     \ transitionState
 
 .transitionCloseConstants
-    EQUW 30 * 64            \ transitionUpperTimer
-    EQUW 256 * 64           \ transitionLowerTimer
-    EQUB HI(8 * 64)         \ transitionLowerTimerDelta
-    EQUB 30                 \ transitionCounter
-    EQUB HI(-16 * 64)       \ transitionLowerTimerDelta
-    EQUB TRANSITION_RUNNING \ transitionState
+    EQUW VSYNC_DELAY + 4 * 64   \ transitionUpperTimer
+    EQUW 248 * 64               \ transitionLowerTimer
+    EQUB HI(8 * 64)             \ transitionLowerTimerDelta
+    EQUB HI(-16 * 64)           \ transitionLowerTimerDelta
+    EQUB 32                     \ transitionCounter
+    EQUB TRANSITION_RUNNING     \ transitionState
 
 \
-\ transitionCallbackNotifier
+\ completeTransition
 \
-\ invoked by the game loop
+\ invoked by the game loop after the v-sync
 \
 \ The routine invokes the transition callback when 
 \ an crop open transition completes
 \
-.transitionCallbackNotifier
+.completeTransition
 {
     \ if (transitionState != TRANSITION_COMPLETE) return
     LDA transitionState : BPL rts_9
@@ -39,7 +47,7 @@
     STA transitionState
 
     \ invoke callback
-    JMP (transitionCallback) \ implicit RTS
+    JMP (transitionCompleteCallback) \ implicit RTS
 }
 
 \
@@ -52,7 +60,7 @@
     \ initiate transition
     LDX #LO(transitionCloseConstants)
     LDY #HI(transitionCloseConstants)
-    JSR cropTransition
+    JSR startTransition
 
     \ wait for until transitionState is TRANSITION_COMPLETE
     .loop
@@ -77,8 +85,8 @@
 \
 \ startCropOpenTransition(callback)
 \
-\ starts a crop open transition. The passed callback is invoked by the 
-\ transitionCallbackNotifier routine when the transition completes
+\ starts a crop open transition. The passed callback is invoked by 
+\ completeTransition routine when the transition completes
 \
 \ params:
 \   X register      Callback address (low byte)
@@ -87,26 +95,26 @@
 .startCropOpenTransition
 {
     \ store callback
-    STX transitionCallback
-    STY transitionCallback+1
+    STX transitionCompleteCallback
+    STY transitionCompleteCallback+1
 
     LDX #LO(transitionOpenConstants)
     LDY #HI(transitionOpenConstants)
-    \ fall through to cropTransition
+    \ fall through to startTransition
 }
 
 \
-\ startCropTransition
+\ startTransition
 \
 \ params:
 \   X register      Transition constants (low byte)
 \   Y register      Transition constants (high byte)
 \
-.cropTransition
+.startTransition
 {
     SEI \ disable interupts
 
-    \ initialize variables
+    \ initialize variables (transitionUpperTimer..transitionState)
     STX srcAddr
     STY srcAddr+1
     LDY #7
@@ -178,15 +186,13 @@
         \
         LDA &FE44 \ mark interrupt as handled
 
-        \ decrement counter
-        DEC transitionCounter
-        BEQ stop_transition \ end transition?
-
-        \ save Y
+        \ save Y, as setLevelPalette and setBlackPalette modify Y
         TYA : PHA
 
+        \ decrement counter
         LDA transitionCounter
-        AND #1 : BEQ else
+        DEC transitionCounter
+        AND #1 : BNE else
             \
             \ Top crop boundary
             \
@@ -208,18 +214,6 @@
             \ set palette
             JSR setBlackPalette
 
-            \ transitionUpperTimer += transitionUpperTimerDelta
-            \ transitionLowerTimer += transitionLowerTimerDelta
-            LDY #2
-            .loop
-                CLC
-                LDA transitionUpperTimer+1, Y
-                ADC transitionUpperTimerDelta, Y
-                STA transitionUpperTimer+1, Y
-                DEY
-                DEY
-                BPL loop
-
             \ restore Y
             PLA : TAY
 
@@ -227,6 +221,22 @@
             LDA #&FF
             STA &FE44
             STA &FE45
+
+            \ stop transition?
+            LDA transitionCounter
+            BEQ stop_transition
+
+            \ transitionUpperTimer += transitionUpperTimerDelta
+            CLC
+            LDA transitionUpperTimer+1
+            ADC transitionUpperTimerDelta
+            STA transitionUpperTimer+1
+
+            \ transitionLowerTimer += transitionLowerTimerDelta
+            CLC
+            LDA transitionLowerTimer+1
+            ADC transitionLowerTimerDelta
+            STA transitionLowerTimer+1
 
             \ fall through to let MOS process sounds at the bottom crop boundary
 
