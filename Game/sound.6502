@@ -169,7 +169,10 @@
         LDA soundEffects, Y
         INY
         STA soundParams, X
-        INX : INX
+        INX 
+        LDA #0
+        STA soundParams, X
+        INX
         CPX #8
         BNE loop
 
@@ -226,17 +229,17 @@
 }
 
 \
-\ doorLockedSoundEffect
+\ blockedSoundEffect
 \
-.doorLockedSoundEffect
+.blockedSoundEffect
 {
-    LDA doorLockedSoundEffectOn : BNE rts_3
-        INC doorLockedSoundEffectOn
+    LDA blockedSoundEffectOn : BNE rts_3
+        INC blockedSoundEffectOn
 
-        \ inhibit move sound effects, which use the same channel
+        \ inhibit move sound effect, which uses the same channel
         LDA #INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT : STA inhibitMoveSoundEffect
   
-        LDA #SOUND_EFFECT_DOOR_LOCKED
+        LDA #SOUND_EFFECT_BLOCKED
         BNE soundEffect \ implicit RTS
 }
 

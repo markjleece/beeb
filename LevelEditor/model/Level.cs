@@ -1,4 +1,6 @@
 // This file is Copyright © 2025 - Mark John Leece - All rights reserved
+using System;
+using System.Data;
 using System.Diagnostics;
 using static LevelEditor.Tile;
 
@@ -11,15 +13,17 @@ namespace LevelEditor
         internal TileGrid TileGrid;
         internal Tile[] Tiles;
         internal Settings Settings;
+        internal TeleportGrid TeleportGrid;
 
         internal const int ObjectCount = 48;
-        internal const int TileCount = 30;
+        internal const int TileCount = 28;
 
         internal Level()
         {
             FilePathName = string.Empty;
             Palette = new Palette();
             Settings = new Settings();
+            TeleportGrid = new TeleportGrid();
             TileGrid = new TileGrid();
             Tiles = new Tile[TileCount];
             for (int i = 0; i < TileCount; i++)
@@ -35,7 +39,8 @@ namespace LevelEditor
                 FilePathName = FilePathName,
                 Palette = Palette.Clone(),
                 Settings = Settings.Clone(),
-                TileGrid = TileGrid.Clone()
+                TeleportGrid = TeleportGrid.Clone(),
+                TileGrid = TileGrid.Clone(),
             };
 
             for (int i = 0; i < TileCount; i++)
@@ -53,6 +58,7 @@ namespace LevelEditor
             FilePathName = other.FilePathName;
             Palette = other.Palette;
             Settings = other.Settings;
+            TeleportGrid = other.TeleportGrid;
             TileGrid = other.TileGrid;
             Tiles = other.Tiles;
         }
@@ -92,7 +98,7 @@ namespace LevelEditor
             Object[] objects = new Object[ObjectCount];
             for (int i = 0; i < ObjectCount; i++)
             {
-                objects[i] = new Object(0, 0, Object.Type_Unknown);
+                objects[i] = new Object(Object.Type_Unknown, 0, 0);
                 objects[i].Read(fs);
             }
 
@@ -117,7 +123,7 @@ namespace LevelEditor
             fs.WriteByte((byte)TileGrid.Width);
             fs.WriteByte((byte)TileGrid.Height);
 
-            // 30 x 1 byte tile types
+            // 28 x 1 byte tile types
             foreach (Tile tile in Tiles)
             {
                 fs.WriteByte((byte)tile.Type);
@@ -126,9 +132,9 @@ namespace LevelEditor
             // 6 byte settings
             Settings.Write(fs);
 
-            // 48 x 3 byte objects
+            // 48 x 4 byte objects
             Object[] objects = CollectObjects();
-            Object empty = new(0, 0, Object.Type_Unknown);
+            Object empty = new(Object.Type_Unknown, 0, 0);
             for (int i = 0; i < ObjectCount; i++)
             {
                 if (i < objects.Length)
@@ -162,7 +168,7 @@ namespace LevelEditor
             List<Object> objects =
             [
                 // create first slot for k9 (will be populated later)
-                new Object(0, 0, Object.Type_Unknown),
+                new Object(Object.Type_Unknown, 0, 0),
             ];
 
             //
@@ -184,27 +190,27 @@ namespace LevelEditor
                     switch (tileIndex)
                     {
                         case TileGrid.K9LookLeft:
-                            objects[0] = new Object(posX, posY, Object.Type_K9 | Object.Animate_LookLeft);
+                            objects[0] = new Object(Object.Type_K9 | Object.Animate_LookLeft, posX, posY);
                             break;
 
                         case TileGrid.K9LookRight:
-                            objects[0] = new Object(posX, posY, Object.Type_K9 | Object.Animate_LookRight);
+                            objects[0] = new Object(Object.Type_K9 | Object.Animate_LookRight, posX, posY);
                             break;
 
                         case TileGrid.EnemyLookLeft:
-                            objects.Add(new Object(posX, posY - 1, Object.Type_Enemy | Object.Animate_LookLeft));
+                            objects.Add(new Object(Object.Type_Enemy | Object.Animate_LookLeft, posX, posY - 1));
                             break;
 
                         case TileGrid.EnemyLookRight:
-                            objects.Add(new Object(posX, posY - 1, Object.Type_Enemy | Object.Animate_LookRight));
+                            objects.Add(new Object(Object.Type_Enemy | Object.Animate_LookRight, posX, posY - 1));
                             break;
 
                         case TileGrid.EnemyMoveLeft:
-                            objects.Add(new Object(posX, posY - 1, Object.Type_Enemy | Object.Animate_MoveLeft));
+                            objects.Add(new Object(Object.Type_Enemy | Object.Animate_MoveLeft, posX, posY - 1));
                             break;
 
                         case TileGrid.EnemyMoveRight:
-                            objects.Add(new Object(posX, posY - 1, Object.Type_Enemy | Object.Animate_MoveRight));
+                            objects.Add(new Object(Object.Type_Enemy | Object.Animate_MoveRight, posX, posY - 1));
                             break;
 
                         default:
@@ -215,7 +221,7 @@ namespace LevelEditor
             }
 
             //
-            // second pass - collect elevators
+            // second pass - collect elevators and teleports
             //
             for (int tileY = 0; tileY < TileGrid.Height; tileY++)
             {
@@ -224,18 +230,54 @@ namespace LevelEditor
                     int tileIndex = TileGrid[tileX, tileY];
                     if (tileIndex >= Level.TileCount)
                     {
-                        continue; // not an elevator
+                        continue; // not an elevator or teleport
                     }
 
                     Tile tile = Tiles[tileIndex];
-                    if (tile.Type != Tile.TileType.Elevator)
+                    if (tile.Type != Tile.TileType.Elevator &&
+                        tile.Type != Tile.TileType.Teleport)
                     {
-                        continue; // not an elevator
+                        continue; // not an elevator or teleport
                     }
 
-                    objects.Add(new Object(tileX, tileY, Object.Type_Elevator));
+                    objects.Add(new Object(Object.Type_Elevator, tileX, tileY));
 
                     tileX++; // skip next tile, as elevators are two tiles wide
+                }
+            }
+
+            //
+            // update teleports
+            //
+            for (int i = 0; i < objects.Count; i++)
+            {
+                Object obj = objects[i];
+
+                int tileX = obj.PosX;
+                int tileY = obj.PosY;
+
+                char? teleport = TeleportGrid[tileX, tileY];
+                if (teleport != null)
+                {
+                    // look other matching teleport
+                    for (int j = 0; j < objects.Count; j++)
+                    {
+                        Object other = objects[j];
+                        if (i != j && TeleportGrid[other.PosX, other.PosY] == teleport)
+                        {
+                            // found, so set indices
+                            obj.Data = j;
+                            other.Data = i;
+                            break;
+                        }
+                    }
+
+                    if (obj.Data == 0)
+                    {
+                        MessageBox.Show($"Teleport '{teleport}' is dangling.\n\n" +
+                                        "The teleport will not work correctly within the game.",
+                                        "Save", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
             }
 
@@ -258,7 +300,7 @@ namespace LevelEditor
                         continue; // not a door
                     }
 
-                    objects.Add(new Object(tileX, tileY, Object.Type_Door));
+                    objects.Add(new Object(Object.Type_Door, tileX, tileY));
 
                     tileY++; // skip next tile, as doors are two tiles high
                 }
@@ -269,18 +311,39 @@ namespace LevelEditor
 
         private void PropagateObjects(Object[] objects)
         {
-            foreach (Object obj in objects)
+            char teleport = 'A';
+
+            for (int i = 0; i < objects.Length; i++)
             {
+                Object obj = objects[i];
+
                 // update level data
-                if (obj.Type == Object.Type_Unknown ||
-                    obj.Type == Object.Type_Elevator ||
-                    obj.Type == Object.Type_Door)
+                if (obj.Type == Object.Type_Unknown ||obj.Type == Object.Type_Door)
                 {
                     continue;
                 }
 
                 int tileGridX = obj.PosX;
                 int tileGridY = obj.PosY;
+
+                if (obj.Type == Object.Type_Elevator)
+                {
+                    if (obj.Data != 0)
+                    {
+                        // populate teleport grid
+                        var other = objects[obj.Data];
+                        if (other.Type == Object.Type_Elevator && other.Data == i)
+                        {
+                            TeleportGrid[other.PosX, other.PosY] = teleport;
+                            other.Data = 0;
+                        }
+
+                        TeleportGrid[tileGridX, tileGridY] = teleport;
+                        teleport++;
+                    }
+
+                    continue;
+                }
 
                 if ((obj.Type & Object.TypeMask) == Object.Type_Enemy)
                 {

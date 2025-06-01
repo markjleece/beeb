@@ -55,7 +55,7 @@
     JSR setObjectTileGridFlags
 
     \ set upper left tile...
-    LDA #0: STA offsetY
+    LDA #0 : STA offsetY
     JSR setObjectTileGridFlags
 
     \ return success
@@ -165,8 +165,11 @@
 .clearObjectTileFlagsAbove
 {
     \ get tileGridAddr of tile just above object
-    LDA #0: STA offsetX
-    LDA #LO(-1) : STA offsetY
+    LDY #0
+    STY offsetX
+
+    DEY \ Y = -1
+    STY offsetY
 
     JSR getObjectTileGridAddr
 
@@ -222,7 +225,7 @@
 .setObjectInsideTileFlags
 {
     \ top left
-    LDA #0: STA offsetX : STA offsetY
+    LDA #0 : STA offsetX : STA offsetY
     JSR setObjectTileGridFlags
 
     \ top right
@@ -254,7 +257,7 @@
 .clearObjectInsideTileFlags
 {
     \ top left
-    LDA #0: STA offsetX : STA offsetY
+    LDA #0 : STA offsetX : STA offsetY
     JSR clearObjectTileGridFlags
 
     \ bottom left

@@ -37,7 +37,7 @@
 .envelopesLocal
     EQUB 1, 1, 8, 4, -12, 4, 4, 4, 63, 0, 0, 0, 63, 63      \ SOUND_EFFECT_LASER_ON
     EQUB 2, 1, 0, 100, 0, 3, 1, 40, 96, -1, -1, -5, 96, 96  \ SOUND_EFFECT_LEVEL_COMPLETE & SOUND_EFFECT_KEY_JEWEL
-    EQUB 3, 1, 0, -10, 0, 10, 1, 40, 96, -1, -5, -5, 96, 96 \ SOUND_EFFECT_DOOR_LOCKED
+    EQUB 3, 1, 0, -10, 0, 10, 1, 40, 96, -1, -5, -5, 96, 96 \ SOUND_EFFECT_BLOCKED
     EQUB 4, 4, 6, -3, -3, 4, 2, 2, 0, 0, -1, 0, 63, 58      \ SOUND_EFFECT_PURSUIT_ON
 
 MACRO DEFINE_ENVELOPE index

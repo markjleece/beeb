@@ -32,37 +32,55 @@ namespace BMPConverter
                 {
                     Color[] palette = ReadLevelPalette(level);
 
-                    FileStream fs = File.OpenWrite(dataFolderPath + $"level{level}.atl");
+                    string outputFileName = dataFolderPath + $"level{level}.atl";
+                    try
+                    {
+                        // delete existing file as File.OpenWrite(...) does will open an existing file for write
+                        File.Delete(outputFileName);
+                    }
+                    catch (Exception ex)
+                    {
+                        if (ex is not FileNotFoundException)
+                        {
+                            throw new Exception($"Error deleting: {outputFileName}");
+                        }
+                    }
 
-                    string folderPath = string.Format(assetsFolderPath, level);
-                    byte[] data;
+                    using FileStream fs = File.OpenWrite(outputFileName);
+                    {
+                        string folderPath = string.Format(assetsFolderPath, level);
+                        byte[] data;
 
-                    data = ConvertBMPFile(folderPath + "enemy_left.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
-                    fs.Write(data, 0, data.Length);
+                        data = ConvertBMPFile(folderPath + "enemy_left.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
+                        fs.Write(data, 0, data.Length);
 
-                    data = ConvertBMPFile(folderPath + "enemy_right.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
-                    fs.Write(data, 0, data.Length);
+                        data = ConvertBMPFile(folderPath + "enemy_right.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
+                        fs.Write(data, 0, data.Length);
 
-                    data = ConvertBMPFile(folderPath + "enemy_turn.bmp", 3/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
-                    fs.Write(data, 0, data.Length);
+                        data = ConvertBMPFile(folderPath + "enemy_turn.bmp", 3/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
+                        fs.Write(data, 0, data.Length);
 
-                    data = ConvertBMPFile(folderPath + "door.bmp", 4/*spriteCount*/, 4/*spriteWidth*/, 32/*spriteHeight*/, palette);
-                    fs.Write(data, 0, data.Length);
+                        data = ConvertBMPFile(folderPath + "door.bmp", 4/*spriteCount*/, 4/*spriteWidth*/, 32/*spriteHeight*/, palette);
+                        fs.Write(data, 0, data.Length);
 
-                    data = ConvertBMPFile(folderPath + "elevator.bmp", 4/*spriteCount*/, 32/*spriteWidth*/, 3/*spriteHeight*/, palette);
-                    fs.Write(data, 0, data.Length);
+                        data = ConvertBMPFile(folderPath + "elevator.bmp", 4/*spriteCount*/, 32/*spriteWidth*/, 3/*spriteHeight*/, palette);
+                        fs.Write(data, 0, data.Length);
 
-                    data = ConvertBMPFile(folderPath + "k9_left.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);
-                    fs.Write(data, 0, data.Length);
+                        data = ConvertBMPFile(folderPath + "teleport.bmp", 4/*spriteCount*/, 32/*spriteWidth*/, 3/*spriteHeight*/, palette);
+                        fs.Write(data, 0, data.Length);
 
-                    data = ConvertBMPFile(folderPath + "k9_right.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);
-                    fs.Write(data, 0, data.Length);
+                        data = ConvertBMPFile(folderPath + "k9_left.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);
+                        fs.Write(data, 0, data.Length);
 
-                    data = ConvertBMPFile(folderPath + "k9_turn.bmp", 3/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);                        
-                    fs.Write(data, 0, data.Length);
+                        data = ConvertBMPFile(folderPath + "k9_right.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);
+                        fs.Write(data, 0, data.Length);
 
-                    data = ConvertBMPFile(folderPath + "gamebar.bmp", 1/*spriteCount*/, 112/*spriteWidth*/, 8/*spriteHeight*/, palette);
-                    fs.Write(data, 0, data.Length);
+                        data = ConvertBMPFile(folderPath + "k9_turn.bmp", 3/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);
+                        fs.Write(data, 0, data.Length);
+
+                        data = ConvertBMPFile(folderPath + "gamebar.bmp", 1/*spriteCount*/, 112/*spriteWidth*/, 8/*spriteHeight*/, palette);
+                        fs.Write(data, 0, data.Length);
+                    }
                 }
             }
             catch (Exception e)
@@ -80,13 +98,6 @@ namespace BMPConverter
 
             // read palette data from level file
             FileStream fileStream = File.OpenRead(dataFolderPath + $"level{level}.dat");
-
-            // seek to palette location
-            const int paletteOffset = 31 * 64 /*tiles*/ + 2048 /*tile-grid*/ + 2 /*extents*/ + 32 /*tile-types*/;
-            if (fileStream.Seek(paletteOffset, SeekOrigin.Begin) != paletteOffset)
-            {
-                throw new Exception("palette seek failed");
-            }
 
             byte[] paletteData = new byte[16];
             fileStream.ReadExactly(paletteData);

@@ -227,19 +227,21 @@
     LDA scrnAddr : STA srcAddr
     LDA scrnAddr+1 : STA srcAddr+1
 
-    LSR srcAddr+1 : ROR srcAddr
-    LSR srcAddr+1 : ROR srcAddr
-    LSR srcAddr+1 : ROR srcAddr
+    LDY #3
+    .loop
+        LSR srcAddr+1 : ROR srcAddr
+        DEY
+        BNE loop
 
     \ Set 6845 CRTC: R13 screen start address, low
-    LDA #13
-    STA &FE00
+    LDY #13
+    STY &FE00
     LDA srcAddr
     STA &FE01
 
     \ Set 6845 CRTC: R12 with screen start address, high
-    LDA #12
-    STA &FE00
+    DEY \ Y = 12
+    STY &FE00
     LDA srcAddr+1
     STA &FE01
 

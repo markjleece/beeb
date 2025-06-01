@@ -3,20 +3,27 @@ namespace LevelEditor
 {
     class Object
     {
-        internal Object(int posX, int posY, int type)
+        internal Object(int type, int posX, int posY, int data = 0)
         {
+            Type = type;
             PosX = posX;
             PosY = posY;
-            Type = type;
+            Data = data;
         }
 
         internal Object Clone()
         {
-            return new Object(PosX, PosY, Type);
+            return new Object(Type, PosX, PosY, Data);
         }
 
         internal void Read(FileStream fs)
         {
+            Type = fs.ReadByte();
+            if (Type == -1)
+            {
+                throw new Exception("Unexpected end-of-stream");
+            }
+
             PosX = fs.ReadByte();
             if (PosX == -1)
             {
@@ -29,8 +36,8 @@ namespace LevelEditor
                 throw new Exception("Unexpected end-of-stream");
             }
 
-            Type = fs.ReadByte();
-            if (Type == -1)
+            Data = fs.ReadByte();
+            if (Data == -1)
             {
                 throw new Exception("Unexpected end-of-stream");
             }
@@ -38,9 +45,10 @@ namespace LevelEditor
 
         internal void Write(FileStream fs)
         {
+            fs.WriteByte((byte)Type);
             fs.WriteByte((byte)PosX);
             fs.WriteByte((byte)PosY);
-            fs.WriteByte((byte)Type);
+            fs.WriteByte((byte)Data);
         }
 
         internal bool Validate()
@@ -91,6 +99,7 @@ namespace LevelEditor
         internal int PosX;
         internal int PosY;
         internal int Type;
+        internal int Data;
 
         internal const int MaxEnemyCount = 15;
     }

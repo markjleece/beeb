@@ -62,7 +62,7 @@ namespace LevelEditor
             // 
             tileSelectorPanel.Location = new Point(12, 42);
             tileSelectorPanel.Name = "tileSelectorPanel";
-            tileSelectorPanel.Size = new Size(130, 1175);
+            tileSelectorPanel.Size = new Size(130, 1110);
             tileSelectorPanel.TabIndex = 4;
             tileSelectorPanel.Paint += TileSelectorPanel_Paint;
             tileSelectorPanel.MouseClick += TileSelectorPanel_MouseClick;
@@ -74,7 +74,7 @@ namespace LevelEditor
             tileGridPanel.BorderStyle = BorderStyle.FixedSingle;
             tileGridPanel.Location = new Point(158, 42);
             tileGridPanel.Name = "tileGridPanel";
-            tileGridPanel.Size = new Size(1715, 1175);
+            tileGridPanel.Size = new Size(1715, 1110);
             tileGridPanel.TabIndex = 5;
             tileGridPanel.Paint += TileGridPanel_Paint;
             tileGridPanel.MouseDown += TileGridPanel_MouseDown;
@@ -291,7 +291,7 @@ namespace LevelEditor
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1885, 1229);
+            ClientSize = new Size(1885, 1164);
             Controls.Add(toolStrip);
             Controls.Add(tileGridPanel);
             Controls.Add(tileSelectorPanel);

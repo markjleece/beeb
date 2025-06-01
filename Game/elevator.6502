@@ -24,7 +24,8 @@
 .rideElevator
 {
     \ check if passed object is standing on an elevator (sets tileGridAddr)
-    JSR queryOnElevator : BEQ endif
+    LDA #TILE_TYPE_ELEVATOR
+    JSR queryObjectOnTiles : BEQ endif
         LDA direction
         BMI autoScrollUp \ implicit RTS
         BPL autoScrollDown \ implicit RTS
@@ -368,17 +369,23 @@
 }
 
 \
-\ queryOnElevator(X register)
+\ queryObjectOnTiles(Accumulator, X register)
 \
-\ returns if K9/enemy is on a static elevator
+\ returns if K9/enemy is on tiles of the passed type.
+\
+\ zero if object is on tiles with the passed type type, or none-zero
 \
 \ params:
-\   X register   Object index 
+\   Accumulator     TILE_TYPE_FLAG_ELEVATOR or TILE_TYPE_MASK_TELEPORT
+\   X register      Object index
 \
-\ Zero flag set if object is on an elevator, otherwise cleared
+\ modifies:
+\   temp, offsetX, offsetY
 \
-.queryOnElevator
+.queryObjectOnTiles
 {
+    STA flags
+
     \ test right tile under object
     LDA widthMinusOne : STA offsetX
     LDA height : STA offsetY
@@ -387,7 +394,7 @@
     AND #TILE_GRID_INDEX_MASK
     TAY
     LDA levelTileTypes, Y
-    CMP #TILE_TYPE_ELEVATOR : BNE return
+    CMP flags : BNE return
 
     \ test left tile under K9
     LDA #0 : STA offsetX
@@ -396,7 +403,7 @@
     AND #TILE_GRID_INDEX_MASK
     TAY
     LDA levelTileTypes, Y
-    CMP #TILE_TYPE_ELEVATOR
+    CMP flags
 
 .return
     RTS
@@ -609,11 +616,193 @@
     JSR setObjectInsideTileFlags
 
     \ if passenger is an enemy, determine what to do next
-    CPX #0 : BEQ return
+    CPX #0 : BEQ rts_11
     JMP enemyElevatorStop \ implicit RTS
-    
-.return
+}
+
+\
+\ common RTS
+\
+.rts_11
+{
     RTS
+}
+
+\
+\ teleportFrameCallback(X register) - animation frame callback
+\
+\ frame callback for a teleport
+\
+\ params:
+\   X register   Elevator index
+\
+.teleportFrameCallback
+{
+    \ switch keyframe every 8 frames
+    TXA
+    CLC
+    ADC frameCount
+    AND #7
+    BNE rts_11
+
+    \ next keyframe
+    LDA objectSpriteIndex, X
+    CLC
+    ADC #1
+    CMP #SPRITE_INDEX_TELEPORT + 4
+    BNE skip
+        LDA #SPRITE_INDEX_TELEPORT
+    .skip
+    STA objectSpriteIndex, X
+
+    \ set redraw flag
+    JMP setRedrawFlag \ implicit RTS
+}
+
+\
+\ rideTeleport()
+\
+\ entry point for K9 to teleport. The routine first checks whether k9
+\ is on a teleport and that the destination is clear.
+\
+\ returns success (zero) if k9 is on a teleport, otherwise non-zero
+\
+.rideTeleport
+{
+    \ check if k9 is standing on a teleport (sets tileGridAddr)
+    LDA #TILE_TYPE_TELEPORT
+    JSR queryObjectOnTiles : BNE rts_11
+
+    \ find teleport object (result index returned in X)
+    JSR findObjectsElevator : TXA : BEQ rts_11
+
+    \ get destination teleport index (held in teleport's objectFrameCounter)
+    LDY objectFrameCounter, X
+
+    \ delta  = objectXY[dest teleport] - objectXY[teleport]
+    LDA objectXLo, Y
+    SEC
+    SBC objectXLo, X
+    STA deltaXLo
+    LDA objectXHi, Y
+    SBC objectXHi, X
+    STA deltaXHi
+
+    LDA objectYLo, Y
+    SEC
+    SBC objectYLo, X
+    STA deltaYLo
+    LDA objectYHi, Y
+    SBC objectYHi, X
+    STA deltaYHi
+
+    \ get destination teleport's tile grid address
+    TYA : TAX
+    LDA #0 : STA offsetX : STA offsetY
+    JSR getObjectTileGridAddr
+
+    \ check if the destination location is occupied
+    JSR querySetElevatorTileOccupied : BEQ skip1
+        \ occupied, so invoke blocked sound effect and return success to inhibit auto-scrolling behavior
+        LDA #SOUND_EFFECT_BLOCKED
+        JSR soundEffect
+        JMP success
+    .skip1
+
+    \ perform crop close transition
+    JSR cropCloseTransition
+
+    \ clear tile flag at existing location
+    LDX #0 \ <-- k9's index
+    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
+    JSR clearObjectInsideTileFlags
+
+    \ undraw K9 from the screen
+    LDA objectSpriteIndex : PHA
+
+    LDA #&FF : STA objectSpriteIndex
+    JSR drawObject
+
+    PLA : STA objectSpriteIndex
+
+    \ K9 position += delta
+    LDA objectXLo
+    CLC
+    ADC deltaXLo
+    STA objectXLo
+    LDA objectXHi
+    ADC deltaXHi
+    STA objectXHi
+
+    LDA objectYLo
+    CLC
+    ADC deltaYLo
+    STA objectYLo
+    LDA objectYHi
+    ADC deltaYHi
+    STA objectYHi
+
+    \ scroll destination teleport into view
+    LDX #LO(DIRECTION_LEFT)
+    LDA #LO(DIRECTION_RIGHT)
+    JSR scroll
+
+    LDA deltaYLo : STA deltaXLo
+    LDA deltaYHi : STA deltaXHi
+
+    LDX #LO(DIRECTION_UP)
+    LDA #LO(DIRECTION_DOWN)
+    JSR scroll
+
+    \ set tile flags at new position
+    LDX #0 \ <-- K9's index
+    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
+    JSR setObjectInsideTileFlags
+
+    \ redraw K9
+    JSR setRedrawFlag
+
+    \ start crop open transition
+    LDA #LO(callback)
+    LDY #HI(callback)
+    JSR startCropOpenTransition
+
+    \ return success
+    .success
+    LDA #0
+    RTS
+
+.callback
+    JMP setLevelPalette \ implicit RTS
+
+.scroll
+    \ deltaX = ABS(deltaX)
+    \ scrollDirection = (deltaXHi < 0) ? X register : Accumulator 
+    BIT deltaXHi : BPL skip2
+        LDA #0
+        SEC
+        SBC deltaXLo
+        STA deltaXLo
+        LDA #0
+        SBC deltaXHi
+        STA deltaXHi
+        TXA
+    .skip2
+    STA scrollDirection
+
+    \ scrollCounter = deltaX / 8
+    LDA deltaXLo
+    LSR deltaXHi : ROR A
+    LSR deltaXHi : ROR A
+    LSR deltaXHi : ROR A
+    STA scrollCounter
+
+    \ scroll while scrollCounter != 0
+    .loop
+        JSR scrollScreen
+        LDA scrollCounter
+        BNE loop
+     RTS
 }
 
 \ end file

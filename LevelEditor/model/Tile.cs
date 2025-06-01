@@ -147,11 +147,11 @@ namespace LevelEditor
             Jewel = OpaqueFlag + 3,
             Door = OpaqueFlag + 4,
             Elevator = OpaqueFlag + 5,
-            Exit = OpaqueFlag + 6
+            Teleport = OpaqueFlag + 6,
+            Exit = OpaqueFlag + 7,
         }
 
         internal TileType Type = TileType.Space;
-
         internal byte[] Pixels = new byte[TileWidth * TileHeight];
 
         private const int TileWidth = 16;

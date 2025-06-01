@@ -83,7 +83,7 @@ ELSE
 
     RTS
 
-    SKIP 144 \ report same number of unsued code/data bytes
+    SKIP 139 \ report same number of unsued code/data bytes
 ENDIF
 }
 
@@ -101,12 +101,12 @@ ELSE
     JSR calcScreenDstAddr
 
     \ srcBaseAddr, srcAddr = spriteAddrTbl[SPRITE_INDEX_GAMEBAR]
-    LDA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)
+    LDA spriteAddrTblLo + SPRITE_INDEX_GAMEBAR
     STA srcBaseAddr
     STA srcAddr
     STA inst_LDA+1 \ set LDA instruction operand (low-byte) in drawDigit
     
-    LDA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)+1
+    LDA spriteAddrTblHi + SPRITE_INDEX_GAMEBAR
     STA srcBaseAddr+1
     STA srcAddr+1
     STA inst_LDA+2 \ set LDA instruction operand (high-byte) in drawDigit
@@ -136,11 +136,11 @@ ELSE
     LDY #59
     LDA (srcBaseAddr), Y \ peek key color
     ASL A
-    LDA #0
+    LDX #0
     BCC skip2
-        LDA #&FF
+        DEX \ X = &FF
     .skip2
-    STA flags \ <-- XOR mask
+    STX flags \ <-- XOR mask
 
     \ 'OR mask' (temp) = (heathHi < 5) ? (&F ^ XOR mask) : 0
     LDA healthHi
@@ -186,11 +186,12 @@ ELSE
         ORA temp  \ apply OR mask
         EOR flags \ apply XOR mask
 
-        STA (dstAddr), Y : INY
-        STA (dstAddr), Y : INY
-        STA (dstAddr), Y : INY
-        STA (dstAddr), Y : INY
-         
+        LDX #4
+        .innerLoop
+            STA (dstAddr), Y : INY
+            DEX
+            BNE innerLoop
+
         \ render footer
         INY
         LDA (srcBaseAddr), Y
@@ -290,6 +291,45 @@ ENDIF
 }
 
 \
+\ getTileSrcAddr(tileGridAddr, offset)
+\
+\ get tile source address
+\
+\ returns:
+\   srcAddr         Tile data source address
+\   Accumulator     Zero if blank tile rendered, otherwise non-zero
+\
+\ params:
+\   tileGridAddr    Tile grid address
+\   offset          Source offset
+\
+.getTileSrcAddr
+{
+    \ 'tileIndex' = *tileGridAddr & TILE_GRID_INDEX_MASK
+    LDY #0
+    LDA (tileGridAddr), Y
+    AND #TILE_GRID_INDEX_MASK
+    BEQ blankTile
+        \ srcAddr = tiles - 64 + (64 * 'tileIndex') + offset
+        TAY
+        LDA tileAddrTblLo, Y
+        CLC
+        ADC offset
+        STA srcAddr
+
+        LDA tileAddrTblHi, Y
+        BNE skip
+    .blankTile
+        \ srcAddr = zeroMemory32
+        ASSERT(LO(zeroMemory32) == 0 AND HI(zeroMemory32) == 0)
+        STA srcAddr
+    .skip
+    STA srcAddr+1
+
+    RTS
+}
+
+\
 \ drawHorzTileScrollStrip(scrollDirection)
 \
 \ draws a horizontal tile strip across either the top or bottom edges of the screen
@@ -314,20 +354,19 @@ ENDIF
     .skip
     STA offsetY
 
+    \ offset = 0 | 32
+    CLC
+    ADC scrnTopLo
+    AND #8
+    ASL A : ASL A
+    STA offset
+     
     \ dstAddr = scrnAddr + X/Y
     JSR calcScreenDstAddr
 
     \ get tile grid address at [offsetX, offsetY]
     JSR getScreenTileGridAddr
 
-    \ offset = 0 | 32
-    LDA scrnTopLo
-    CLC
-    ADC offsetY
-    AND #8
-    ASL A : ASL A
-    STA offset
-     
     LDX #16
     .loop
         \ shift rendering to below gamebar (one character below)
@@ -350,24 +389,8 @@ ENDIF
             JSR dstAddr_add_512 
         .skip1  
 
-        \ 'tileIndex' = *tileGridAddr & TILE_GRID_INDEX_MASK
-        LDY #0
-        LDA (tileGridAddr), Y
-        AND #TILE_GRID_INDEX_MASK
-        BEQ blankTile
-            \ srcAddr = tiles - 64 + (64 * 'tileIndex') + offset
-            CLC
-            ASL A
-            TAY
-            LDA tileAddrTbl, Y : ADC offset : STA srcAddr
-            LDA tileAddrTbl+1, Y
-            BNE skip2
-        .blankTile
-            \ srcAddr = zeroMemory32
-            ASSERT(LO(zeroMemory32) == 0 AND HI(zeroMemory32) == 0)
-            STA srcAddr
-        .skip2
-        STA srcAddr+1
+        \ get tile source address (srcAddr)
+        JSR getTileSrcAddr
 
         \ draw tile character row
         LDY #31
@@ -393,6 +416,32 @@ ENDIF
 }
 
 \
+\ calcVertTileStripStart
+\
+\ calculates the tile tile source address and offset, and the screen destination address
+\ 
+\ params:
+\   offsetY, offsetY    screen coords
+\   X/Y registers       screen address offset (hi/lo bytes) 
+\
+.calcVertTileStripStart
+{
+    \ offset = 0 | 16
+    LDA offsetX
+    CLC
+    ADC scrnLeftLo
+    AND #8
+    ASL A
+    STA offset
+
+    \ dstAddr = scrnAddr + X/Y
+    JSR calcScreenDstAddr
+
+    \ get grid tile address at [offsetX, offsetY]
+    JMP getScreenTileGridAddr \ implicit RTS
+}
+
+\
 \ drawVertTileScrollStrip(scrollDirection)
 \
 \ draws a vertical tile strip down either the left or right edges of the screen
@@ -411,61 +460,34 @@ ENDIF
     \ X/Y = LO/HI(scroll-right ? 512-16 : 0)
     LDA #0 : STA offsetY
     TAX : TAY
-    BIT scrollDirection : BMI skip
+    BIT scrollDirection : BMI skip1
         LDA #248
         LDX #LO(512-16)
         LDY #HI(512-16)
-    .skip
+    .skip1
     STA offsetX
     
-    \ dstAddr = scrnAddr + X/Y
-    JSR calcScreenDstAddr
-
-    \ get grid tile address at [offsetX, offsetY]
-    JSR getScreenTileGridAddr
-
-    \ offset = 0 | 16
-    LDA scrnLeftLo
-    CLC
-    ADC offsetX
-    AND #8
-    ASL A
-    STA offset
+    \ calc srcAddr, dstAddr, and offset
+    JSR calcVertTileStripStart
 
     LDA #16 : STA outerCount
     .loop
-        \ 'tileIndex' = *tileGridAddr & TILE_GRID_INDEX_MASK
-        LDY #0
-        LDA (tileGridAddr), Y
-        AND #TILE_GRID_INDEX_MASK
-        BEQ blankTile
-            \ srcAddr = tiles - 64 + (64 * 'tileIndex') + offset
-            CLC
-            ASL A
-            TAY
-            LDA tileAddrTbl, Y : ADC offset : STA srcAddr
-            LDA tileAddrTbl+1, Y : STA srcAddr+1
+        \ get tile source address (srcAddr)
+        JSR getTileSrcAddr
 
-            \ stride = 32
+        \ stride = 0 or 32
+        BEQ skip2
             LDA #32
-            BNE skip1
-        .blankTile
-            \ srcAddr = zeroMemory32
-            ASSERT(LO(zeroMemory32) == 0 AND HI(zeroMemory32) == 0)
-            STA srcAddr
-            STA srcAddr+1
-
-            \ stride = 0
-        .skip1
+        .skip2
         STA stride 
-        
+
         \ draw tile character column
         LDX #2
 
         \ skip first character if scrolling right
-        LDA outerCount : CMP #16 : BNE skip2
-        BIT scrollDirection : BPL skipFirstCharacter
-        .skip2
+        LDA outerCount : CMP #16 : BNE skip3
+            BIT scrollDirection : BPL skipFirstCharacter
+        .skip3
 
         \ draw two tile characters, one above the other
         .innerLoop1
@@ -509,43 +531,19 @@ ENDIF
 \
 .drawTileLeftOfGamebar
 {
-    \ dstAddr = scrnAddr + (512-9*16)
+    \ X/Y = LO/HI(512-9*16)
     LDX #LO(512-9*16)
     LDY #HI(512-9*16)
-    JSR calcScreenDstAddr
 
-    \ get gridTileAddr at [scrnLeft + (256-9*8), scrnTop + 0]
-    LDA #LO(256-9*8) : STA offsetX
+    \ offsetX = 256-9*8, offsetY = 0
     LDA #0 : STA offsetY
+    LDA #LO(256-9*8) : STA offsetX
 
-    JSR getScreenTileGridAddr
+    \ calc srcAddr, dstAddr, and offset
+    JSR calcVertTileStripStart
 
-    \ offset = 0 | 16
-    LDA scrnLeftLo
-    CLC
-    ADC offsetX
-    AND #8
-    ASL A
-    STA offset
-
-    \ 'tileIndex' = *tileGridAddr & TILE_GRID_INDEX_MASK
-    LDY #0
-    LDA (tileGridAddr), Y
-    AND #TILE_GRID_INDEX_MASK
-    BEQ blankTile
-        \ srcAddr = tiles - 64 + (64 * 'tileIndex') + offset
-        CLC
-        ASL A
-        TAX
-        LDA tileAddrTbl, X : ADC offset : STA srcAddr
-        LDA tileAddrTbl+1, X
-        JMP skip
-    .blankTile 
-        \ srcAddr = zeroMemory32
-        ASSERT(LO(zeroMemory32) == 0 AND HI(zeroMemory32) == 0)
-        STA srcAddr
-    .skip
-    STA srcAddr+1
+    \ get tile source address (srcAddr, offset)
+    JSR getTileSrcAddr
 
     \ draw tile character column
     LDY #15
@@ -635,45 +633,19 @@ ENDIF
     CLC
     LDX #2
     .loop
-        \ clear left character
+        \ clear character row
         LDA #0
-        LDY #15
+        LDY #31
         .leftLoop
             STA (dstAddr),Y: DEY
             BPL leftLoop
 
-        \ dstAddr += 16
-        LDA #16    
-        JSR dstAddr_add
+        \ dstAddr += 512
+        JSR dstAddr_add_512
 
-        \ clear right character
-        LDA #0
-        LDY #15
-        .rightLoop
-            STA (dstAddr),Y: DEY
-            BPL rightLoop
-
-        \ exit loop?
         DEX
-        BEQ return
+        BNE loop
 
-        \ dstAddr += (512 - 16)
-        LDA dstAddr
-        ADC #LO(512-16)
-        STA dstAddr
-        LDA dstAddr+1
-        ADC #HI(512-16)
-        BPL nowrap \ if (dstAddr >= 0x8000) dstAddr -= 0x4000
-            SEC
-            SBC #&40
-            CLC
-        .nowrap
-        STA dstAddr+1
-
-        \ next iteration
-        BCC loop
-
-.return
     RTS
 }
 
@@ -767,6 +739,19 @@ ENDIF
     \ laser sound effect
     JSR laserSoundEffect
 
+    \ populate JSR address with laserUpdateVariablesLeftToRight or laserUpdateVariablesRightToLeft
+    LDA #LO(laserUpdateVariablesLeftToRight)
+    BIT laserDirection : BPL skip4
+        LDA #LO(laserUpdateVariablesRightToLeft)
+    .skip4
+    STA jsr_inst+1
+
+    LDA #HI(laserUpdateVariablesLeftToRight)
+    BIT laserDirection : BPL skip5
+        LDA #HI(laserUpdateVariablesRightToLeft)
+    .skip5
+    STA jsr_inst+2
+
     \ draw first few pixels
     LDY #0
     LDA (dstAddr), Y
@@ -774,18 +759,9 @@ ENDIF
 
     \ draw line body...
     LDX #0
-    LDA laserDirection : BMI rightToLeftLoop
-
-    \ draw left to right...
-    .leftToRightLoop
-        \ dstAddr += 8
-        JSR dstAddr_add_8
-
-        \ leftLo += 4
-        LDA leftLo
-        CLC
-        ADC #4
-        STA leftLo
+    .loop
+        \ dstAddr +=/-= 8, leftLo +=/-= 4
+        .jsr_inst JSR &FFFF
 
         \ background color?
         LDA (dstAddr), Y
@@ -798,36 +774,9 @@ ENDIF
 
         INX
         CPX laserLength
-        BNE leftToRightLoop
+        BNE loop
 
     DEC laserLength
-    RTS
-
-    \ draw right to left...
-    .rightToLeftLoop
-        \ dstAddr -= 8
-        JSR dstAddr_sub_8
-
-        \ leftLo -= 4
-        LDA leftLo
-        SEC
-        SBC #4
-        STA leftLo
-
-        \ background color?
-        LDA (dstAddr), Y
-        STA laserLastPixels
-        BNE drawEndAndHitTest \ hit test & draw last few pixels, and RTS
-
-        \ draw 4 red pixels
-        LDA #&0F
-        STA (dstAddr), Y
-
-        INX
-        CPX laserLength
-        BNE rightToLeftLoop    
-
-    DEC laserLength \ account for last few pixels
     RTS
 
 .drawEnd
@@ -865,81 +814,53 @@ ENDIF
     LDA laserAddr : STA dstAddr
     LDA laserAddr+1 : STA dstAddr+1
 
+    \ populate JSR address with dstAddr_add_8 or dstAddr_sub_8
+    LDA #LO(dstAddr_add_8)
+    BIT laserDirection : BPL skip1
+        LDA #LO(dstAddr_sub_8)
+    .skip1
+    STA jsr_inst+1
+
+    LDA #HI(dstAddr_add_8)
+    BIT laserDirection : BPL skip2
+        LDA #HI(dstAddr_sub_8)
+    .skip2
+    STA jsr_inst+2
+
     LDY #0
     LDX #&FF \ clear first few pixels twice
-    LDA laserDirection
-    BMI rightToLeftEnd
 
-    \
-    \ draw laser left to right
-    \
-    .leftToRightEnd
+    .first
         \ clear first few pixels (we do this twice because K9 may have moved)
         LDA (dstAddr), Y
-        JSR drawStart
+        EOR #&F0
+        STA temp
+        LSR A : LSR A : LSR A : LSR A
+        AND temp
+        EOR #&FF
+        AND (dstAddr), Y
+        STA (dstAddr), Y
 
-    .leftToRightLoop
-        \ dstAddr += 8
-        JSR dstAddr_add_8
+    .loop
+        \ dstAddr +=/-= 8
+        .jsr_inst JSR &FFFF
 
         \ clear first few pixels again?
         DEX
-        BPL skip2
+        BPL skip3
             LDX laserLength
-            BNE leftToRightEnd
-        .skip2
+            BNE first
+        .skip3
 
         \ restore last few pixels
         BEQ drawEnd
 
         \ draw 4 white pixels
-        LDA #0
+        TYA
         STA (dstAddr), Y
 
-        BEQ leftToRightLoop
+        BEQ loop
 
-    RTS
-
-    \
-    \ draw laser right to left
-    \
-
-    .rightToLeftEnd
-        \ clear first few pixels (we do this twice because K9 may have moved)
-        LDA (dstAddr), Y
-        JSR drawStart
-
-    .rightToLeftLoop
-
-        \ dstAddr -= 8
-        JSR dstAddr_sub_8
-
-        \ clear first few pixels again?
-        DEX
-        BPL skip4
-            LDX laserLength
-            BNE rightToLeftEnd
-        .skip4
-
-        \ restore last few pixels
-        BEQ drawEnd
-
-        \ draw 4 white pixels
-        LDA #0
-        STA (dstAddr), Y
-
-        BEQ rightToLeftLoop
-
-    RTS
-
-.drawStart
-    EOR #&F0
-    STA temp
-    LSR A : LSR A : LSR A : LSR A
-    AND temp
-    EOR #&FF
-    AND (dstAddr), Y
-    STA (dstAddr), Y
     RTS
 
 .drawEnd
@@ -996,11 +917,9 @@ ENDIF
     STA topHi
 
     \ right = left + width - 1
-    LDA width
-    SEC
-    SBC #1
+    LDA leftLo
     CLC 
-    ADC leftLo
+    ADC widthMinusOne
     STA rightLo
 
     LDA leftHi
@@ -1009,11 +928,9 @@ ENDIF
     STA rightHi
 
     \ bottom = top + height - 1
-    LDA height
-    SEC
-    SBC #1
-    CLC 
-    ADC topLo
+    LDA topLo
+    CLC
+    ADC heightMinusOne
     STA bottomLo
 
     LDA topHi
@@ -1153,12 +1070,11 @@ ENDIF
     LDA objectYLo, X : STA topLo
     LDA objectYHi, X : STA topHi
 
-    \ width, height, and stride variables
-    LDA objectType, X
-    AND #OBJECT_TYPE_MASK
-    TAY
-    LDA objectTypeWidths, Y : AND #&FC : STA width
-    LDA objectTypeHeights, Y : STA height : STA stride
+    \ cache extents (width, height, widthMinusOne, heightMinusOne)
+    JSR cacheObjectExtents
+
+    \ stride = height
+    LDA height : STA stride
 
     \ expand extents if object is ascending or descending, setting
     \ flags to erase above or below
@@ -1195,18 +1111,17 @@ ENDIF
     TXA : PHA \ save X register
 
     \ srcBaseAddr = spriteAddrTbl[index]
-    LDA objectSpriteIndex, X : STA index
-    ASL A
-    TAY
-    LDA spriteAddrTbl, Y
-    STA srcBaseAddr
-    LDA spriteAddrTbl+1, Y
-    STA srcBaseAddr+1
+    LDY objectSpriteIndex, X
+    STY index \ --> sprite index
+    LDA spriteAddrTblLo, Y : STA srcBaseAddr
+    LDA spriteAddrTblHi, Y : STA srcBaseAddr+1
+    
+    LDY #0 \ --> zero
 
     \ clip left edge?
     LDA leftHi : BPL endif_6
         \ 'clipped width' = 0 - left
-        LDA #0
+        TYA \ <-- zero
         SEC
         SBC leftLo
         STA temp
@@ -1233,9 +1148,8 @@ ENDIF
         STA width
 
         \ left = 0
-        LDA #0\
-        STA leftLo
-        STA leftHi
+        STY leftLo
+        STY leftHi
     .endif_6
 
     \ clip left edge?
@@ -1254,7 +1168,7 @@ ENDIF
     LDA topHi : BPL endif_8
         
         \ 'clipped height' = 0 - top
-        LDA #0
+        TYA \ <-- zero
         SEC
         SBC topLo
         STA temp
@@ -1276,12 +1190,11 @@ ENDIF
         STA height
 
         \ top = 0
-        LDA #0
-        STA topLo
-        STA topHi
+        STY topLo
+        STY topHi
 
         \ eraseAbove = false
-        STA eraseAbove
+        STY eraseAbove
     .endif_8
 
     \ clip bottom edge?
@@ -1296,7 +1209,7 @@ ENDIF
         STA height
 
         \ eraseBelow = false
-        LDA #0 : STA eraseBelow
+        STY eraseBelow
     .endif_9
 
     \
@@ -1355,11 +1268,10 @@ ENDIF
     .else11
         \ draw blank sprite
         ASSERT(LO(zeroMemory32) == 0 AND HI(zeroMemory32) == 0)
-        LDA #0
-        STA srcBaseAddr
-        STA srcBaseAddr+1
-        STA stride
-        STA offset
+        STY srcBaseAddr
+        STY srcBaseAddr+1
+        STY stride
+        STY offset
     .endif11
     
     \
@@ -1382,14 +1294,14 @@ ENDIF
         CLC
         ADC eraseAbove
         TAY
-        LDA drawObject_headJumpTbl,Y
+        LDA drawObject_headJumpTbl, Y
         STA head_jump_inst+1
 
         \ calculate and patch tail jump instruction
         TXA
         AND #7
         TAY
-        LDA drawObject_tailJumpTbl,Y
+        LDA drawObject_tailJumpTbl, Y
         STA tail_jump_inst+1
 
         BCC endif_10
@@ -1397,13 +1309,12 @@ ENDIF
     .else_10 \ sprite fits within a single character row
 
         \ head loop count = zero
-        LDA #0 : STA headCount
+        STY headCount
 
         \ calculate and patch tail jump instruction
         LDA height
         SEC
         SBC eraseAbove
-        SEC
         SBC eraseBelow
         TAY
         LDA drawObject_tailJumpTbl,Y
@@ -1413,16 +1324,8 @@ ENDIF
     \ finally, render the sprite
     .outerLoop
 
-        \ update srcBaseAddr, srcAddr, dstBaseAddr, and dstAddr
-        JSR drawObjectUpdateSrcDstAddrs
-
-        \ initialize indexer
-        LDY offset \ (top % 8)
-
-        \ erase above?
-        LDA eraseAbove : BEQ skipEraseAbove
-            LDA #0 : STA (dstAddr),Y : INY
-        .skipEraseAbove
+        \ update srcBaseAddr, srcAddr, dstBaseAddr, and dstAddrs, and erase above
+        JSR drawObjectUpdateSrcDstAddrsAndEraseAbove
 
         \ while (headCount > 0)...
         LDX headCount : BEQ skipHeadLoop
@@ -1433,14 +1336,14 @@ ENDIF
         .headLoop
 
             \ draw half character
-            .*head0 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-            .*head1 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-            .*head2 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-            .*head3 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-            .*head4 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-            .*head5 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-            .*head6 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-            .*head7 LDA (srcAddr),Y : STA (dstAddr),Y: INY
+            .*head0 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .*head1 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .*head2 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .*head3 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .*head4 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .*head5 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .*head6 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .*head7 LDA (srcAddr), Y : STA (dstAddr), Y: INY
             .*head8
 
             \ dstAddr += 512
@@ -1475,14 +1378,14 @@ ENDIF
         BCC tail_jump_inst \ branch to tail0..tail8 (instruction patched above)
 
         \ draw half character
-        .*tail8 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-        .*tail7 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-        .*tail6 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-        .*tail5 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-        .*tail4 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-        .*tail3 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-        .*tail2 LDA (srcAddr),Y : STA (dstAddr),Y: INY
-        .*tail1 LDA (srcAddr),Y : STA (dstAddr),Y: INY
+        .*tail8 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .*tail7 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .*tail6 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .*tail5 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .*tail4 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .*tail3 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .*tail2 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .*tail1 LDA (srcAddr), Y : STA (dstAddr), Y: INY
         .*tail0
 
         \ erase below?
@@ -1502,6 +1405,9 @@ ENDIF
 
 \
 \ drawLaseredObject
+\
+\ params:
+\   Y register = zero
 \
 .drawLaseredObject
 {
@@ -1524,7 +1430,6 @@ ENDIF
         LDA #8
         SEC
         SBC offset \ (top % 8)
-        SEC
         SBC eraseAbove
         STA innerCount
 
@@ -1539,29 +1444,20 @@ ENDIF
     .else_10 \ sprite fits within a single character row
 
         \ head loop count = zero
-        LDA #0 : STA headCount
+        STY headCount
 
         \ tail loop count = height - eraseAbove - eraseBelow
         LDA height
         SEC
         SBC eraseAbove
-        SEC
         SBC eraseBelow
         STA temp \ --> tail count
     .endif_10
 
     \ finally, render the sprite
     .outerLoop
-        \ update srcBaseAddr, srcAddr, dstBaseAddr, and dstAddr
-        JSR drawObjectUpdateSrcDstAddrs
-
-        \ initialize indexer
-        LDY offset \ <-- (top % 8)
-
-        \ erase above
-        LDA eraseAbove : BEQ skipEraseAbove
-            LDA #0 : STA (dstAddr), Y : INY
-        .skipEraseAbove
+        \ update srcBaseAddr, srcAddr, dstBaseAddr, and dstAddrs, and erase above
+        JSR drawObjectUpdateSrcDstAddrsAndEraseAbove
 
         \ while (headCount > 0)...
         LDA headCount : STA count
@@ -1681,10 +1577,6 @@ ENDIF
     AND #7
     STA offset \ --> topLo MOD 8
 
-    \ width & height
-    LDA #8 : STA width
-    LDA #1 : STA height
-
     \ look up sprite health bar position and offset
     LDY objectSpriteIndex, X
     LDA spriteHealthBarTbl, Y
@@ -1693,13 +1585,18 @@ ENDIF
     BCC skip1
         \ left += 16
         LDA leftLo
-        CLC
-        ADC #16
+        ADC #15
         STA leftLo
         BCC nocarry
             INC leftHi
         .nocarry
     .skip1
+
+    \ width, height, widthMinusOne, heightMinusOne (used by convertToScreenSpace)
+    LDY #8 : STY width
+    DEY : STY widthMinusOne
+    LDY #1 : STY height
+    DEY : STY heightMinusOne
 
     \ convert to screen space, performing broard clipping
     JSR convertToScreenSpace
@@ -1722,25 +1619,30 @@ ENDIF
     LDA healthBarAtlas+1, Y
     STA srcAddr+1 \ --> right pixels
 
-    \ clip left edge
-    LDA leftHi : BPL endif_6
-        LDA #&FF : STA srcAddr \ mark left pixels clipped
-        LDA #0 : STA leftLo \ left = 0
+    \ clip right edge
+    LDY #&FF
+    LDA rightHi : BEQ endif_6
+        STY srcAddr+1 \ mark right pixels clipped
     .endif_6
 
-    \ clip right edge
-    LDA rightHi : BEQ endif_7
-        LDA #&FF : STA srcAddr+1 \ mark right pixels clipped
+    \ clip left edge
+    LDA leftHi : BPL endif_7
+        STY srcAddr \ mark left pixels clipped
+        INY
+        STY leftLo \ left = 0
     .endif_7
 
     \ calculate destination screen addr
     JSR calcScreenDstBaseAddr
 
-    \ dstBaseAddr += topLo MOD 8
+    \ dstAddr = dstBaseAddr + (topLo MOD 8)
     LDA dstBaseAddr
     CLC
     ADC offset
-    STA dstBaseAddr
+    STA dstAddr
+
+    LDA dstBaseAddr+1
+    STA dstAddr+1
 
     \
     \ finally, render the left and right pixels
@@ -1750,29 +1652,19 @@ ENDIF
     LDY #0
     LDA srcAddr \ <-- left pixels
     CMP #&FF : BEQ skip2
-        STA (dstBaseAddr), Y
+        STA (dstAddr), Y
     .skip2
 
     \ dstBaseAddr += 8, if neither left or right pixels are clipped
     ORA srcAddr+1 \ <-- right pixels
     CMP #&FF : BEQ skip3
-        LDA dstBaseAddr
-        CLC
-        ADC #8
-        STA dstBaseAddr
-        BCC skip4
-            INC dstBaseAddr+1
-            BPL skip4\ if (dstBaseAddr >= &8000) dstAddr -= &4000
-                LDA dstBaseAddr
-                SBC #40
-                STA dstBaseAddr
-        .skip4
+        JSR dstAddr_add_8
     .skip3
 
     \ write right pixels, if not clipped
     LDA srcAddr+1 \ <-- right pixels
     CMP #&FF : BEQ skip5
-        STA (dstBaseAddr), Y
+        STA (dstAddr), Y
     .skip5
 
 .return
@@ -1780,11 +1672,11 @@ ENDIF
 }
 
 \
-\ drawOuterOuterLoopPreamble
+\ drawObjectUpdateSrcDstAddrsAndEraseAbove
 \
 \ common outer loop code
 \
-.drawObjectUpdateSrcDstAddrs
+.drawObjectUpdateSrcDstAddrsAndEraseAbove
 {
     \ srcAddr = srcBaseAddr, srcBaseAddr += stride
     LDA srcBaseAddr+1 : STA srcAddr+1
@@ -1811,6 +1703,17 @@ ENDIF
         .nowrap
         CLC
     .nocarry2
+
+    \ initialize indexer
+    LDY offset \ (top % 8)
+
+    \ erase above?
+    LDA eraseAbove : BEQ skip
+        LDA #0
+        STA (dstAddr), Y
+        INY
+    .skip
+
     RTS
 }
 
@@ -1832,6 +1735,20 @@ ENDIF
     .nowrap
     STA dstAddr+1
     RTS
+}
+
+\
+\ laserUpdateVariablesLeftToRight
+\ 
+.laserUpdateVariablesLeftToRight
+{
+    \ leftLo += 4
+    LDA leftLo
+    CLC
+    ADC #4
+    STA leftLo
+
+    \ fall through to dstAddr_add_8
 }
 
 \
@@ -1866,6 +1783,20 @@ ENDIF
         .nowrap
     .nocarry
     RTS
+}
+
+\
+\ laserUpdateVariablesRightToLeft
+\ 
+.laserUpdateVariablesRightToLeft
+{
+    \ leftLo += 4
+    LDA leftLo
+    SEC
+    SBC #4
+    STA leftLo
+
+    \ fall through to dstAddr_sub_8
 }
 
 \

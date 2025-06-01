@@ -46,7 +46,7 @@ namespace LevelEditor
 
         internal void Write(FileStream fs, Tile[] tiles)
         {
-            // write tile indicies, embedding opacity and collectable flags
+            // write tile indices, embedding opacity
             for (int i = 0; i < Width * Height; i++)
             {
                 int index = TileIndices[i];
@@ -57,8 +57,8 @@ namespace LevelEditor
                     index = 0;
                 }
 
-                // get opacity and collectable flags
-                int flags = (int)tiles[index].Type & TileFlagsMask;
+                // apply opacity flag
+                int flags = (int)tiles[index].Type & Tile.OpaqueFlag;
 
                 fs.WriteByte((byte)(flags | index));
             }
@@ -117,11 +117,11 @@ namespace LevelEditor
         internal byte[] TileIndices;
 
         // special indices
-        internal const int K9LookLeft = 30;
-        internal const int K9LookRight = 31;
-        internal const int EnemyLookLeft = 32;
-        internal const int EnemyLookRight = 33;
-        internal const int EnemyMoveLeft = 34;
-        internal const int EnemyMoveRight = 35;
+        internal const int K9LookLeft = 28;
+        internal const int K9LookRight = 29;
+        internal const int EnemyLookLeft = 30;
+        internal const int EnemyLookRight = 31;
+        internal const int EnemyMoveLeft = 32;
+        internal const int EnemyMoveRight = 33;
     }
 }

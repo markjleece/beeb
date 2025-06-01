@@ -355,6 +355,10 @@ namespace LevelEditor
         {
             Rectangle clippingRect = e.ClipRectangle;
 
+            var channelSize = TileGridTileSize / 3;
+            var channelOffset = TileGridTileSize / 12;
+            var channelFont = new Font(FontFamily.GenericSansSerif, channelSize, FontStyle.Bold, GraphicsUnit.Pixel);
+
             // draw tiles
             for (int y = 0; y < LevelData.TileGrid.Height; y++)
             {
@@ -377,6 +381,18 @@ namespace LevelEditor
 
                     CachedBitmap cachedBitmap = GetTileGridCachedBitmap(tileIndex, e.Graphics);
                     e.Graphics.DrawCachedBitmap(cachedBitmap, bounds.Left, bounds.Top);
+
+                    char? teleport = LevelData.TeleportGrid[x, y];
+                    if (teleport != null)
+                    {
+                        var channelRect = new Rectangle(
+                            bounds.Left + channelOffset,
+                            bounds.Top + channelOffset,
+                            channelSize, channelSize);
+
+                        e.Graphics.FillRectangle(Brushes.White, channelRect);
+                        e.Graphics.DrawString($"{teleport}", channelFont, Brushes.Black, channelRect);
+                    }
                 }
             }
 
@@ -678,7 +694,7 @@ namespace LevelEditor
             GCHandle gch = GCHandle.Alloc(bytes); // lock bytes
 
             Bitmap bitmap = new(
-                width, height, bytes.Length / height/*stide*/,
+                width, height, bytes.Length / height/*stride*/,
                 PixelFormat.Format32bppArgb,
                 Marshal.UnsafeAddrOfPinnedArrayElement(bytes, 0));
 
@@ -966,7 +982,7 @@ namespace LevelEditor
         {
             MessageBox.Show(
                 "The main panel shows the design of the level. Its layout can be modified by using the 'Select Layout' button.\n\n" +
-                "Tiles can be set by first selecting a tile from the left palette, and then clicking and draging within the main panel.\n\n" +
+                "Tiles can be set by first selecting a tile from the left palette, and then clicking and dragging within the main panel.\n\n" +
                 "The current draw mode (freeform, line, rectangle) effects how tiles are drawn when dragging the mouse.\n\n" +
                 "The left panel shows a palette of 30 tiles, plus six 'object' tiles which can be used to place K9 and enemies.\n\n" +
                 "The background tile is implicitly selected when the right mouse button is used.\n\n" +
@@ -1001,12 +1017,12 @@ namespace LevelEditor
         private CachedBitmap[] CachedTileGridBitmaps = new CachedBitmap[TileSelectorCount];
         private readonly Bitmap[] ObjectBitmaps = new Bitmap[6];
 
-        private const int TileSelectorCount = 36; // 30 regular tiles + 6 object tiles
+        private const int TileSelectorCount = 34; // 28 regular tiles + 6 object tiles
     }
 
     public partial class TileSelectorPanel : Panel
     {
-        protected override void OnPaintBackground(PaintEventArgs pevent)
+        protected override void OnPaintBackground(PaintEventArgs e)
         {
             // don't draw the background
         }
@@ -1023,7 +1039,7 @@ namespace LevelEditor
             base.OnMouseWheel(e);
         }
 
-        protected override void OnPaintBackground(PaintEventArgs pevent)
+        protected override void OnPaintBackground(PaintEventArgs e)
         {
             // don't draw the background
         }

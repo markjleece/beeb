@@ -18,7 +18,7 @@
 \   | Screen (256x256, 4 color mode)  |
 \   +---------------------------------+ &4000
 \   | Game data (portions reloaded)   |
-\   +---------------------------------+ &2C10
+\   +---------------------------------+ &2C30
 \   | Game code (6928 bytes)          |
 \   +---------------------------------+ &1100
 \   | Game data (portions reloaded)   | 
@@ -70,12 +70,12 @@
 \   &0790    96    1 K9 sprite*
 \   &07F0    16    Black palette*
 \   &0800    128   MOS workspace
-\   &0880    64    Sprite address table* (repurposed MOS printer buffer)
+\   &0880    64    Tile and sprite address tables (low-bytes)* (repurposed MOS printer buffer)
 \   &08C0    64    MOS workspace
 \   &0900    960   5 enemy sprites*
 \   &0CC0    64    2 door sprites*
 \   &0D00    32    Enemy health bar atlas* (repurposed NMI memory)
-\   &0D20    64    Tile address table* (repurposed NMI memory)
+\   &0D20    64    Tile and sprite address tables (high-bytes)* (repurposed NMI memory)
 \   &0D60    160   MOS ROM workspace
 \   &0E00    384   2 enemy sprites*
 \   &0F80    32    1 door sprite*
@@ -85,12 +85,13 @@
 \   &10C0    32    DFS workspace
 \   &10E0    12    Sprite health bar table* (repurposed transient DFS memory)
 \   &10EC    20    Draw object jump tables* (repurposed transient DFS memory)
-\   &1100    6928  Program code
-\   &2C10    864   9 K9 sprites*
-\   &2F70    96    4 elevator sprites*
-\   &2FD0    224   Gamebar sprites* (or sample.6502 if 16K+ of sideways RAM exists)
-\   &30B0    16    Level palette*
-\   &30C0    1856  Level tiles*
+\   &1100    6960  Program code
+\   &2C30    864   9 K9 sprites*
+\   &2F90    96    4 elevator sprites*
+\   &2FF0    96    4 teleport sprites*
+\   &3050    224   Gamebar sprites* (or sample.6502 if 16K+ of sideways RAM exists)
+\   &3130    16    Level palette*
+\   &3140    1728  Level tiles*
 \   &3800    2048  Level tile grid*
 \   &4000    16K   256x256 4-color screen**
 \
@@ -209,7 +210,7 @@ TILE_GRID_FLAGS_K9 = &40     \ set if the tile is occupied by k9
 TILE_GRID_FLAGS_ENEMY = &20  \ set if the tile is occupied by an enemy
 
 \ tile type flags (copied from level editor)
-TILE_TYPE_FLAG_OPAQUE = &80  \ matches tile grid opaque flag (see above)
+TILE_TYPE_FLAG_OPAQUE = &80 \ matches tile grid opaque flag (see above)
 
 \ tile types (copied from level editor)
 TILE_TYPE_SPACE = 1
@@ -219,7 +220,8 @@ TILE_TYPE_KEY = (TILE_TYPE_FLAG_OPAQUE + 2)
 TILE_TYPE_JEWEL = (TILE_TYPE_FLAG_OPAQUE + 3)
 TILE_TYPE_DOOR = (TILE_TYPE_FLAG_OPAQUE + 4)
 TILE_TYPE_ELEVATOR = (TILE_TYPE_FLAG_OPAQUE + 5)
-TILE_TYPE_EXIT = (TILE_TYPE_FLAG_OPAQUE + 6)
+TILE_TYPE_TELEPORT = (TILE_TYPE_FLAG_OPAQUE + 6)
+TILE_TYPE_EXIT = (TILE_TYPE_FLAG_OPAQUE + 7)
 
 \ common object state render flags (objectState high nibble)
 OBJECT_STATE_FLAGS_MASK = &F0
@@ -248,15 +250,20 @@ ENEMY_WEAPON_DAMAGE_COUNTER = 2 \ weapon damage counter (used to inflict damage 
 ENEMY_END_PURSUIT_COUNTER = 32 \ number of frames (x16) before enemies give up pursuit (10 seconds)
 
 \ sprite indices (index into spriteAddrTbl)
+SPRITE_COUNT = 35
 SPRITE_INDEX_ENEMY_LEFT = 0  \ 0..3
 SPRITE_INDEX_ENEMY_RIGHT = 4 \ 4..7
 SPRITE_INDEX_ENEMY_TURN = 8  \ 8..10
 SPRITE_INDEX_DOOR = 11       \ 11..14
 SPRITE_INDEX_ELEVATOR = 15   \ 15..18
-SPRITE_INDEX_K9_LEFT = 19    \ 19..22
-SPRITE_INDEX_K9_RIGHT = 23   \ 23..26
-SPRITE_INDEX_K9_TURN = 27    \ 27..29
-SPRITE_INDEX_GAMEBAR = 30    \ 30
+SPRITE_INDEX_TELEPORT = 19   \ 19..22
+SPRITE_INDEX_K9_LEFT = 23    \ 23..26
+SPRITE_INDEX_K9_RIGHT = 27   \ 27..30
+SPRITE_INDEX_K9_TURN = 31    \ 31..33
+SPRITE_INDEX_GAMEBAR = 34    \ 34
+
+\ tile count
+TILE_COUNT = 28
 
 \ maximum number of game objects (k9 + enemies + elevators + doors)
 MAX_OBJECT_COUNT = 48
@@ -306,7 +313,7 @@ SOUND_EFFECT_HEART_BEAT = 12
 SOUND_EFFECT_DIED = 16
 SOUND_EFFECT_LEVEL_COMPLETE = 20
 SOUND_EFFECT_KEY_JEWEL = 24
-SOUND_EFFECT_DOOR_LOCKED = 28
+SOUND_EFFECT_BLOCKED = 28
 SOUND_EFFECT_MOVE = 32
 SOUND_EFFECT_PURSUIT_ON = 36
 SOUND_EFFECT_PURSUIT_OFF = 40
@@ -342,27 +349,32 @@ enemyAtlas5 = &E00
 doorAtlas1 = &3C0
 doorAtlas2 = &CC0
 doorAtlas3 = &F80
-elevatorAtlas = &2F70
+elevatorAtlas = &2F90
+teleportAtlas = &2FF0
 k9Atlas1 = &790
 k9Atlas2 = &FA0
-k9Atlas3 = &2C10
-gamebarAtlas = &2FD0
+k9Atlas3 = &2C30
+gamebarAtlas = &3050
 gamebarAtlas_sidewaysRAM = &BF20        \ location when 16K sideways RAM is detected
 healthBarAtlas = &0D02                  \ 30 byte atlas (repurposes NMI workspace)
+
+\ black palette location
+blackPalette = &07F0
 
 \ sound effects location
 soundEffects = &1090                    \ 44 byte sound effect data (repurposes DFS &1090-&10BF workspace)
 
-\ tile and sprite tables
-spriteAddrTbl = &0880                   \ 64 byte sprite address table (repurposes MOS printer buffer)
+\ tile and sprite address table locations
+tileAddrTblLo = &0880                   \ 28 byte tile address table (low-bytes) (repurposes MOS printer buffer)
+tileAddrTblHi = &0D20                   \ 28 byte tile address table (high-bytes) (repurposes NMI workspace)
+spriteAddrTblLo = &089C                 \ 35 byte sprite address table (low-bytes) (repurposes MOS printer buffer)
+spriteAddrTblHi = &0D3C                 \ 35 byte sprite address table (high-bytes) (repurposes NMI workspace)
 spriteHealthBarTbl = &10E0              \ 12 byte sprite health bar table (repurposes DFS &10E0-&10FF workspace)
-tileAddrTbl = &0D20                     \ 64 byte tile address table (repurposes NMI workspace)
-blackPalette = &07F0
 
 \ level data locations
-levelLoadAddr = &30B0                   \ address where level data is loaded
-levelPalette = &30B0                    \ 16 byte level palette
-levelTiles = &30C0                      \ 29 x 64 byte tiles.  Each tile contain two character rows of texel quads. Tiles are indexed from 1. Tile 0 is implicitly filled with zeros.
+levelLoadAddr = &3130                   \ address where level data is loaded
+levelPalette = &3130                    \ 16 byte level palette
+levelTiles = &3140                      \ 29 x 64 byte tiles.  Each tile contain two character rows of texel quads. Tiles are indexed from 1. Tile 0 is implicitly filled with zeros.
 levelTileGrid = &3800                   \ 2K of tile values (flags/indicies)
 levelTileTypes = &03E0                  \ 32 x 1-byte tile types (repurposes MOS keyboard buffer)
 
@@ -370,12 +382,12 @@ levelTileTypes = &03E0                  \ 32 x 1-byte tile types (repurposes MOS
 levelHorzTileCountLoaded = &4000        \ level width in tiles (copied to horzTileCount)
 levelVertTileCountLoaded = &4001        \ level height in tiles (used to calculate scrnTopHiMaxMinusOne)
 levelTileTypesLoaded = &4002            \ level tile types (relocated to levelTileTypes)
-levelEnemyWeaponStrengthLoaded = &4020  \ level enemy weapon strength (relocated to enemyWeaponStrength)
-levelLaserStrengthLoaded = &4021        \ level laser strength (relocated to laserStrength)
-levelLaserHealthDrainLoaded = &4022     \ level laser health drain (relocated to laserHealthDrain)
-levelJewelHealthGainHiLoaded = &4023    \ level jewel health gain (relocated to jewelHealthGainHi)
-levelSampleSoundsEnabledLoaded = &4024  \ level sound samples enabled flag (used in setting primarySamplesEnabled and secondarySamplesEnabled)
-levelObjectsLoaded = &4025              \ 48 x 3 byte objects descriptors (used to populate game objects)
+levelEnemyWeaponStrengthLoaded = &401E  \ level enemy weapon strength (relocated to enemyWeaponStrength)
+levelLaserStrengthLoaded = &401F        \ level laser strength (relocated to laserStrength)
+levelLaserHealthDrainLoaded = &4020     \ level laser health drain (relocated to laserHealthDrain)
+levelJewelHealthGainHiLoaded = &4021    \ level jewel health gain (relocated to jewelHealthGainHi)
+levelSampleSoundsEnabledLoaded = &4022  \ level sound samples enabled flag (used in setting primarySamplesEnabled and secondarySamplesEnabled)
+levelObjectsLoaded = &4023              \ 48 x 4 byte objects descriptors (used to populate game objects)
 
 \ drawObject head and tail jump offset tables
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
@@ -431,7 +443,7 @@ ORG 0
 .endPursuitCounter          SKIP 1  \ set to ENEMY_END_PURSUIT_COUNTER when k9 is in sight
 .pursuitSoundEffectCounter  SKIP 1  \ sound effect counter. Used to ingore duplicate requests and repeat sample
 .laserSoundEffectOn         SKIP 1  \ sound effect flag. Used to ingore duplicate requests
-.doorLockedSoundEffectOn    SKIP 1  \ sound effect flag. Used to ingore duplicate requests
+.blockedSoundEffectOn       SKIP 1  \ sound effect flag. Used to ingore duplicate requests
 .inhibitMoveSoundEffect     SKIP 1  \ sound effect flag. Used to inhibit move sound effects.
 .groanInhibited             SKIP 1  \ sound effect flag. Used to inhibit groan sample.
 .enemyHitTestLastFound      SKIP 1  \ cached hit test result (hit-test optimization)
@@ -456,7 +468,11 @@ ORG 0
 .transitionCompleteCallback SKIP 2  \ transition callback, invoked when crop open transition completes
 
 \ transient data (values do not persist across frames)
-.soundParams                SKIP 8  
+.soundParams                SKIP 4 \ + four delta variables
+.deltaXLo                   SKIP 1
+.deltaXHi                   SKIP 1
+.deltaYLo                   SKIP 1
+.deltaYHi                   SKIP 1
 .tileGridAddr               SKIP 2  
 .srcAddr                    SKIP 2 
 .dstAddr                    SKIP 2
@@ -609,7 +625,7 @@ INCLUDE "utils.6502"
     JSR drawTileBackground
 
     \ start crop open transition
-    LDX #LO(callback)
+    LDA #LO(callback)
     LDY #HI(callback)
     JMP startCropOpenTransition \ implicit RTS
 
@@ -840,6 +856,14 @@ INCLUDE "utils.6502"
         CMP objectCount
         BNE loop
 
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_10
+{
     RTS
 }
 
@@ -876,13 +900,6 @@ INCLUDE "utils.6502"
 \ params:
 \   X register   Object index
 \
-
-.^objectTypeWidths
-    EQUB K9_SPRITE_WIDTH, ENEMY_SPRITE_WIDTH, ELEVATOR_SPRITE_WIDTH, DOOR_SPRITE_WIDTH
-
-.^objectTypeHeights
-    EQUB K9_SPRITE_HEIGHT, ENEMY_SPRITE_HEIGHT, ELEVATOR_SPRITE_HEIGHT, DOOR_SPRITE_HEIGHT
-
 .cacheObjectExtents
 {
     LDA objectType, X
@@ -900,15 +917,14 @@ INCLUDE "utils.6502"
     SBC #1
     STA heightMinusOne
 
-    \ fall through to RTS
-}
-
-\
-\ common RTS
-\
-.rts_10
-{
     RTS
+
+.objectTypeWidths
+    EQUB K9_SPRITE_WIDTH, ENEMY_SPRITE_WIDTH, ELEVATOR_SPRITE_WIDTH, DOOR_SPRITE_WIDTH
+
+.objectTypeHeights
+    EQUB K9_SPRITE_HEIGHT, ENEMY_SPRITE_HEIGHT, ELEVATOR_SPRITE_HEIGHT, DOOR_SPRITE_HEIGHT
+
 }
 
 \
@@ -955,7 +971,7 @@ INCLUDE "utils.6502"
             LDA objectDrawOrder, Y  
             TAY
 
-            \ if (objectY[X] > objectY[Y] swap
+            \ if (objectY[X] > object[Y]) swap
             LDA objectYLo, Y
             CMP objectYLo, X
             LDA objectYHi, Y
@@ -1108,6 +1124,48 @@ INCLUDE "utils.6502"
     LDA objectState, X
     AND #LO(NOT(OBJECT_STATE_FLAGS_REDRAW))
     STA objectState, X
+    RTS
+}
+
+\
+\ frameCallback_MoveHorz(A,Y)
+\
+\ set keyframe, set redraw, continue animation? (carry set), and accumulator = objectXLo[X] AND &F
+\
+\ params:
+\   Accumulator SPRITE_INDEX_K9_LEFT, SPRITE_INDEX_K9_RIGHT, SPRITE_INDEX_ENEMY_LEFT or SPRITE_INDEX_ENEMY_RIGHT
+\   X register  Object index
+\
+\ modifies:
+\   temp, Y
+\
+.frameCallback_MoveHorz
+{
+    STA temp
+
+    \ set keyframe
+    LDA objectXLo, X
+    TAY \ --> objectXLo, X
+    AND #3
+    CLC
+    ADC temp \ SPRITE_INDEX_K9_LEFT ...
+    STA objectSpriteIndex, X
+
+    \ set redraw flag
+    JSR setRedrawFlag
+
+    \ continue animation?
+    TYA \ <-- objectXLo, X
+    AND #3
+    BNE failure
+
+    \ accumulator = objectXLo[X] & 0xF
+    TYA \ <-- objectXLo, X
+    AND #&F
+    RTS
+
+    .failure
+    SEC
     RTS
 }
 

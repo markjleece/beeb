@@ -76,7 +76,7 @@
     STA endPursuitCounter
     STA laserSoundEffectOn 
     STA pursuitSoundEffectCounter
-    STA doorLockedSoundEffectOn
+    STA blockedSoundEffectOn
     STA enemyHitTestLastFound
     STA doorScrollRedrawCount
     STA inhibitMoveSoundEffect
@@ -237,20 +237,33 @@
 \
 .relocateTileAddrTbl
 {
-    LDA #LO(tileAddrTblLocal) : STA srcAddr
-    LDA #HI(tileAddrTblLocal) : STA srcAddr+1
+    LDA #LO(tileAddrTblLoLocal) : STA srcAddr
+    LDA #HI(tileAddrTblLoLocal) : STA srcAddr+1
 
-    LDA #LO(tileAddrTbl) : STA dstAddr
-    LDA #HI(tileAddrTbl) : STA dstAddr+1
+    LDA #LO(tileAddrTblLo) : STA dstAddr
+    LDA #HI(tileAddrTblLo) : STA dstAddr+1
 
-    LDA #LO(64) : STA sizeLo
-    LDA #HI(64) : STA sizeHi
+    LDA #LO(TILE_COUNT) : STA sizeLo
+    LDA #HI(TILE_COUNT) : STA sizeHi
+
+    JSR memcpy
+
+    LDA #LO(tileAddrTblHiLocal) : STA srcAddr
+    LDA #HI(tileAddrTblHiLocal) : STA srcAddr+1
+
+    LDA #LO(tileAddrTblHi) : STA dstAddr
+    LDA #HI(tileAddrTblHi) : STA dstAddr+1
 
     JMP memcpy \ implicit RTS
 
-.tileAddrTblLocal
-    FOR i, 0, 31
-        EQUW (levelTiles - 64 + (i * 64))
+.tileAddrTblLoLocal
+    FOR i, 0, TILE_COUNT
+        EQUB LO(levelTiles - 64 + (i * 64))
+    NEXT
+
+.tileAddrTblHiLocal
+    FOR i, 0, TILE_COUNT
+        EQUB HI(levelTiles - 64 + (i * 64))
     NEXT
 }
 
@@ -259,67 +272,127 @@
 \
 .relocateSpriteAddrTbl
 {
-    LDA #LO(spriteAddrTblLocal) : STA srcAddr
-    LDA #HI(spriteAddrTblLocal) : STA srcAddr+1
+    LDA #LO(spriteAddrTblLoLocal) : STA srcAddr
+    LDA #HI(spriteAddrTblLoLocal) : STA srcAddr+1
 
-    LDA #LO(spriteAddrTbl) : STA dstAddr
-    LDA #HI(spriteAddrTbl) : STA dstAddr+1
+    LDA #LO(spriteAddrTblLo) : STA dstAddr
+    LDA #HI(spriteAddrTblLo) : STA dstAddr+1
 
-    LDA #LO(64) : STA sizeLo
-    LDA #HI(64) : STA sizeHi
+    LDA #LO(SPRITE_COUNT) : STA sizeLo
+    LDA #HI(SPRITE_COUNT) : STA sizeHi
 
-    JSR memcpy \ implicit RTS
+    JSR memcpy
+
+    LDA #LO(spriteAddrTblHiLocal) : STA srcAddr
+    LDA #HI(spriteAddrTblHiLocal) : STA srcAddr+1
+
+    LDA #LO(spriteAddrTblHi) : STA dstAddr
+    LDA #HI(spriteAddrTblHi) : STA dstAddr+1
+
+    JSR memcpy
 
     LDA primarySamplesROMSEL
     ORA secondarySamplesROMSEL
     BEQ skip
         \ gamebar atlas resides in sideways RAM
-        LDA #LO(gamebarAtlas_sidewaysRAM) : STA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)
-        LDA #HI(gamebarAtlas_sidewaysRAM) : STA spriteAddrTbl+(2*SPRITE_INDEX_GAMEBAR)+1
+        LDA #LO(gamebarAtlas_sidewaysRAM) : STA spriteAddrTblLo + SPRITE_INDEX_GAMEBAR
+        LDA #HI(gamebarAtlas_sidewaysRAM) : STA spriteAddrTblHi + SPRITE_INDEX_GAMEBAR
     .skip
     RTS
 
-.spriteAddrTblLocal
+.spriteAddrTblLoLocal
     \ 11 enemy sprites
-    EQUW enemyAtlas1
-    EQUW enemyAtlas2
+    EQUB LO(enemyAtlas1)
+    EQUB LO(enemyAtlas2)
 
     FOR addr, enemyAtlas3, enemyAtlas3 + ENEMY_SPRITE_SIZE, ENEMY_SPRITE_SIZE
-        EQUW addr
+        EQUB LO(addr)
     NEXT
 
     FOR addr, enemyAtlas4, enemyAtlas4 + (4 * ENEMY_SPRITE_SIZE), ENEMY_SPRITE_SIZE
-        EQUW addr
+        EQUB LO(addr)
     NEXT
 
     FOR addr, enemyAtlas5, enemyAtlas5 + ENEMY_SPRITE_SIZE, ENEMY_SPRITE_SIZE
-        EQUW addr
+        EQUB LO(addr)
     NEXT
 
     \ 4 door sprites
-    EQUW doorAtlas1
+    EQUB LO(doorAtlas1)
 
     FOR addr, doorAtlas2, doorAtlas2 + DOOR_SPRITE_SIZE, DOOR_SPRITE_SIZE
-        EQUW addr
+        EQUB LO(addr)
     NEXT
 
-    EQUW doorAtlas3
+    EQUB LO(doorAtlas3)
 
     \ 4 elevator sprites
     FOR addr, elevatorAtlas, elevatorAtlas + (3 * ELEVATOR_SPRITE_SIZE), ELEVATOR_SPRITE_SIZE
-        EQUW addr
+        EQUB LO(addr)
+    NEXT
+
+    \ 4 teleport sprites
+    FOR addr, teleportAtlas, teleportAtlas + (3 * ELEVATOR_SPRITE_SIZE), ELEVATOR_SPRITE_SIZE
+        EQUB LO(addr)
     NEXT
 
     \ 11 k9 sprites
-    EQUW k9Atlas1
-    EQUW k9Atlas2
+    EQUB LO(k9Atlas1)
+    EQUB LO(k9Atlas2)
 
     FOR addr, k9Atlas3, k9Atlas3 + (8 * K9_SPRITE_SIZE), K9_SPRITE_SIZE
-        EQUW addr
+        EQUB LO(addr)
     NEXT
 
     \ 1 gamebar sprite
-    EQUW gamebarAtlas
+    EQUB LO(gamebarAtlas)
+
+.spriteAddrTblHiLocal
+    \ 11 enemy sprites
+    EQUB HI(enemyAtlas1)
+    EQUB HI(enemyAtlas2)
+
+    FOR addr, enemyAtlas3, enemyAtlas3 + ENEMY_SPRITE_SIZE, ENEMY_SPRITE_SIZE
+        EQUB HI(addr)
+    NEXT
+
+    FOR addr, enemyAtlas4, enemyAtlas4 + (4 * ENEMY_SPRITE_SIZE), ENEMY_SPRITE_SIZE
+        EQUB HI(addr)
+    NEXT
+
+    FOR addr, enemyAtlas5, enemyAtlas5 + ENEMY_SPRITE_SIZE, ENEMY_SPRITE_SIZE
+        EQUB HI(addr)
+    NEXT
+
+    \ 4 door sprites
+    EQUB HI(doorAtlas1)
+
+    FOR addr, doorAtlas2, doorAtlas2 + DOOR_SPRITE_SIZE, DOOR_SPRITE_SIZE
+        EQUB HI(addr)
+    NEXT
+
+    EQUB HI(doorAtlas3)
+
+    \ 4 elevator sprites
+    FOR addr, elevatorAtlas, elevatorAtlas + (3 * ELEVATOR_SPRITE_SIZE), ELEVATOR_SPRITE_SIZE
+        EQUB HI(addr)
+    NEXT
+
+    \ 4 teleport sprites
+    FOR addr, teleportAtlas, teleportAtlas + (3 * ELEVATOR_SPRITE_SIZE), ELEVATOR_SPRITE_SIZE
+        EQUB HI(addr)
+    NEXT
+
+    \ 11 k9 sprites
+    EQUB HI(k9Atlas1)
+    EQUB HI(k9Atlas2)
+
+    FOR addr, k9Atlas3, k9Atlas3 + (8 * K9_SPRITE_SIZE), K9_SPRITE_SIZE
+        EQUB HI(addr)
+    NEXT
+
+    \ 1 gamebar sprite
+    EQUB HI(gamebarAtlas)
 }
 
 \
@@ -426,7 +499,7 @@
     EQUB &11, &F7, &60, &FF \ SOUND_EFFECT_DIED
     EQUB &11, &02, &00, &05 \ SOUND_EFFECT_LEVEL_COMPLETE
     EQUB &12, &02, &18, &03 \ SOUND_EFFECT_KEY_JEWEL
-    EQUB &12, &03, &28, &01 \ SOUND_EFFECT_DOOR_LOCKED
+    EQUB &12, &03, &28, &01 \ SOUND_EFFECT_BLOCKED
     EQUB &12, &FE, &00, &01 \ SOUND_EFFECT_MOVE
     EQUB &13, &04, &48, &01 \ SOUND_EFFECT_PURSUIT_ON
     EQUB &13, &00, &00, &00 \ SOUND_EFFECT_PURSUIT_OFF
@@ -580,11 +653,22 @@
 
     JSR memcpy
 
-    \ first k9 sprite at k9Atlas1
+    \ four teleport sprites at teleportAtlas
     srcAddr9 = srcAddr8 + (ELEVATOR_SPRITE_SIZE * 4)
 
-    LDA #LO(srcAddr9) : STA srcAddr
-    LDA #HI(srcAddr9) : STA srcAddr+1
+    LDA #LO(srcAddr9): STA srcAddr
+    LDA #HI(srcAddr9): STA srcAddr+1
+
+    LDA #LO(teleportAtlas) : STA dstAddr
+    LDA #HI(teleportAtlas) : STA dstAddr+1
+
+    JSR memcpy
+
+    \ first k9 sprite at k9Atlas1
+    srcAddr10 = srcAddr9 + (ELEVATOR_SPRITE_SIZE * 4)
+
+    LDA #LO(srcAddr10) : STA srcAddr
+    LDA #HI(srcAddr10) : STA srcAddr+1
 
     LDA #LO(k9Atlas1) : STA dstAddr
     LDA #HI(k9Atlas1) : STA dstAddr+1
@@ -595,10 +679,10 @@
     JSR memcpy
 
     \ next k9 sprite at k9Atlas2
-    srcAddr10 = srcAddr9 + K9_SPRITE_SIZE
+    srcAddr11 = srcAddr10 + K9_SPRITE_SIZE
 
-    LDA #LO(srcAddr10) : STA srcAddr
-    LDA #HI(srcAddr10) : STA srcAddr+1
+    LDA #LO(srcAddr11) : STA srcAddr
+    LDA #HI(srcAddr11) : STA srcAddr+1
 
     LDA #LO(k9Atlas2) : STA dstAddr
     LDA #HI(k9Atlas2) : STA dstAddr+1
@@ -606,10 +690,10 @@
     JSR memcpy
 
     \ remaining nine k9 sprite at k9Atlas3
-    srcAddr11 = srcAddr10 + K9_SPRITE_SIZE
+    srcAddr12 = srcAddr11 + K9_SPRITE_SIZE
 
-    LDA #LO(srcAddr11) : STA srcAddr
-    LDA #HI(srcAddr11) : STA srcAddr+1
+    LDA #LO(srcAddr12) : STA srcAddr
+    LDA #HI(srcAddr12) : STA srcAddr+1
 
     LDA #LO(k9Atlas3) : STA dstAddr
     LDA #HI(k9Atlas3) : STA dstAddr+1
@@ -620,7 +704,7 @@
     JSR memcpy
 
     \ copy gamebar altas...
-    srcAddr12 = srcAddr11 + (K9_SPRITE_SIZE * 9)
+    srcAddr13 = srcAddr12 + (K9_SPRITE_SIZE * 9)
 
     LDA primarySamplesROMSEL
     ORA secondarySamplesROMSEL
@@ -657,8 +741,8 @@
     LDA #LO(GAMEBAR_SPRITE_SIZE) : STA sizeLo
     LDA #HI(GAMEBAR_SPRITE_SIZE) : STA sizeHi
 
-    LDA #LO(srcAddr12) : STA srcAddr
-    LDA #HI(srcAddr12) : STA srcAddr+1
+    LDA #LO(srcAddr13) : STA srcAddr
+    LDA #HI(srcAddr13) : STA srcAddr+1
 
     JMP memcpy \ implicit RTS
 }
@@ -684,6 +768,14 @@
         \ zero state
         LDA #0 : STA objectState, X
 
+        \ objectType = animation | type
+        LDA levelObjectsLoaded, Y
+        BPL skip
+            JMP loop_exit \ sentinel, so exit loop
+        .skip
+        INY
+        STA objectType, X
+        
         \ objectX = (posX * 16)
         LDA levelObjectsLoaded, Y
         INY
@@ -708,17 +800,56 @@
         LSR A : LSR A : LSR A : LSR A
         STA objectYHi, X
 
-        \ objectType = animation | type
+        \ data
         LDA levelObjectsLoaded, Y
-        STA objectType, X
+        TAY \ --> data
 
-        \ unknown type?
-        BPL skip
-            JMP loop_exit
-        .skip
-        
+        LDA objectType, X
         AND #OBJECT_TYPE_MASK \ extract type
-        BNE else_1 \ implicit CMP #OBJECT_TYPE_K9
+        CMP #OBJECT_TYPE_ELEVATOR : BNE else_1
+            \
+            \ elevator / teleport specific properties
+            \
+
+            \ increment count
+            INC elevatorCount
+            
+            CPY #0 : BNE else1
+                \ elevator sprite index
+                TXA
+                AND #3
+                CLC
+                ADC #SPRITE_INDEX_ELEVATOR
+                STA objectSpriteIndex, X
+
+                \ elevator callback
+                LDA #HI(elevatorFrameCallback) : STA objectFrameCallbackHi, X
+                LDA #LO(elevatorFrameCallback) : STA objectFrameCallbackLo, X
+
+                JMP endif1
+            .else1
+                \ teleport destination index (held in data)
+                TYA
+                STA objectFrameCounter, X
+
+                \ teleport sprite index
+                TXA
+                AND #3
+                CLC
+                ADC #SPRITE_INDEX_TELEPORT
+                STA objectSpriteIndex, X
+
+                \ teleport callback
+                LDA #HI(teleportFrameCallback) : STA objectFrameCallbackHi, X
+                LDA #LO(teleportFrameCallback) : STA objectFrameCallbackLo, X
+            .endif1
+
+            \ set tile flags
+            LDA #TILE_GRID_FLAGS_OPAQUE : STA flags
+            BNE endif
+
+        .else_1
+        CMP #OBJECT_TYPE_K9 : BNE else_2
             \
             \ k9 specific properties
             \
@@ -732,8 +863,8 @@
             LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
             BNE endif
 
-        .else_1
-        CMP #OBJECT_TYPE_ENEMY : BNE else_2
+        .else_2
+        CMP #OBJECT_TYPE_ENEMY : BNE else_3
             \
             \ enemy specific properties
             \
@@ -761,30 +892,6 @@
 
             \ set tile flags
             LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
-            BNE endif
-
-        .else_2
-        CMP #OBJECT_TYPE_ELEVATOR : BNE else_3
-            \
-            \ elevator specific properties
-            \
-
-            \ increment count
-            INC elevatorCount
-
-            \ sprite index
-            TXA
-            AND #3
-            CLC
-            ADC #SPRITE_INDEX_ELEVATOR
-            STA objectSpriteIndex, X
-
-            \ callback
-            LDA #HI(elevatorFrameCallback) : STA objectFrameCallbackHi, X
-            LDA #LO(elevatorFrameCallback) : STA objectFrameCallbackLo, X
-
-            \ set tile flags
-            LDA #TILE_GRID_FLAGS_OPAQUE : STA flags
             BNE endif
 
         .else_3
@@ -823,10 +930,10 @@
         \ set redraw flag
         JSR setRedrawFlag
 
-        \ index += 3
+        \ index += 4
         LDA index
         CLC
-        ADC #3
+        ADC #4
         STA index
 
         \ loop?

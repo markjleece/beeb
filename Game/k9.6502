@@ -111,7 +111,10 @@
     LDX #0 \ K9 is zero index
     JSR cacheObjectExtents
 
-    \ ride elevator
+    \ try to teleport
+    JSR rideTeleport : BEQ rts_1
+
+    \ try to ride elevator
     JMP rideElevator \ implicit RTS
 }
 
@@ -122,30 +125,17 @@
 {
     \ decrement objectX
     LDA objectXLo
-    SEC
-    SBC #1
-    BCS skip1
+    BNE skip1
         DEC objectXHi
     .skip1
-    STA objectXLo
+    DEC objectXLo
 
-    \ set keyframe
-    AND #3
-    CLC
-    ADC #SPRITE_INDEX_K9_LEFT
-    STA objectSpriteIndex
-
-    \ set redraw flag
-    JSR setRedrawFlag
-
-    \ continue animation?
-    LDA objectXLo
-    AND #3
-    BNE rts_2
+    \ set keyframe, set redraw, continue animation?, and accumulator = objectXLo[X] AND &F
+    LDA #SPRITE_INDEX_K9_LEFT
+    JSR frameCallback_MoveHorz
+    BCS rts_1
 
     \ clear vacated tile flags
-    LDA objectXLo
-    AND #&F
     CMP #8 : BNE skip2
         LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
         JSR clearObjectRightTileFlags
@@ -162,31 +152,17 @@
 .k9FrameCallback_MoveRight
 {
     \ increment k9X
-    LDA objectXLo
-    CLC
-    ADC #1
-    BCC skip1
+    INC objectXLo
+    BNE skip1
         INC objectXHi
     .skip1
-    STA objectXLo
 
-    \ set keyframe
-    AND #3
-    CLC
-    ADC #SPRITE_INDEX_K9_RIGHT
-    STA objectSpriteIndex
-
-    \ set redraw flag
-    JSR setRedrawFlag
-
-    \ continue animation?
-    LDA objectXLo
-    AND #3
-    BNE rts_2
+    \ set keyframe, set redraw, continue animation?, and accumulator = objectXLo[X] AND &F
+    LDA #SPRITE_INDEX_K9_RIGHT
+    JSR frameCallback_MoveHorz
+    BCS rts_1
 
     \ clear vacated tile flags
-    LDA objectXLo
-    AND #&F
     BNE skip2
         LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
         JSR clearObjectLeftTileFlags
@@ -315,8 +291,8 @@
         \ the tile to the right if it was vacated with flags
         JSR roundFourObjectPosition
 
-        \ clear door locked sound effect flag   
-        LDA #0 : STA doorLockedSoundEffectOn
+        \ clear blocked sound effect flag
+        LDA #0 : STA blockedSoundEffectOn
 
         \ sound effect
         JMP moveSoundEffect \ implicit RTS
@@ -369,7 +345,7 @@
         JMP levelComplete \ implicit RTS
     .notExit
     CMP #TILE_TYPE_DOOR : BNE notDoor
-        JSR doorLockedSoundEffect
+        JSR blockedSoundEffect
     .notDoor
     TXA \ <-- ANIMATE_LOOK_LEFT or ANIMATE_LOOK_RIGHT
     JMP k9Animate \ explcit RTS

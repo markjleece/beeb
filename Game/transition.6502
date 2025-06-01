@@ -58,7 +58,7 @@ VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
 .cropCloseTransition
 {
     \ initiate transition
-    LDX #LO(transitionCloseConstants)
+    LDA #LO(transitionCloseConstants)
     LDY #HI(transitionCloseConstants)
     JSR startTransition
 
@@ -89,16 +89,16 @@ VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
 \ completeTransition routine when the transition completes
 \
 \ params:
-\   X register      Callback address (low byte)
+\   Accumalator     Callback address (low byte)
 \   Y register      Callback address (high byte)
 \
 .startCropOpenTransition
 {
     \ store callback
-    STX transitionCompleteCallback
+    STA transitionCompleteCallback
     STY transitionCompleteCallback+1
 
-    LDX #LO(transitionOpenConstants)
+    LDA #LO(transitionOpenConstants)
     LDY #HI(transitionOpenConstants)
     \ fall through to startTransition
 }
@@ -107,7 +107,7 @@ VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
 \ startTransition
 \
 \ params:
-\   X register      Transition constants (low byte)
+\   Accumalator     Transition constants (low byte)
 \   Y register      Transition constants (high byte)
 \
 .startTransition
@@ -115,7 +115,7 @@ VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
     SEI \ disable interupts
 
     \ initialize variables (transitionUpperTimer..transitionState)
-    STX srcAddr
+    STA srcAddr
     STY srcAddr+1
     LDY #7
     .loop
@@ -184,7 +184,6 @@ VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
         \
         \ Handle Timer1
         \
-        LDA &FE44 \ mark interrupt as handled
 
         \ save Y, as setLevelPalette and setBlackPalette modify Y
         TYA : PHA
@@ -192,21 +191,7 @@ VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
         \ decrement counter
         LDA transitionCounter
         DEC transitionCounter
-        AND #1 : BNE else
-            \
-            \ Top crop boundary
-            \
-
-            \ set palette
-            JSR setLevelPalette
-
-            \ restore Y
-            PLA : TAY
-
-            \ return with RTI (we don't want MOS processing sounds at the top crop boundary)
-            JMP return_rti
-
-        .else
+        AND #1 : BEQ else
             \
             \ Bottom crop boundary
             \
@@ -238,7 +223,21 @@ VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
             ADC transitionLowerTimerDelta
             STA transitionLowerTimer+1
 
-            \ fall through to let MOS process sounds at the bottom crop boundary
+            \ return with RTI (we don't want MOS processing sounds at the bottom crop boundary)
+            JMP return_rti
+
+        .else
+            \
+            \ Top crop boundary
+            \
+
+            \ set palette
+            JSR setLevelPalette
+
+            \ restore Y
+            PLA : TAY
+
+            \ fall through to let MOS process sounds at the top crop boundary
 
     .try_mos
 

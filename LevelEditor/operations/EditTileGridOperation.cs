@@ -8,13 +8,25 @@ namespace LevelEditor
             LevelData = levelData;
             NewTileIndex = (byte)tileIndex;
 
+            if (NewTileIndex < Level.TileCount &&
+                LevelData.Tiles[NewTileIndex].Type == Tile.TileType.Teleport)
+            {
+                NewTeleportIndex = LevelData.TeleportGrid.NextIndex();
+            }
+            else
+            {
+                NewTeleportIndex = null;
+            }
+
             TileCoords = new Point[tileCoords.Length];
             OldTileIndices = new byte[tileCoords.Length];
+            OldTeleportIndices = new char?[tileCoords.Length];
 
             for (int i = 0; i < tileCoords.Length; i++)
             {
                 TileCoords[i] = tileCoords[i];
                 OldTileIndices[i] = levelData.TileGrid[tileCoords[i].X, tileCoords[i].Y];
+                OldTeleportIndices[i] = levelData.TeleportGrid[tileCoords[i].X, tileCoords[i].Y];
             }
         }
 
@@ -106,6 +118,7 @@ namespace LevelEditor
             for (int i = 0; i < TileCoords.Length; i++)
             {
                 LevelData.TileGrid[TileCoords[i].X, TileCoords[i].Y] = NewTileIndex;
+                LevelData.TeleportGrid[TileCoords[i].X, TileCoords[i].Y] = NewTeleportIndex;
             }
         }
 
@@ -114,12 +127,15 @@ namespace LevelEditor
             for (int i = 0; i < TileCoords.Length; i++)
             {
                 LevelData.TileGrid[TileCoords[i].X, TileCoords[i].Y] = OldTileIndices[i];
+                LevelData.TeleportGrid[TileCoords[i].X, TileCoords[i].Y] = OldTeleportIndices[i];
             }
         }
 
         private readonly Point[] TileCoords;
         private readonly byte[] OldTileIndices;
+        private readonly char?[] OldTeleportIndices;
         private readonly byte NewTileIndex;
+        private readonly char? NewTeleportIndex;
         readonly Level LevelData;
     }
 }
