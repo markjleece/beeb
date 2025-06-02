@@ -127,7 +127,7 @@ osword = &FFF1
 osfile = &FFDD
 
 \ debug flags
-DEBUG_TILE_GRID_FLAGS = 1 \ overlay tile grid flags (super useful)
+DEBUG_TILE_GRID_FLAGS = 0 \ overlay tile grid flags (super useful)
 DEBUG_WAIT_TENTHS = 0 \ waitTenths util routine
 
 \ keys (keyTbl indices)
