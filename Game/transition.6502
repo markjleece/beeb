@@ -4,14 +4,6 @@
 \ transition routines
 \
 
-\ 39 character rows per frame
-\ 8 scanlines per character row
-\ each scanline is 64 micro seconds
-\ v-sync normally occurs at character row 35 
-\ v-sync interrupt occurs two scanlines later
-\ delay to first scanline is:
-VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
-
 \ transition constants
 .transitionOpenConstants
     EQUW VSYNC_DELAY + 124 * 64 \ transitionUpperTimer

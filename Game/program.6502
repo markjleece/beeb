@@ -302,8 +302,16 @@ MAX_KEY_COUNT = 9
 \ IRQ vector address
 IRQ1V = &0204
 
-\ sound timer length (sounds are processed when the last scanline is being read)
-SOUND_TIMER_LENTH = 64*8*36
+\ 39 character rows per frame
+\ 8 scanlines per character row
+\ each scanline is 64 micro seconds
+\ v-sync normally occurs at character row 35 
+\ v-sync interrupt occurs two scanlines later
+\ delay to first scanline is:
+VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
+
+\ delay to bottom of visible screen is:
+VSYNC_SIGNAL_DELAY = VSYNC_DELAY + 32 * 8 * 64
 
 \ sound effects
 SOUND_EFFECT_PAIN = 0
@@ -584,20 +592,18 @@ INCLUDE "utils.6502"
     .^irq_try_vsync \ entry point from ingame_sample_irq
 
     \ System-VIA vsync irq?
-    LDA &FE4D 
+    LDA &FE4D
     AND #2
-    BEQ try_mos
+    BEQ try_timer1
         \
-        \ Handle v-sync
+        \ System-VIA v-sync
         \
         STA &FE4D \ mark vsync interrupt as handled
     
-        \ signal vsync
-        INC vsync
-
-        \ initiate sound timer (we want sounds to be processed just before v-sync occurs)
-        LDA #LO(SOUND_TIMER_LENTH) : STA &FE44
-        LDA #HI(SOUND_TIMER_LENTH) : STA &FE45
+        \ initiate Timer1. We signal v-sync and have MOS process sounds at
+        \ the bottom of the visible screen
+        LDA #LO(VSYNC_SIGNAL_DELAY) : STA &FE44
+        LDA #HI(VSYNC_SIGNAL_DELAY) : STA &FE45
 
          \ restore accumulator, updating &FC
         PLA : STA &FC
@@ -605,12 +611,25 @@ INCLUDE "utils.6502"
         \ just return (we don't want MOS to process SYSTEM-VIA v-sync irqs)
         RTI
     
+    .try_timer1
+    LDA &FE4D
+    AND #&40
+    BEQ try_mos
+        \
+        \ System-VIA Timer1
+        \
+
+        \ signal vsync. We do this at the bottom of the visible screen to give 
+        \ the game loop a head start
+        INC vsync
+
+        \ pass irq to MOS, which processes sounds using this timer
+
     .try_mos
 
     \ restore accumulator, updating &FC
     PLA : STA &FC
 
-    \ pass System-VIA Timer1 irq to MOS, which processes sounds using this timer
     JMP (mosIRQ1V) \ implicit RTI
 }
 
@@ -644,6 +663,14 @@ INCLUDE "utils.6502"
 {
     \ scan keys populating top bits in keyTbl
     JSR scanKeys
+
+    \ set god mode?
+    LDA keyTbl + KEY_G
+    AND keyTbl + KEY_O
+    AND keyTbl + KEY_D
+    BPL skip
+        STA godMode \ set god mode
+    .skip
 
     \ space key...
     LDA keyTbl + KEY_SPACE
@@ -687,27 +714,9 @@ INCLUDE "utils.6502"
         JMP k9MoveLeft \ implicit RTS
     .nopress_a
 
-    \ 'G' key...
-    LDY #3
-
-    LDA keyTbl + KEY_G
-    BPL nopress_g
-        DEY
-    .nopress_g
-
-    \ 'O' key...
-    LDA keyTbl + KEY_O
-    BPL nopress_o
-        DEY
-    .nopress_o
-
     \ 'D' key...
     LDA keyTbl + KEY_D
     BPL nopress_d
-        CPY #1 : BNE skip
-            STY godMode \ set god mode!
-        .skip
-
         JMP k9MoveRight \ implicit RTS
     .nopress_d
 
