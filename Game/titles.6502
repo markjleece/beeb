@@ -380,7 +380,7 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
     \ set file qualifier
     STX cmdLoadPCMData+8
 
-    \ backup code which resides in DFS workspaces, clearing memory
+    \ clear page &17 (after saving the code) so DFS uses it as a buffer
     COPY_CLEAR_PAGE loadLevelPageBackup, &1700 
 
     \ switch to DFS
@@ -426,7 +426,7 @@ ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
         CMP #'6'
         BNE loop
 
-    \ restore code
+    \ restore code in page &17
     COPY_PAGE &1700, loadLevelPageBackup
 
     RTS

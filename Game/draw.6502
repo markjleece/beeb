@@ -698,7 +698,7 @@ ENDIF
     SEC
     SBC scrnLeftLo
 
-    \ ensure last two bits of xPos are either clear or set, so (leftLo, poxY) correctly interests an enemy
+    \ ensure last two bits of xPos are either clear or set, so (leftLo, poxY) correctly intersests an enemy
     AND #&FC \ clear bits is looking left
     BIT laserDirection : BMI skip2
         ORA #3 \ set bits is looking right
@@ -1149,7 +1149,6 @@ ENDIF
 
         \ left = 0
         STY leftLo
-        STY leftHi
     .endif_6
 
     \ clip left edge?
@@ -1191,7 +1190,6 @@ ENDIF
 
         \ top = 0
         STY topLo
-        STY topHi
 
         \ eraseAbove = false
         STY eraseAbove

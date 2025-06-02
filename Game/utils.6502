@@ -1,8 +1,52 @@
 \ This file is Copyright © 2025 - Mark John Leece - All rights reserved
 
 \
-\ Utility routines
+\ Utility routines & macros
 \
+
+\
+\ Copy and clear a page of memory
+\
+MACRO COPY_CLEAR_PAGE toAddr, fromAddr 
+{
+    LDX #0
+    .loop
+        LDA fromAddr, X
+        STA toAddr, X
+        LDA #0
+        STA fromAddr, X
+        INX
+        BNE loop
+}
+ENDMACRO
+
+\
+\ Copy a page of memory
+\
+MACRO COPY_PAGE toAddr, fromAddr 
+{
+    LDX #0
+    .loop
+        LDA fromAddr, X
+        STA toAddr, X
+        INX
+        BNE loop
+}
+ENDMACRO
+
+\
+\ clear a page of memory
+\
+MACRO PAGE_CLEAR addr
+{
+    LDX #0
+    TXA
+    .loop
+        STA addr, X
+        INX
+        BNE loop
+}
+ENDMACRO
 
 \
 \ setBlackPalette()
@@ -175,12 +219,7 @@ ASSERT (HI(P%) > &17) \ ensure waitForSpaceKeyPress is assembled after &17FF
 
         \ dstAddr += Y
         TYA
-        CLC
-        ADC dstAddr
-        STA dstAddr
-        BCC nocarry
-            INC dstAddr+1
-        .nocarry
+        JSR dstAddr_add
         JMP nextSpan
 
 .return
