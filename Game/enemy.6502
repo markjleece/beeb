@@ -882,6 +882,10 @@
 {
     PHA \ --> new animation
 
+    \ set flags, used by clearObjectLeftTileFlags, clearObjectRightTileFlags
+    \ and roundFourObjectPosition below
+    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+
     \ if we were at the start of a move animation which set the
     \ left or right tile flags, we need to clear these
     LDA objectFrameCounter, X : BNE endif
@@ -925,7 +929,6 @@
     CMP #ANIMATE_TURN_LEFT_TO_RIGHT : BEQ then1
     CMP #ANIMATE_TURN_RIGHT_TO_LEFT : BNE endif1
     .then1
-        LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
         JSR roundFourObjectPosition \ implicit RTS
     .endif1
     RTS
