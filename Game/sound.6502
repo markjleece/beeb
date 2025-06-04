@@ -22,6 +22,9 @@
 .secondarySoundVector_startLevel     SKIP 2 \ rts_0                      sample_soundK9InsufficientData
 .secondarySoundVector_completeLevel  SKIP 2 \ soundEffect_levelComplete  sample_soundTardisDoor
 
+\ sound API params
+.soundParams EQUB 0, 0, 0, 0, 0, 0, 0, 0
+
 \
 \ silenceSoundEffects()
 \
@@ -170,8 +173,6 @@
         INY
         STA soundParams, X
         INX 
-        LDA #0
-        STA soundParams, X
         INX
         CPX #8
         BNE loop

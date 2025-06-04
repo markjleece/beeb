@@ -4,8 +4,6 @@
 \ Mode 7 routines
 \
 
-ASSERT (HI(P%) > &17) \ ensure routines are assembled after &17FF
-
 \
 \ setMode7()
 \

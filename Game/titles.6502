@@ -370,7 +370,7 @@ INCBIN "data\\instructions.bin"
 \   X register  File qualifier: 'P' for primary, 'S' for secondary
 \
 
-ASSERT (HI(P%) > &18) \ ensure populateSidewaysRAM is assembled after &18FF
+ASSERT (HI(P%) > &17) \ ensure populateSidewaysRAM is assembled after page &17
 
 .populateSidewaysRAM
 {

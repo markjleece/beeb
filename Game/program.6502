@@ -476,7 +476,6 @@ ORG 0
 .transitionCompleteCallback SKIP 2  \ transition callback, invoked when crop open transition completes
 
 \ transient data (values do not persist across frames)
-.soundParams                SKIP 4 \ + four delta variables
 .deltaXLo                   SKIP 1
 .deltaXHi                   SKIP 1
 .deltaYLo                   SKIP 1
@@ -719,7 +718,7 @@ INCLUDE "utils.6502"
     \ 'R' key...
     LDA keyTbl + KEY_R
     BPL nopress_r
-        JMP reloadLevel \ implicit RTS
+        JMP loadLevel \ implicit RTS
     .nopress_r
 
     \ test god mode keys?
@@ -738,7 +737,7 @@ INCLUDE "utils.6502"
     .loop1
         LDA keyTbl + KEY_1 - 1, X
         BPL nopress1
-            TXA
+            STX level
             JMP loadLevel \ implicit RTS
         .nopress1
         DEX
@@ -1227,8 +1226,7 @@ INCLUDE "utils.6502"
     JSR levelEndPreamble
 
     \ reload current level
-    LDA level
-    JSR loadLevel
+    JSR loadLevelFile
 
     \ show 'battery flat' experience
     JMP showBatteryFlatScreen  \ implicit RTS
@@ -1249,11 +1247,72 @@ INCLUDE "utils.6502"
 
     \ load next level
     INC level
-    LDA level
-    JSR loadLevel
+    JSR loadLevelFile
 
     \ show level complete experience
     JMP showLevelCompletedScreen \ implicit RTS
+}
+
+\
+\ loadLevel()
+\
+\ loads the current level
+\
+.loadLevel
+{
+    \ return if a crop transition is in progress
+    LDA transitionState : BNE return
+
+    \ common preamble
+    JSR levelEndPreamble
+
+    \ load current level file
+    JSR loadLevelFile
+
+    \ initialize level
+    JMP initializeLevel \ implicit RTS
+
+    .return
+    RTS
+}
+
+\
+\ game completed
+\
+.gameComplete
+{
+    \ load finale file
+    LDA #LO(cmdLoadFinale) : STA srcAddr
+    LDA #HI(cmdLoadFinale) : STA srcAddr+1
+    JSR dfsCommand
+
+    \ invoke finale experience (with page &17 corrupted)
+    JMP finale \ implicit RTS
+
+.cmdLoadFinale
+    EQUS "LOAD finale", 13
+}
+
+\
+\ loadLevelFile()
+\
+\ Loads a level file
+\
+.loadLevelFile
+{
+    \ update filename level number
+    LDA level
+    CLC
+    ADC #'0'
+    STA cmdLoadLevel+10
+
+    \ load level file
+    LDA #LO(cmdLoadLevel) : STA srcAddr
+    LDA #HI(cmdLoadLevel) : STA srcAddr+1
+    JMP dfsCommand \ implicit RTS
+
+.cmdLoadLevel
+    EQUS "LOAD level1", 13
 }
 
 \
@@ -1261,6 +1320,8 @@ INCLUDE "utils.6502"
 \
 \ select DFS
 \
+ASSERT (HI(P%) > &17) \ ensure selectDFS is assembled after page &17
+
 .selectDFS
 {
     LDX #LO(cmdDISK)
@@ -1273,92 +1334,30 @@ INCLUDE "utils.6502"
 }
 
 \
-\ gameComplete()
+\ dfsCommand(A, Y)
 \
-\ game completed
-\
-ASSERT (HI(P%) > &17) \ ensure gameComplete is assembled after &17FF
-
-.gameComplete
-{
-    \ clear page &17, so DFS uses it as a buffer
-    PAGE_CLEAR &1700
-
-    \ switch to DFS (this will corrupt page &17)
-    JSR selectDFS
-
-    \ load finale file
-    LDX #LO(cmdLoadFinale)
-    LDY #HI(cmdLoadFinale)
-    JSR oscli
-
-    \ invoke finale experience (with page &17 corrupted)
-    JMP finale \ implicit RTS
-
-.cmdLoadFinale
-    EQUS "LOAD finale", 13
-}
-
-\
-\ reloadLevel(A)
-\
-.reloadLevel
-{
-    \ return if a crop transition is in progress
-    LDA transitionState : BNE return
-
-    \ common preamble
-    JSR levelEndPreamble
-
-    \ reload current level
-    LDA level
-    JSR loadLevel
-
-    \ initialize and show level
-    JMP initializeLevel \ implicit RTS
-
-    .return
-    RTS
-}
-
-\
-\ loadLevel(A)
-\
-\ Loads a level named level1..levelN.  The routine saves and restores page
-\ &17 which DFS uses as workspace.
-\ 
 \ params:
-\   A (accumulator)  Level number (1..N)
+\   srcAddr     Command string (low-byte)
 \
-ASSERT (HI(P%) > &17) \ ensure loadLevel is assembled after &17FF
+ASSERT (HI(P%) > &17) \ ensure dfsCommand is assembled after page &17
 
-.loadLevel
+.dfsCommand
 {
-    STA level \ store level
-
-    \ update filename level number
-    CLC
-    ADC #'0'
-    STA cmdLoadLevel+10
-
     \ clear page &17 (after saving the code) so DFS uses it as a buffer
-    COPY_CLEAR_PAGE loadLevelPageBackup, &1700 
+    COPY_CLEAR_PAGE loadLevelPageBackup, &1700
 
     \ switch to DFS
     JSR selectDFS
 
-    \ load level file
-    LDX #LO(cmdLoadLevel)
-    LDY #HI(cmdLoadLevel)
+    \ execute command
+    LDX srcAddr
+    LDY srcAddr+1
     JSR oscli
 
     \ restore code in page &17
     COPY_PAGE &1700, loadLevelPageBackup
 
     RTS
-
-.cmdLoadLevel
-    EQUS "LOAD level1", 13
 }
 
 .lastCodeAddr \ last code address

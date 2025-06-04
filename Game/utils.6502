@@ -35,20 +35,6 @@ MACRO COPY_PAGE toAddr, fromAddr
 ENDMACRO
 
 \
-\ clear a page of memory
-\
-MACRO PAGE_CLEAR addr
-{
-    LDX #0
-    TXA
-    .loop
-        STA addr, X
-        INX
-        BNE loop
-}
-ENDMACRO
-
-\
 \ setBlackPalette()
 \
 .setBlackPalette
