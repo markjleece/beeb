@@ -159,6 +159,8 @@
     <None Include="k9.6502" />
     <None Include="level.6502" />
     <None Include="elevator.6502" />
+    <None Include="interstitial.6502" />
+    <None Include="mode7.6502" />
     <None Include="music.6502" />
     <None Include="program.6502" />
     <None Include="sample.6502" />

@@ -17,5 +17,7 @@
     <None Include="sample.6502" />
     <None Include="finale.6502" />
     <None Include="transition.6502" />
+    <None Include="interstitial.6502" />
+    <None Include="mode7.6502" />
   </ItemGroup>
 </Project>

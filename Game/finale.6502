@@ -4,7 +4,6 @@
 \ Finale routines and data.  
 \
 
-
 \
 \ finale
 \
@@ -12,6 +11,7 @@
 \
 .finale
 {
+    JSR setMode7
     JSR showCongratsScreen
     JSR playMusic
     JSR waitForSpaceKeyPress
@@ -45,49 +45,6 @@ INCBIN "data\\congrats.bin"
 
 .creditsTeletext
 INCBIN "data\\credits.bin"
-}
-
-\
-\ memcpyToScreen(srcAddr)
-\
-\ params:
-\   srcAddr Source address
-\
-\ Modifies:
-\   dstAddr, srcAddr
-\
-.memcpyToScreen
-{
-    LDA #LO(&7C00) : STA dstAddr
-    LDA #HI(&7C00): STA dstAddr+1
-
-    \ copy pages
-    LDX #HI(1000)
-    .loop1
-        LDY #0
-        .innerloop
-            LDA (srcAddr),Y
-            STA (dstAddr),Y
-            INY
-            BNE innerloop
-
-        INC srcAddr+1
-        INC dstAddr+1
-
-        DEX
-        BNE loop1
-
-    \ copy sub-page
-    LDX #LO(1000)
-    LDY #0
-    .loop2
-        LDA (srcAddr),Y
-        STA (dstAddr),Y
-        INY
-
-        DEX
-        BNE loop2
-    RTS
 }
 
 \ end file

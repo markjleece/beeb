@@ -1215,10 +1215,7 @@ INCLUDE "utils.6502"
     JSR waitForVSync
 
     \ set palette black
-    JSR setBlackPalette
-
-    \ switch to mode 7
-    JMP setMode7 \ implicit RTS
+    JMP setBlackPalette \ implicit RTS
 }
 
 \
@@ -1226,31 +1223,37 @@ INCLUDE "utils.6502"
 \
 .levelIncomplete
 {
-    \ preamble
+    \ common preamble
     JSR levelEndPreamble
 
-    \ sound effect
-    LDA #SOUND_EFFECT_DIED
-    JSR soundEffect
+    \ reload current level
+    LDA level
+    JSR loadLevel
 
-    \ print text
-    LDX #LO(k9DiedText)
-    LDY #HI(k9DiedText)
-    JSR printMode7Text
+    \ show 'battery flat' experience
+    JMP showBatteryFlatScreen  \ implicit RTS
+}
 
-    JSR waitForSpaceKeyPress
-    JSR clearPromptText
+\
+\ levelComplete()
+\
+.levelComplete
+{
+    \ common preamble
+    JSR levelEndPreamble
 
-    \ reload level
-    JMP reloadLevel \ implicit RTS
+    \ game completed?
+    LDA level
+    CMP #LEVEL_COUNT
+    BEQ gameComplete
 
-.k9DiedText
-    EQUS 13, 7
-    EQUS 141, "         K9's battery is flat!", 13, 1
-    EQUS 13, 1
-    EQUS 141, " Your efforts have not been successful", 13, 1
-    EQUS 13, 5
-    EQUS 134, "<< Press", 133, "space", 134, "key to restart level >>", 0, 0 \ line 21
+    \ load next level
+    INC level
+    LDA level
+    JSR loadLevel
+
+    \ show level complete experience
+    JMP showLevelCompletedScreen \ implicit RTS
 }
 
 \
@@ -1296,71 +1299,6 @@ ASSERT (HI(P%) > &17) \ ensure gameComplete is assembled after &17FF
     EQUS "LOAD finale", 13
 }
 
-\
-\ levelComplete()
-\
-.levelComplete
-{
-    \ preamble
-    JSR levelEndPreamble
-
-    \ game completed?
-    LDA level
-    CMP #LEVEL_COUNT
-    BEQ gameComplete
-
-    \ invoke sound effect
-    JSR levelCompleteSoundEffect
-
-    \ print level complete text
-    LDX #LO(levelCompleteText)
-    LDY #HI(levelCompleteText)
-    JSR printMode7Text
-
-    JSR waitForSpaceKeyPress
-    JSR clearPromptText
-
-    \ silence sound effects
-    JSR silenceSoundEffects
-
-    \ load next level
-    INC level
-    LDA level
-    JMP loadLevel \ implicit RTS
-
-.levelCompleteText
-    EQUS 13, 7
-    EQUS 141, "     Congrats! You've saved K9!", 13, 1
-    EQUS 13, 1
-    EQUS 141, "  Are you ready for the next level?", 13, 1
-    EQUS 13, 5
-    EQUS 134, "  << Press", 133, "space", 134, "key to continue >>", 0, 0 \ line 21
-}
-
-\
-\ clearPromptText
-\ 
-\ clear prompt (line 21)
-\
-.clearPromptText
-{
-    LDA #&20 \ space
-    LDY #39
-    .loop2
-        STA &7C00+(20*40), Y
-        DEY
-        BPL loop2
-
-    \ fall through to RTS
-}
-
-\
-\ common RTS
-\
-.rts_8
-{
-    RTS
-}
 
 \
 \ reloadLevel(A)
@@ -1368,16 +1306,20 @@ ASSERT (HI(P%) > &17) \ ensure gameComplete is assembled after &17FF
 .reloadLevel
 {
     \ return if a crop transition is in progress
-    LDA transitionState : BNE rts_8
+    LDA transitionState : BNE return
 
-    \ silence sound effects
-    JSR silenceSoundEffects
+    \ common preamble
+    JSR levelEndPreamble
 
-    \ crop close transition
-    JSR cropCloseTransition
-
+    \ reload current level
     LDA level
-    \ fall through to loadLevel
+    JSR loadLevel
+
+    \ initialize and show level
+    JMP initializeLevel \ implicit RTS
+
+    .return
+    RTS
 }
 
 \
@@ -1400,9 +1342,6 @@ ASSERT (HI(P%) > &17) \ ensure loadLevel is assembled after &17FF
     ADC #'0'
     STA cmdLoadLevel+10
 
-    \ set black palette
-    JSR setBlackPalette
-
     \ clear page &17 (after saving the code) so DFS uses it as a buffer
     COPY_CLEAR_PAGE loadLevelPageBackup, &1700 
 
@@ -1417,35 +1356,10 @@ ASSERT (HI(P%) > &17) \ ensure loadLevel is assembled after &17FF
     \ restore code in page &17
     COPY_PAGE &1700, loadLevelPageBackup
 
-    \ initialize level
-    JMP initializeLevel \ implicit RTS
+    RTS
 
 .cmdLoadLevel
     EQUS "LOAD level1", 13
-}
-
-\
-\ setMode7()
-\
-\ switch to mode 7 (with no blinking cursor)
-\
-ASSERT (HI(P%) > &17) \ ensure setMode7 is assembled after &17FF
-
-.setMode7
-{
-    LDY #11
-    .loop
-        LDA vduCommands, Y
-        JSR oswrch
-        DEY
-        BPL loop
-    RTS
-
-.vduCommands \ declared in reverse order
-    EQUB 0, 0, 0
-    EQUB 0, 0, 0
-    EQUB 32, 10, 0, 23  \ set 6845 register R10 = 32
-    EQUB 7, 22          \ set mode 7
 }
 
 .lastCodeAddr \ last code address
@@ -1478,10 +1392,14 @@ INCBIN "data\\level1.atl" \ level atlas sprite data (enemies, elevators, doors)
 .levelCode
 INCLUDE "level.6502" \ packaged level code
 
-.levelEnd
+\
+\ common mode 7 code (used by titles.6502, interstitial6502, and finale.6502)
+\
+.modeSevenCode
+INCLUDE "mode7.6502" \ packaged mode 7 code
 
 \
-\ code executed only during startup (it is overwritten)
+\ code executed during startup
 \
 INCLUDE "titles.6502"
 INCLUDE "music.6502"
@@ -1501,12 +1419,14 @@ SAVE "program", start, end
 \
 \ finale --> SSD
 \
+
+\INCLUDE "mode7.6502"   \ packaged Mode 7 code (INCLUDE statement unnecessary)
 CLEAR titles, titlesEnd
 ORG titles
-INCLUDE "finale.6502"   \ replaces titles.6502
+INCLUDE "finale.6502"   \ replace titles code with finale code
 \INCLUDE "music.6502"   \ packaged music code and data (INCLUDE statement unnecessary)
 
-SAVE "finale", finale, end
+SAVE "finale", modeSevenCode, end
 
 \
 \ primary pcm data --> SSD 
@@ -1534,14 +1454,24 @@ SAVE "pcmS4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOA
 SAVE "pcmS5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 
 \
+\ Level 1..N
+\
+CLEAR titles, titlesEnd
+ORG titles
+INCLUDE "interstitial.6502"     \ replace titles code with interstitial code
+.levelEnd
+
+\
 \ level 1 --> SSD
 \
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "data\\level1.dat"   \ level data (palette, tile grid, tiles etc)
-INCBIN "data\\level1.atl"   \ level atlas sprite data (enemies, elevators, doors etc)
-\INCLUDE "level.6502"       \ packaged level code (INCLUDE statement unnecessary)
+INCBIN "data\\level1.dat"       \ level data (palette, tile grid, tiles etc)
+INCBIN "data\\level1.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
+\INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
+\INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
+\INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
 
 SAVE "level1", levelLoadAddr, levelEnd
 
@@ -1551,9 +1481,11 @@ SAVE "level1", levelLoadAddr, levelEnd
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "data\\level2.dat"   \ level data (palette, tile grid, tiles etc)
-INCBIN "data\\level2.atl"   \ level atlas sprite data (enemies, elevators, doors etc)
-\INCLUDE "level.6502"       \ packaged level code (INCLUDE statement unnecessary)
+INCBIN "data\\level2.dat"       \ level data (palette, tile grid, tiles etc)
+INCBIN "data\\level2.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
+\INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
+\INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
+\INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
 
 SAVE "level2", levelLoadAddr, levelEnd
 
@@ -1563,9 +1495,11 @@ SAVE "level2", levelLoadAddr, levelEnd
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "data\\level3.dat"   \ level data (palette, tile grid, tiles etc)
-INCBIN "data\\level3.atl"   \ level atlas sprite data (enemies, elevators, doors etc)
-\INCLUDE "level.6502"       \ packaged level code (INCLUDE statement unnecessary)
+INCBIN "data\\level3.dat"       \ level data (palette, tile grid, tiles etc)
+INCBIN "data\\level3.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
+\INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
+\INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
+\INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
 
 SAVE "level3", levelLoadAddr, levelEnd
 

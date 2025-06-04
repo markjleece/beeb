@@ -117,28 +117,6 @@ ASSERT (HI(P%) > &17) \ ensure scanKey is assembled after &17FF
 }
 
 \
-\ waitForSpaceKeyPress
-\
-\ waits for the space key to be pressed
-\
-ASSERT (HI(P%) > &17) \ ensure waitForSpaceKeyPress is assembled after &17FF
-
-.waitForSpaceKeyPress
-{
-    \ wait for release
-    .releaseLoop
-        LDA #&62 \ space key scan code
-        JSR scanKey
-        BMI releaseLoop
-
-    \ wait for press
-    .pressLoop
-        JSR scanKey
-        BPL pressLoop
-    RTS
-}
-
-\
 \ scanKeys
 \
 \ scans keys KEY_A..KEY_9 populating top bit of keyTbl
@@ -167,63 +145,6 @@ ASSERT (HI(P%) > &17) \ ensure waitForSpaceKeyPress is assembled after &17FF
     EQUB &41, &32, &21, &51, &53, &36, &33
     EQUB &62, &39, &29, &19, &79, &30, &31
     EQUB &11, &12, &13, &34, &24, &15, &26
-}
-
-\
-\ printMode7Text(dstAddr text)
-\
-\ outputs text in mode 7
-\
-\ text spans are terminated with a repeat count (0..9). The text is terminated by an additional zero.
-\
-\ params:
-\   X register  Text address (low-byte)
-\   Y register  Text address (high-byte)
-\
-\ modifies: 
-\   dstAddr
-\
-.printMode7Text
-{
-    STX dstAddr
-    STY dstAddr+1
-
-    .nextSpan
-        LDX #0
-
-    .repeatSpan
-        LDY #0
-
-    .loop
-        LDA (dstAddr), Y
-        CMP #9
-        BCC decodeRepeatCount
-
-        JSR osasci
-        INY
-        BNE loop
-    
-    .decodeRepeatCount
-        \ repeat span?
-        CPX #0 : BNE skip
-            TAX
-            INX
-        .skip
-        DEX
-        BNE repeatSpan
-    
-        \ is terminated with additional zero?
-        INY
-        LDA (dstAddr), Y
-        BEQ return
-
-        \ dstAddr += Y
-        TYA
-        JSR dstAddr_add
-        JMP nextSpan
-
-.return
-    RTS
 }
 
 \

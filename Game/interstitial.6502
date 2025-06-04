@@ -1,0 +1,64 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ Interstitial routines (packaged with level files)
+\
+
+\
+\ showBatteryFlatScreen()
+\
+\ show 'battery is flat' experience
+\
+.showBatteryFlatScreen
+{
+    \ sound effect
+    LDA #SOUND_EFFECT_DIED
+    JSR soundEffect
+
+    \ display screen
+    JSR setMode7
+    LDA #LO(batteryFlatTeletext) : STA srcAddr
+    LDA #HI(batteryFlatTeletext) : STA srcAddr+1
+    JSR memcpyToScreen
+
+    \ wait for space key press
+    JSR waitForSpaceKeyPress
+
+    \ silence sound effects
+    JSR silenceSoundEffects
+
+    \ initialize and show level
+    JMP initializeLevel \ implicit RTS
+
+.batteryFlatTeletext
+INCBIN "data\\died.bin"
+}
+
+\
+\ showLevelCompletedScreen()
+\
+\ show 'level completed' experience
+\
+.showLevelCompletedScreen
+{
+    \ invoke sound effect
+    JSR levelCompleteSoundEffect
+
+    \ display screen
+    JSR setMode7
+
+    LDA #LO(levelCompleteTeletext) : STA srcAddr
+    LDA #HI(levelCompleteTeletext) : STA srcAddr+1
+    JSR memcpyToScreen
+
+    \ wait for space key press
+    JSR waitForSpaceKeyPress
+
+    \ initialize and show level
+    JMP initializeLevel \ implicit RTS
+
+.levelCompleteTeletext
+INCBIN "data\\complete.bin"
+}
+
+\ end file
