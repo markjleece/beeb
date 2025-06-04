@@ -1201,7 +1201,7 @@ INCLUDE "utils.6502"
 }
 
 \
-\ levelEndPreamble
+\ levelEndPreamble()
 \ 
 .levelEndPreamble
 {
@@ -1273,7 +1273,7 @@ INCLUDE "utils.6502"
 }
 
 \
-\ gameComplete
+\ gameComplete()
 \
 \ game completed
 \
@@ -1298,7 +1298,6 @@ ASSERT (HI(P%) > &17) \ ensure gameComplete is assembled after &17FF
 .cmdLoadFinale
     EQUS "LOAD finale", 13
 }
-
 
 \
 \ reloadLevel(A)
