@@ -148,7 +148,8 @@ namespace LevelEditor
             Door = OpaqueFlag + 4,
             Elevator = OpaqueFlag + 5,
             Teleport = OpaqueFlag + 6,
-            Exit = OpaqueFlag + 7,
+            DestructibleWall = OpaqueFlag + 7,
+            Exit = OpaqueFlag + 8,
         }
 
         internal TileType Type = TileType.Space;

@@ -185,93 +185,6 @@
 }
 
 \
-\ enemyLaserHit(X register)
-\
-\ enemy hit with laser
-\
-\ params:
-\   X register   Enemy index
-\
-.enemyLaserHit
-{
-    \ reduce enemy health
-    LDA enemyHealthLo
-    SEC
-    SBC laserStrength
-    STA enemyHealthLo
-
-    LDA objectState, X
-    AND #ENEMY_STATE_HEALTH_MASK
-    SBC #0
-    STA temp \ --> remaining health
-
-    \ update state
-    LDA objectState, X
-    AND #(OBJECT_STATE_FLAGS_MASK OR ENEMY_STATE_FLAGS_FIRING)
-    ORA temp \ <-- remaining health
-    ORA #(OBJECT_STATE_FLAGS_LASERED OR OBJECT_STATE_FLAGS_REDRAW)
-    STA objectState, X
-
-    \ enemy destroyed?
-    LDA temp \ <-- remaining health
-    BNE skip1
-
-        \ erase sprite
-        LDA #&FF : STA objectSpriteIndex, X
-
-        \ stop laser
-        INC laserInhibited
-
-        \ set frame callback so it just returns
-        LDA #LO(rts_0) : STA objectFrameCallbackLo, X
-        LDA #HI(rts_0) : STA objectFrameCallbackHi, X
-
-        \ clear inside tile flags
-        JSR cacheObjectExtents
-        LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
-        JSR clearObjectInsideTileFlags 
-
-        \ end pursuit sound effect?
-        JSR silencePursuitSoundEffect 
-        
-        \ invoke enemy destroyed sound effect
-        JMP (secondarySoundVector_enemyDestroyed) \ implicit RTS
-    .skip1
-
-    \ enemy have sufficient remaining health to pursue or use weapon?
-    LDA temp \ <-- remaining health
-    CMP #ENEMY_WEAPON_THRESHOLD : BCS skip2
-        \ action = ACTION_LOOK
-        LDA objectType, X
-        AND #LO(NOT(ACTION_MASK))
-        STA objectType, X
-        RTS
-    .skip2
-    
-    \ is enemy lasered from behind? (check if K9 and enemy are facing in same direction)
-    JSR getObjectDirection
-    STA direction
-
-    STX temp \ X --> temp
-    LDX #0
-    JSR getObjectDirection
-    LDX temp \ X <-- temp
-
-    CMP direction
-    BNE skip3
-        \ turn...
-        LDA #ANIMATE_TURN_RIGHT_TO_LEFT
-        BIT direction : BPL skip4
-            LDA #ANIMATE_TURN_LEFT_TO_RIGHT
-        .skip4
-        JSR enemyAnimate
-    .skip3
-
-    \ invoke enemy lasered sound effect
-    JMP (primarySoundVector_enemyLasered) \ implict RTS
-}
-
-\
 \ enemyElevatorStop()
 \ 
 \ determine what action to take when elevator stops
@@ -955,9 +868,9 @@
 }
 
 \
-\ enemyHitTest(leftLo, topLo)
+\ enemyLaserHitTest(leftLo, topLo)
 \
-\ returns the index of the enemy hit in X register, or zero if 'not found'
+\ finds the enemy located at leftLo, topLo, and 
 \
 \ params:
 \   leftLo, topLo Screen position
@@ -965,7 +878,7 @@
 \ modifies:
 \   leftLo/Hi, topLo/Hi, rightLo/Hi, bottomLo/Hi, index
 \
-.enemyHitTest
+.enemyLaserHitTest
 {
     \ left = leftLo + scrnLeft
     LDA leftLo
@@ -1056,16 +969,104 @@
         BNE loop
 
     \ enemy not found!
-    DEX
     RTS
 
-    .found
+.found
+
+    \ update last found and reset enemy health (low-byte)
     CPX enemyHitTestLastFound : BEQ skip2
-        \ update last found and reset enemy health (low-byte)
         STX enemyHitTestLastFound
         LDA #&FF : STA enemyHealthLo
     .skip2
-    RTS
+
+    \ fall through to enemyLaserHit
+}
+
+\
+\ enemyLaserHit(X register)
+\
+\ enemy hit with laser
+\
+\ params:
+\   X register   Enemy index
+\
+.enemyLaserHit
+{
+    \ reduce enemy health
+    LDA enemyHealthLo
+    SEC
+    SBC laserStrength
+    STA enemyHealthLo
+
+    LDA objectState, X
+    AND #ENEMY_STATE_HEALTH_MASK
+    SBC #0
+    STA temp \ --> remaining health
+
+    \ update state
+    LDA objectState, X
+    AND #(OBJECT_STATE_FLAGS_MASK OR ENEMY_STATE_FLAGS_FIRING)
+    ORA temp \ <-- remaining health
+    ORA #(OBJECT_STATE_FLAGS_LASERED OR OBJECT_STATE_FLAGS_REDRAW)
+    STA objectState, X
+
+    \ enemy destroyed?
+    LDA temp \ <-- remaining health
+    BNE skip1
+
+        \ erase sprite
+        LDA #&FF : STA objectSpriteIndex, X
+
+        \ stop laser
+        INC laserInhibited
+
+        \ set frame callback so it just returns
+        LDA #LO(rts_0) : STA objectFrameCallbackLo, X
+        LDA #HI(rts_0) : STA objectFrameCallbackHi, X
+
+        \ clear inside tile flags
+        JSR cacheObjectExtents
+        LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+        JSR clearObjectInsideTileFlags 
+
+        \ end pursuit sound effect?
+        JSR silencePursuitSoundEffect 
+        
+        \ invoke enemy destroyed sound effect
+        JMP (secondarySoundVector_enemyDestroyed) \ implicit RTS
+    .skip1
+
+    \ enemy have sufficient remaining health to pursue or use weapon?
+    LDA temp \ <-- remaining health
+    CMP #ENEMY_WEAPON_THRESHOLD : BCS skip2
+        \ action = ACTION_LOOK
+        LDA objectType, X
+        AND #LO(NOT(ACTION_MASK))
+        STA objectType, X
+        RTS
+    .skip2
+    
+    \ is enemy lasered from behind? (check if K9 and enemy are facing in same direction)
+    JSR getObjectDirection
+    STA direction
+
+    STX temp \ X --> temp
+    LDX #0
+    JSR getObjectDirection
+    LDX temp \ X <-- temp
+
+    CMP direction
+    BNE skip3
+        \ turn...
+        LDA #ANIMATE_TURN_RIGHT_TO_LEFT
+        BIT direction : BPL skip4
+            LDA #ANIMATE_TURN_LEFT_TO_RIGHT
+        .skip4
+        JSR enemyAnimate
+    .skip3
+
+    \ invoke enemy lasered sound effect
+    JMP (primarySoundVector_enemyLasered) \ implict RTS
 }
 
 \ end file

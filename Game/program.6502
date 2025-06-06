@@ -127,8 +127,9 @@ osword = &FFF1
 osfile = &FFDD
 
 \ debug flags
-DEBUG_TILE_GRID_FLAGS = 0 \ overlay tile grid flags (super useful)
-DEBUG_WAIT_TENTHS = 0 \ waitTenths util routine
+DEBUG_TILE_GRID_FLAGS = 0       \ overlay tile grid flags (super useful)
+DEBUG_DISABLE_SIDEWAYS_RAM = 0  \ disable sideways RAM
+DEBUG_WAIT_TENTHS = 0           \ waitTenths util routine
 
 \ keys (keyTbl indices)
 KEY_A = 0
@@ -221,7 +222,8 @@ TILE_TYPE_JEWEL = (TILE_TYPE_FLAG_OPAQUE + 3)
 TILE_TYPE_DOOR = (TILE_TYPE_FLAG_OPAQUE + 4)
 TILE_TYPE_ELEVATOR = (TILE_TYPE_FLAG_OPAQUE + 5)
 TILE_TYPE_TELEPORT = (TILE_TYPE_FLAG_OPAQUE + 6)
-TILE_TYPE_EXIT = (TILE_TYPE_FLAG_OPAQUE + 7)
+TILE_TYPE_DESTRUCTIBLE_WALL = (TILE_TYPE_FLAG_OPAQUE + 7)
+TILE_TYPE_EXIT = (TILE_TYPE_FLAG_OPAQUE + 8)
 
 \ common object state render flags (objectState high nibble)
 OBJECT_STATE_FLAGS_MASK = &F0
@@ -248,6 +250,9 @@ ENEMY_WEAPON_THRESHOLD = 2 \ enemy health required to use weapon
 ENEMY_SPRINT_THRESHOLD = 4 \ enemy health required to move quickly
 ENEMY_WEAPON_DAMAGE_COUNTER = 2 \ weapon damage counter (used to inflict damage on K9)
 ENEMY_END_PURSUIT_COUNTER = 32 \ number of frames (x16) before enemies give up pursuit (10 seconds)
+
+\ destructible wall constants
+DESTRUCTIBLE_WALL_STRENGTH = 20 \ strength of destructible walls
 
 \ sprite indices (index into spriteAddrTbl)
 SPRITE_COUNT = 35
@@ -474,6 +479,10 @@ ORG 0
 .transitionState            SKIP 1  \ transition state: TRANSITION_VOID, TRANSITION_RUNNING, TRANSITION_COMPLETE
 .transitionPreviousIRQ1V    SKIP 2  \ IRQ1V prior to invoking transition
 .transitionCompleteCallback SKIP 2  \ transition callback, invoked when crop open transition completes
+.destructibleWallLeft       SKIP 1  \ destructible wall position
+.destructibleWallTop        SKIP 1
+.destructibleWallStrength   SKIP 1  \ destructible wall strength
+.destructibleWallRedraw     SKIP 1  \ destructible wall redraw flag
 
 \ transient data (values do not persist across frames)
 .deltaXLo                   SKIP 1

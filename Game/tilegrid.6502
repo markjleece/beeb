@@ -368,26 +368,26 @@
 }
 
 \
-\ getScreenTileGridAddr(offsetX, offsetY)
+\ getScreenTileGridAddr(leftLo, topLo)
 \
-\ Get the screen's tile grid address located at: scrnLeft + offsetX, scrntop + offsetY
+\ Get the screen's tile grid address located at: leftLo, topLo
 \
 \ returns:
 \   tileGridAddr    address of tile grid location, relative to screen
 \
 \ params:
-\   offsetX         X screen coord
-\   offsetY         Y screen coord
+\   leftLo          X screen coord
+\   topLo           Y screen coord
 \
 \ modifies:
 \   tileGridAddr, temp, Y
 \
 .getScreenTileGridAddr
 {
-    \ tileGridAddr = levelTileGrid + 128|64|32|16 * ((scrnTop + offsetY) / 16)
+    \ tileGridAddr = levelTileGrid + 128|64|32|16 * ((scrnTop + topLo) / 16)
     LDA scrnTopLo
     CLC
-    ADC offsetY
+    ADC topLo
     TAY
     LDA scrnTopHi
     ADC #0
@@ -395,10 +395,10 @@
     \ common code...
     JSR getTileAddrCommon1
 
-    \ tileGridAddr += (scrnLeft + offsetX) / 16
+    \ tileGridAddr += (scrnLeft + leftLo) / 16
     LDA scrnLeftLo
     CLC
-    ADC offsetX
+    ADC leftLo
     TAY
     LDA scrnLeftHi
     ADC #0

@@ -412,10 +412,23 @@
     LDA #(TILE_GRID_FLAGS_K9 OR TILE_GRID_FLAGS_OPAQUE)
     STA (tileGridAddr), Y
 
-    \ draw blank tile
-    LDA objectXLo : STA leftLo
-    LDA objectYLo : STA topLo
-    JMP drawBlankTile \ implicit RTS
+    \ calc screen position (leftLo, topLo)
+    LDA objectXLo
+    CLC
+    ADC offsetX
+    SEC 
+    SBC scrnLeftLo
+    STA leftLo
+
+    LDA objectYLo
+    CLC
+    ADC offsetY
+    SEC 
+    SBC scrnTopLo
+    STA topLo
+
+    TYA \ draw normal
+    JMP drawTile \ implicit RTS
 }
 
 \ end file

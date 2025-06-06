@@ -42,8 +42,8 @@ namespace LevelEditor
             freeformModeButton = new ToolStripButton();
             lineModeButton = new ToolStripButton();
             rectModeButton = new ToolStripButton();
-            typeComboBox = new ToolStripComboBox();
             toolStripSeparator2 = new ToolStripSeparator();
+            typeComboBox = new ToolStripComboBox();
             toolStrip.SuspendLayout();
             SuspendLayout();
             // 
@@ -172,17 +172,17 @@ namespace LevelEditor
             rectModeButton.ToolTipText = "Rectangle Mode";
             rectModeButton.Click += RectModeButton_Click;
             // 
+            // toolStripSeparator2
+            // 
+            toolStripSeparator2.Name = "toolStripSeparator2";
+            toolStripSeparator2.Size = new Size(6, 33);
+            // 
             // typeComboBox
             // 
             typeComboBox.CausesValidation = false;
             typeComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             typeComboBox.Name = "typeComboBox";
-            typeComboBox.Size = new Size(121, 33);
-            // 
-            // toolStripSeparator2
-            // 
-            toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new Size(6, 33);
+            typeComboBox.Size = new Size(160, 33);
             // 
             // EditTileDialog
             // 

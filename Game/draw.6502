@@ -8,28 +8,16 @@
 \ debugTileGridFlags()
 \
 \ modifies:
-\   getScreenTileGridAddr: tileGridAddr, offsetX, offsetY, temp, Y
+\   getScreenTileGridAddr: tileGridAddr, temp, Y
 \
 .debugTileGridFlags
 {
 IF DEBUG_TILE_GRID_FLAGS = 0
     RTS
 ELSE
-    \ leftLo = scrnLeftLo
-    LDA scrnLeftLo : STA leftLo
-
-    \ topLo = scrnTopLo
-    LDA scrnTopLo : STA topLo
-
-    \ offsetX, offsetY = 15
-    LDA #15
-    STA offsetX
-    STA offsetY
-
-    \ get dstAddr
+    \ calc screen address and tileGridAddr of top-left fully visible tile
+    LDA #15 : STA topLo : STA leftLo
     JSR getTileScreenAddr
-
-    \ get tileGridAddr
     JSR getScreenTileGridAddr
 
     LDA #0 : STA outerIndex
@@ -83,7 +71,7 @@ ELSE
 
     RTS
 
-    SKIP 139 \ report same number of unsued code/data bytes
+    SKIP 147 \ report same number of unsued code/data bytes
 ENDIF
 }
 
@@ -92,7 +80,7 @@ ENDIF
 \
 .drawGameBar    
 {
-IF DEBUG_TILE_GRID_FLAGS = 1
+IF DEBUG_TILE_GRID_FLAGS != 0
     RTS
 ELSE
     \ dstAddr = scrnAddr + 384
@@ -343,16 +331,16 @@ ENDIF
 \
 .drawHorzTileScrollStrip
 {
-    \ offsetX = 0
-    \ offsetY = scroll-down ? 248 : 0
+    \ leftLo = 0
+    \ topLo = scroll-down ? 248 : 0
     \ X/Y = LO/HI(scroll-down ? 31*512 : 0)
-    LDA #0 : STA offsetX
+    LDA #0 : STA leftLo
     TAX : TAY
     BIT scrollDirection : BMI skip
         LDA #248
         LDY #HI(31*512)
     .skip
-    STA offsetY
+    STA topLo
 
     \ offset = 0 | 32
     CLC
@@ -364,7 +352,7 @@ ENDIF
     \ dstAddr = scrnAddr + X/Y
     JSR calcScreenDstAddr
 
-    \ get tile grid address at [offsetX, offsetY]
+    \ get tile grid address at [leftLo, topLo]
     JSR getScreenTileGridAddr
 
     LDX #16
@@ -421,13 +409,13 @@ ENDIF
 \ calculates the tile tile source address and offset, and the screen destination address
 \ 
 \ params:
-\   offsetY, offsetY    screen coords
-\   X/Y registers       screen address offset (hi/lo bytes) 
+\   leftLo, topLo       Screen coords
+\   X/Y registers       Screen address offset (hi/lo bytes) 
 \
 .calcVertTileStripStart
 {
     \ offset = 0 | 16
-    LDA offsetX
+    LDA leftLo
     CLC
     ADC scrnLeftLo
     AND #8
@@ -437,7 +425,7 @@ ENDIF
     \ dstAddr = scrnAddr + X/Y
     JSR calcScreenDstAddr
 
-    \ get grid tile address at [offsetX, offsetY]
+    \ get grid tile address at [leftLo, topLo]
     JMP getScreenTileGridAddr \ implicit RTS
 }
 
@@ -455,17 +443,17 @@ ENDIF
 \
 .drawVertTileScrollStrip
 {
-    \ offsetY = 0
-    \ offsetX = scroll-right ? 248 : 0
+    \ topLo = 0
+    \ leftLo = scroll-right ? 248 : 0
     \ X/Y = LO/HI(scroll-right ? 512-16 : 0)
-    LDA #0 : STA offsetY
+    LDA #0 : STA topLo
     TAX : TAY
     BIT scrollDirection : BMI skip1
         LDA #248
         LDX #LO(512-16)
         LDY #HI(512-16)
     .skip1
-    STA offsetX
+    STA leftLo
     
     \ calc srcAddr, dstAddr, and offset
     JSR calcVertTileStripStart
@@ -535,9 +523,9 @@ ENDIF
     LDX #LO(512-9*16)
     LDY #HI(512-9*16)
 
-    \ offsetX = 256-9*8, offsetY = 0
-    LDA #0 : STA offsetY
-    LDA #LO(256-9*8) : STA offsetX
+    \ leftLo = 256-9*8, topLo = 0
+    LDA #0 : STA topLo
+    LDA #LO(256-9*8) : STA leftLo
 
     \ calc srcAddr, dstAddr, and offset
     JSR calcVertTileStripStart
@@ -555,28 +543,26 @@ ENDIF
 }
 
 \
-\ getTileScreenAddr(leftLo, topLo, offsetX, offsetY)
+\ getTileScreenAddr(leftLo, topLo)
 \
-\ get the screen address (dstAddr) of a tile at screen location [leftLo + offsetX, topLo + offsetY]. The
+\ get the screen address (dstAddr) of a tile at screen location [leftLo, topLo]. The
 \ coordinates must lie within the visible screen but can lie anywhere within the tile.
 \
 \ params:
 \   leftLo      Screen X coordinate (0..255)
 \   topLo       Screen Y coordinate (0..255)
-\   offsetX     x offset (signed)
-\   offsetY     y offset (signed)
 \
 \ modifies: 
 \   dstAddr
 \
 .getTileScreenAddr
 {
-    \ dstAddr = scrnAddr + (ROUND16(topLo + offsetY) - scrnTopLo) / 8 * 512
-    LDA topLo
-    CLC 
-    ADC offsetY
+    \ dstAddr = scrnAddr + (ROUND16(scrnTopLo + topLo) - scrnTopLo) / 8 * 512
+    LDA scrnTopLo
+    CLC
+    ADC topLo
     AND #&F0 \ ROUND16
-    SEC 
+    SEC
     SBC scrnTopLo
     AND #&F8 \ / 8 * 512
     LSR A : LSR A
@@ -584,13 +570,13 @@ ENDIF
     ADC scrnAddr+1
     STA dstAddr+1
 
-    \ dstAddr += (ROUND16(leftLo + offsetX) - scrnLeftLo) / 4 * 8
-    LDA leftLo
-    CLC 
-    ADC offsetX
+    \ dstAddr += (ROUND16(scrnLeftLo + leftLo) - scrnLeftLo) / 4 * 8
+    LDA scrnLeftLo
+    CLC
+    ADC leftLo
     AND #&F0 \ ROUND16
-    SEC 
-    SBC scrnLeftLo 
+    SEC
+    SBC scrnLeftLo
     AND #&FC \ / 4 * 8
     ASL A
     BCC nocarry3
@@ -616,35 +602,170 @@ ENDIF
 }
 
 \
-\ drawBlankTile(leftLo, topLo, offsetX, offsetY)
+\ drawTile(Accumulator, leftLo, topLo)
 \
-\ draws a blank tile (used to erase collectables) at screen location [leftLo + offsetX, topLo + offsetY]. The
-\ coordinates must lie within the visible screen but can lie anywhere within the tile.
+\ draws a tile at screen location [leftLo, topLo]. The coordinates must lie
+\ within the visible screen but can lie anywhere within the tile.
+\
+\ params:
+\   leftLo      Screen X coordinate (0..255)
+\   topLo       Screen Y coordinate (0..255)
 \
 \ modifies: 
-\   dstAddr, leftLo, topLo, offsetX, offsetY
+\   dstAddr, srcAddr, leftLo, topLo, stride
 \
-.drawBlankTile
+.drawTile
 {
-    \ get screen dstAddr of tile
+    STA index \ --> lasered
+
+    \ get tile grid address at leftLo, topLo
+    JSR getScreenTileGridAddr
+
+    \ get screen address of tile
     JSR getTileScreenAddr
 
-    \ render...
-    CLC
+    \ get tile src address
+    LDA #0 : STA offset
+    JSR getTileSrcAddr
+    
+    \ stride = 0 or 32
+    BEQ skip1
+        LDA #32
+    .skip1
+    STA stride 
+
+    \ update code to render regular or lasered
+    LDA #LO(innerLoop_regular)
+    BIT index : BPL skip2
+        LDA #LO(innerLoop_lasered)
+    .skip2
+    STA innerLoop+1
+
+    LDA #HI(innerLoop_regular)
+    BIT index : BPL skip3
+        LDA #HI(innerLoop_lasered)
+    .skip3
+    STA innerLoop+2
+
+    \ draw upper character row
     LDX #2
-    .loop
-        \ clear character row
-        LDA #0
+    .outerLoop
+
+        \ draw character row
         LDY #31
-        .leftLoop
-            STA (dstAddr),Y: DEY
-            BPL leftLoop
+        .innerLoop JSR &FFFF
+
+        \ terminate loop?
+        DEX
+        BEQ return
+
+        \ srcAddr += stride
+        LDA srcAddr
+        CLC
+        ADC stride
+        STA srcAddr
+        BCC nocarry
+            INC srcAddr+1
+        .nocarry
 
         \ dstAddr += 512
         JSR dstAddr_add_512
 
-        DEX
-        BNE loop
+        BNE outerLoop
+
+    .return
+    RTS
+
+.innerLoop_regular
+    .innerLoop1
+        LDA (srcAddr), Y
+        STA (dstAddr), Y
+        DEY
+        BPL innerLoop1
+    RTS
+
+.innerLoop_lasered
+    .innerLoop2
+        LDA (srcAddr), Y
+        STA flags
+        LSR A : LSR A : LSR A : LSR A
+        AND flags
+        STA (dstAddr), Y
+        DEY
+        BPL innerLoop2
+    RTS
+}
+
+\
+\ laserHitTest(leftLo, topLo)
+\
+\ params:
+\   leftLo, topLo   Screen coordinates
+\
+.laserHitTest
+{
+    \ get tile grid index and flags at: leftLo, topLo
+    JSR getScreenTileGridAddr
+    LDY #0
+    LDA (tileGridAddr), Y
+    TAY \ --> index & flags 
+
+    \ hit enemy?
+    AND #TILE_GRID_FLAGS_ENEMY : BEQ skip1
+        JMP enemyLaserHitTest \ implicit RTS
+    .skip1
+
+    \ get tile type
+    TYA \ <-- index & flags 
+    AND #TILE_GRID_INDEX_MASK
+    TAY
+    LDA levelTileTypes, Y
+
+    \ hit destructible wall?
+    CMP #TILE_TYPE_DESTRUCTIBLE_WALL : BNE skip2
+        \ destructible wall hit
+        JMP destructibleWallHit \ implicit RTS
+    .skip2
+
+    .return
+    RTS
+}
+
+\
+\ destructibleWallHit(leftLo, topLo, tileGridAddr)
+\
+\ params:
+\   leftLo, topLo   Screen coordinates
+\   tileGridAddr    Tile grid address
+\
+.destructibleWallHit
+{
+    \ draw lasered tile
+    LDA #LO(-1)
+    JSR drawTile
+
+    \ mark for redraw
+    INC destructibleWallRedraw
+   
+    \ if (destructibleWallTop/Left == top/left) ..
+    LDA leftLo : CMP destructibleWallLeft : BNE else
+    LDA topLo : CMP destructibleWallTop : BNE else
+
+        \ if (--destructibleWallStrength == 0)
+        DEC destructibleWallStrength : BNE endif
+            \ replace destructible wall with space
+            LDA #0
+            TAY
+            STA (tileGridAddr), Y
+            RTS
+    .else
+        \ remember tile's position
+        LDA leftLo : STA destructibleWallLeft
+        LDA topLo : STA destructibleWallTop
+
+        \ reset tile's strength
+        LDA #DESTRUCTIBLE_WALL_STRENGTH : STA destructibleWallStrength
+    .endif
 
     RTS
 }
@@ -681,7 +802,7 @@ ENDIF
     BEQ unableToLaser
     STA laserDirection
 
-    \ calculate K9's muzzle position (leftLo, topLo)
+    \ calculate K9's muzzle screen position (leftLo, topLo)
     LDA objectYLo
     CLC 
     ADC #6
@@ -766,7 +887,14 @@ ENDIF
         \ background color?
         LDA (dstAddr), Y
         STA laserLastPixels
-        BNE drawEndAndHitTest \ hit test & draw last few pixels, and RTS
+        BEQ skip
+            \ draw last few pixels
+            STX laserLength
+            JSR drawEnd
+
+            \ hit test
+            JMP laserHitTest \ implicit RTS
+        .skip
 
         \ draw 4 red pixels
         LDA #&0F
@@ -786,16 +914,7 @@ ENDIF
     AND temp
     ORA (dstAddr), Y
     STA (dstAddr), Y
-
-.return
     RTS
-
-.drawEndAndHitTest
-    STX laserLength
-    JSR drawEnd
-    JSR enemyHitTest
-    TXA : BEQ return
-    JMP enemyLaserHit \ implicit RTS
 
 .laserOffsetTbl
     EQUB 0, 20 \ look
@@ -864,8 +983,16 @@ ENDIF
     RTS
 
 .drawEnd
-    LDA laserLastPixels
-    STA (dstAddr), Y
+    LDA destructibleWallRedraw : BEQ else
+        \ redraw destructible wall, clearing redraw flag
+        LDA destructibleWallLeft : STA leftLo
+        LDA destructibleWallTop : STA topLo
+        LDA #0 : STA destructibleWallRedraw
+        JMP drawTile \ implicit
+    .else
+        \ restore last pixels
+        LDA laserLastPixels
+        STA (dstAddr), Y
     RTS
 }
 

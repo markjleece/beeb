@@ -317,7 +317,12 @@ INCBIN "data\\instructions.bin"
     LDA &F4 : STA temp
 
     \ find sideways RAM, setting primarySamplesROMSEL and secondarySamplesROMSEL
+IF DEBUG_DISABLE_SIDEWAYS_RAM != 0
+    LDX #1
+ELSE
     LDX #15
+ENDIF
+
     .loop
         \ select ROM 'X'
         TXA
