@@ -1,9 +1,9 @@
 // This file is Copyright © 2025 - Mark John Leece - All rights reserved
 namespace LevelEditor
 {
-    class EditTileGridOperation : Operation
+    class EditSwitchGridOperation : Operation
     {
-        internal EditTileGridOperation(Level levelData, Point[] tileCoords, int tileIndex)
+        internal EditSwitchGridOperation(Level levelData, List<Point> pairings)
         {
             LevelData = levelData;
             NewTileIndex = (byte)tileIndex;

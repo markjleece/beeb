@@ -14,6 +14,7 @@ namespace LevelEditor
         internal Tile[] Tiles;
         internal Settings Settings;
         internal TeleportGrid TeleportGrid;
+        internal SwitchGrid SwitchGrid;
 
         internal const int ObjectCount = 48;
         internal const int TileCount = 28;
@@ -24,6 +25,7 @@ namespace LevelEditor
             Palette = new Palette();
             Settings = new Settings();
             TeleportGrid = new TeleportGrid();
+            SwitchGrid = new SwitchGrid();
             TileGrid = new TileGrid();
             Tiles = new Tile[TileCount];
             for (int i = 0; i < TileCount; i++)
@@ -40,6 +42,7 @@ namespace LevelEditor
                 Palette = Palette.Clone(),
                 Settings = Settings.Clone(),
                 TeleportGrid = TeleportGrid.Clone(),
+                SwitchGrid = SwitchGrid.Clone(),
                 TileGrid = TileGrid.Clone(),
             };
 
@@ -59,6 +62,7 @@ namespace LevelEditor
             Palette = other.Palette;
             Settings = other.Settings;
             TeleportGrid = other.TeleportGrid;
+            SwitchGrid = other.SwitchGrid;
             TileGrid = other.TileGrid;
             Tiles = other.Tiles;
         }
@@ -101,6 +105,9 @@ namespace LevelEditor
                 objects[i] = new Object(Object.Type_Unknown, 0, 0);
                 objects[i].Read(fs);
             }
+
+            // switch grid
+            // switchGrid.Read(fs);
 
             PropagateObjects(objects);
         }
@@ -147,6 +154,13 @@ namespace LevelEditor
                 }
             }
 
+            // switch on and off tile indices
+            fs.WriteByte((byte)GetTileIndex(Tile.TileType.SwitchOff));
+            fs.WriteByte((byte)GetTileIndex(Tile.TileType.SwitchOn));
+
+            // switch grid
+            SwitchGrid.Write(fs, objects, Tiles, TileGrid);
+
             if (objects[0].Type == Object.Type_Unknown)
             {
                 MessageBox.Show("K9 has not been placed within the level!\n\n" + 
@@ -159,8 +173,32 @@ namespace LevelEditor
                 MessageBox.Show("The maximum number of objects (k9 + enemies + elevators + doors) has been exceeded!\n\n" +
                                 $"The first { ObjectCount } objects are saved.",
                                 "Save", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
             }
+        }
+
+        internal int GetTileIndex(Tile.TileType tileType)
+        {
+            for (int i = 0; i < Tiles.Length; i++)
+            {
+                if (Tiles[i].Type == tileType)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        private int GetTileCount(Tile.TileType tileType)
+        {
+            int count = 0;
+            for (int i = 0; i < Tiles.Length; i++)
+            {
+                if (Tiles[i].Type == tileType)
+                {
+                    count++;
+                }
+            }
+            return count;
         }
 
         internal Object[] CollectObjects()

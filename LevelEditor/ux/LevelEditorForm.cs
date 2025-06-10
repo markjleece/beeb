@@ -369,6 +369,7 @@ namespace LevelEditor
 
                     if (!clippingRect.IntersectsWith(bounds)) continue;
 
+                    // draw tile
                     int tileIndex;
                     if (OverlayPixels[x, y])
                     {
@@ -382,16 +383,18 @@ namespace LevelEditor
                     CachedBitmap cachedBitmap = GetTileGridCachedBitmap(tileIndex, e.Graphics);
                     e.Graphics.DrawCachedBitmap(cachedBitmap, bounds.Left, bounds.Top);
 
+                    // draw teleport tag
                     char? teleport = LevelData.TeleportGrid[x, y];
                     if (teleport != null)
                     {
-                        var channelRect = new Rectangle(
-                            bounds.Left + channelOffset,
-                            bounds.Top + channelOffset,
-                            channelSize, channelSize);
+                        DrawTag((char)teleport, bounds, channelSize, channelOffset, channelFont, e);
+                    }
 
-                        e.Graphics.FillRectangle(Brushes.White, channelRect);
-                        e.Graphics.DrawString($"{teleport}", channelFont, Brushes.Black, channelRect);
+                    // draw switch-pairing tag
+                    char? switchPairing = LevelData.SwitchGrid[x, y];
+                    if (switchPairing != null)
+                    {
+                        DrawTag((char)switchPairing, bounds, channelSize, channelOffset, channelFont, e);
                     }
                 }
             }
@@ -436,8 +439,23 @@ namespace LevelEditor
             }
         }
 
+        private static void DrawTag(char ch, Rectangle bounds, int channelSize, int channelOffset, Font channelFont, PaintEventArgs e)
+        {
+            var channelRect = new Rectangle(
+                bounds.Left + channelOffset,
+                bounds.Top + channelOffset,
+                channelSize, channelSize);
+
+            e.Graphics.FillRectangle(Brushes.White, channelRect);
+            e.Graphics.DrawString($"{ch}", channelFont, Brushes.Black, channelRect);
+        }
+
         private void TileGridPanel_MouseDown(object sender, MouseEventArgs e)
         {
+            if ((Control.ModifierKeys & Keys.Control) == Keys.Control)
+            {
+            }
+            
             EraseMode = (e.Button == MouseButtons.Right);
 
             int clickX = -tileGridPanel.AutoScrollPosition.X + e.X;

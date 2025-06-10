@@ -23,9 +23,15 @@
 \
 .rideElevator
 {
+    \ check if elevator is operational
+    LDA objectState, X
+    AND #OBJECT_STATE_FLAGS_DISABLED
+    BNE autoScroll
+
     \ check if passed object is standing on an elevator (sets tileGridAddr)
     LDA #TILE_TYPE_ELEVATOR
     JSR queryObjectOnTiles : BEQ endif
+    .autoScroll
         LDA direction
         BMI autoScrollUp \ implicit RTS
         BPL autoScrollDown \ implicit RTS
@@ -201,6 +207,11 @@
     ADC frameCount
     AND #7
     BNE return
+
+    \ check if elevator is operational?
+    LDA objectState, X
+    AND #OBJECT_STATE_FLAGS_DISABLED
+    BEQ return
 
     \ next keyframe
     JSR elevatorNextKeyframe
@@ -645,6 +656,10 @@
     AND #7
     BNE rts_11
 
+    \ check is teleport is operational
+    LDA objectState, X
+    AND #OBJECT_STATE_FLAGS_DISABLED : BNE rts_11
+
     \ next keyframe
     LDA objectSpriteIndex, X
     CLC
@@ -669,6 +684,10 @@
 \
 .rideTeleport
 {
+    \ check if teleport is operational
+    LDA objectState, X
+    AND #OBJECT_STATE_FLAGS_DISABLED : BNE rts_11
+
     \ check if k9 is standing on a teleport (sets tileGridAddr)
     LDA #TILE_TYPE_TELEPORT
     JSR queryObjectOnTiles : BNE rts_11

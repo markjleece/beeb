@@ -368,6 +368,41 @@
 }
 
 \
+\ getTileGridAddr(leftLo/Hi, topLo/Hi)
+\
+\ Get the object's tile grid address located at: leftLo/Hi, topLo/Hi
+\
+\ returns:
+\   tileGridAddr    address of tile grid location
+\
+\ params:
+\   leftLo/Hi   X level coordinate
+\   topLo/Hi    Y level coordinate
+\
+\ modifies:
+\   tileGridAddr, temp, Y
+\
+.getTileGridAddr
+{
+    \ tileGridAddr = levelTileGrid + 128|64|32|16 * topLo / 16
+    LDA topLo
+    TAY
+    LDA topHi
+    ADC #0
+
+    \ common code...
+    JSR getTileAddrCommon1
+
+    \ tileGridAddr += leftLo / 16
+    LDA leftLo
+    TAY
+    LDA leftHi
+
+    \ common code...
+    JMP getTileAddrCommon2 \ implicit RTS
+}
+
+\
 \ getScreenTileGridAddr(leftLo, topLo)
 \
 \ Get the screen's tile grid address located at: leftLo, topLo

@@ -22,8 +22,13 @@
     ADC frameCount
     AND #7
     BEQ skip1
+        .return
         RTS
     .skip1
+
+    \ check if door is operational
+    LDA objectState, X
+    AND #OBJECT_STATE_FLAGS_DISABLED : BNE return
 
     \ temp = union of left and right opaque/enemy flags
     LDA #(DOOR_SPRITE_HEIGHT - 1) : STA offsetY

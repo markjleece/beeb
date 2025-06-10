@@ -80,7 +80,7 @@ ENDIF
 \
 .drawGameBar    
 {
-IF DEBUG_TILE_GRID_FLAGS != 0
+IF DEBUG_TILE_GRID_FLAGS != 1
     RTS
 ELSE
     \ dstAddr = scrnAddr + 384
@@ -722,51 +722,268 @@ ENDIF
     LDA levelTileTypes, Y
 
     \ hit destructible wall?
-    CMP #TILE_TYPE_DESTRUCTIBLE_WALL : BNE skip2
-        \ destructible wall hit
-        JMP destructibleWallHit \ implicit RTS
-    .skip2
+    LDY #0
+    CMP #TILE_TYPE_DESTRUCTIBLE_WALL : BEQ laseredTileHit
 
-    .return
+    \ hit off-switch?
+    LDY switchOnTileIndex
+    CMP #TILE_TYPE_SWITCH_OFF : BEQ laseredTileHit
+
     RTS
 }
 
 \
-\ destructibleWallHit(leftLo, topLo, tileGridAddr)
+\ laseredTileHit(leftLo, topLo, tileGridAddr, Y register)
 \
 \ params:
 \   leftLo, topLo   Screen coordinates
 \   tileGridAddr    Tile grid address
+\   Y register      New tile index
 \
-.destructibleWallHit
+.laseredTileHit
 {
+    STY index
+
     \ draw lasered tile
     LDA #LO(-1)
     JSR drawTile
 
     \ mark for redraw
-    INC destructibleWallRedraw
+    INC laseredTileRedraw
    
-    \ if (destructibleWallTop/Left == top/left) ..
-    LDA leftLo : CMP destructibleWallLeft : BNE else
-    LDA topLo : CMP destructibleWallTop : BNE else
+    \ if (laseredTileTop/Left == top/left) ..
+    LDA leftLo : CMP laseredTileLeft : BNE else
+    LDA topLo : CMP laseredTileTop : BNE else
 
-        \ if (--destructibleWallStrength == 0)
-        DEC destructibleWallStrength : BNE endif
-            \ replace destructible wall with space
-            LDA #0
-            TAY
+        \ if (--laseredTileStrength == 0)
+        DEC laseredTileStrength : BNE endif
+
+            \ replace lasered tile with new tile index
+            LDA index
+            LDY #0
             STA (tileGridAddr), Y
+
+            \ stop laser
+            INC laserInhibited
             RTS
     .else
         \ remember tile's position
-        LDA leftLo : STA destructibleWallLeft
-        LDA topLo : STA destructibleWallTop
+        LDA leftLo : STA laseredTileLeft
+        LDA topLo : STA laseredTileTop
 
         \ reset tile's strength
-        LDA #DESTRUCTIBLE_WALL_STRENGTH : STA destructibleWallStrength
+        LDA #LASERED_TILE_STRENGTH : STA laseredTileStrength
     .endif
 
+    RTS
+}
+
+\
+\ switches...
+\
+.switchOnTileIndex          SKIP 1
+.switchOffTileIndex         SKIP 1
+
+\
+\ findSwitchIndex(tileGridAddr)
+\
+\ the switch index is resulted in the X register
+\
+\ params:
+\   tileGridAddr    Tile grid address of switch
+\
+\ modifies:
+\   tileGridAddr
+\
+.findSwitchIndex
+{
+    LDX #0
+    LDY #0
+
+    .loop
+        \ srcAddr--
+        LDA tileGridAddr
+        BNE skip1
+            DEC tileGridAddr+1
+        .skip1
+        DEC tileGridAddr
+
+        \ if (*tileGridAddr == switchOffTileIndex) 
+        LDA (tileGridAddr), Y
+        AND #TILE_GRID_INDEX_MASK
+        CMP switchOffTileIndex
+        BNE skip2
+            INX \ found!
+        .skip2
+
+        \ loop while tileGridAddr > levelTileGrid
+        LDA tileGridAddr+1
+        CMP HI(levelTileGrid - 1)
+        BNE loop
+    .loopEnd
+
+    RTS
+}
+
+\
+\ activateSwitch(X register)
+\
+\ activates a switch
+\
+\ params:
+\   X register  Switch index
+\
+\ modifies:
+\
+.switchPairings SKIP 32
+
+.activateSwitch
+{
+    \ skip to switch X
+    LDY #0
+    BEQ loop1End
+    .loop1
+        TYA
+        ADC switchPairings, Y
+        TAY
+        INY
+
+        DEX
+        BNE loop1
+    .loop1End
+
+    INY \ skip over switch byte count
+
+    \ for each paired object
+    LDA switchPairings, Y
+    INY
+    TAX : BEQ loop2End
+    .loop2
+        \ object Id
+        LDA switchPairings, Y
+        STA index
+        INY
+
+        \ activate object
+        JSR activateObject
+
+        DEX
+        BNE loop2
+    .loop2End
+
+    \ for each paired tile...
+    LDA switchPairings, Y
+    INY
+    TAX : BEQ loopEnd3
+    .loop3
+        \ tile X
+        LDA switchPairings, Y
+        STA leftLo
+        INY
+
+        \ tile Y
+        LDA switchPairings, Y
+        STA topLo
+        INY
+
+        \ activate tile
+        JSR activateTile
+
+        DEX
+        BNE loop3
+    .loopEnd3
+
+    RTS
+}
+
+\
+\ activateObject(index)
+\
+\ params:
+\   index     Object index
+.activateObject
+{
+    \ preserve X
+    TXA : PHA
+    
+    LDX index
+    LDA objectType, X
+    TAY
+    AND #OBJECT_TYPE_MASK
+    CMP #OBJECT_TYPE_ENEMY : BNE else
+        \ if (action == PURSUE_LEFT, PURSUE_RIGHT ...) break
+        TYA
+        BMI endif
+
+        \ enemy action = 'PACE'
+        AND #LO(NOT(ANIMATE_MASK))
+        ORA #(ACTION_PACE)
+        STA objectType, X
+
+        BNE endif
+    .else
+        \ clear disabled flag
+        LDA objectState, X
+        AND #LO(NOT(OBJECT_STATE_FLAGS_DISABLED))
+        STA objectState, X
+    .endif
+
+    \ restore X
+    PLA : TAX
+    RTS
+}
+
+\
+\ activateTile(leftLo, topLo)
+\
+\ params:
+\   leftLo      Tile X position (tile coords)
+\   topLo       Tile Y position (tile coords)
+\
+.activateTile
+{
+    \ preserve X & Y
+    TXA : PHA : TYA : PHA
+
+    \ convert tile coords to level coords
+    LDA #0 : STA leftHi : STA topHi
+    LDY #4
+    .loop
+        ASL leftLo : ROL leftHi
+        ASL topLo : ROL topHi
+        DEY
+        BNE loop
+
+    \ convert tile to a space
+    JSR getTileGridAddr
+    LDA #0
+    STA (tileGridAddr), Y
+
+    \ convert coords to screen space
+    LDA leftLo
+    SEC
+    SBC scrnLeftLo
+    STA leftLo
+    LDA leftHi
+    SBC scrnLeftHi
+    BNE clipped \ fully clipped
+
+    \ top -= scrnTop
+    LDA topLo
+    SEC
+    SBC scrnTopLo
+    STA topLo
+    LDA topHi
+    SBC scrnTopHi
+    BNE clipped \ fully clipped
+
+    \ draw tile
+    JSR drawTile
+
+    .clipped
+
+    \ restore X & Y
+    PLA : TAY : PLA : TAX
     RTS
 }
 
@@ -983,11 +1200,11 @@ ENDIF
     RTS
 
 .drawEnd
-    LDA destructibleWallRedraw : BEQ else
-        \ redraw destructible wall, clearing redraw flag
-        LDA destructibleWallLeft : STA leftLo
-        LDA destructibleWallTop : STA topLo
-        LDA #0 : STA destructibleWallRedraw
+    LDA laseredTileRedraw : BEQ else
+        \ redraw lasered tile, clearing redraw flag
+        LDA laseredTileLeft : STA leftLo
+        LDA laseredTileTop : STA topLo
+        LDA #0 : STA laseredTileRedraw
         JMP drawTile \ implicit
     .else
         \ restore last pixels
@@ -1377,21 +1594,24 @@ ENDIF
     LSR A: LSR A
     STA outerCount
 
-    \ is lasered flag set? (save state in carry)
-    CLC
-    LDA objectState, X
-    AND #OBJECT_STATE_FLAGS_LASERED
-    BEQ endif10
+    \ is enemy lasered flag set? (save state in carry)
+    CPX enemyCount : BEQ then10 : BCS endif10
+    .then10
+        SEC
+        LDA objectState, X
+        AND #OBJECT_STATE_FLAGS_LASERED
+        BEQ endif10
+
         \ clear lasered flag and set redraw
         LDA objectState, X
         AND #LO(NOT(OBJECT_STATE_FLAGS_LASERED))
         ORA #OBJECT_STATE_FLAGS_REDRAW
         STA objectState, X
-        SEC
+        CLC
     .endif10
 
     \ handle lasered and blank effects
-    LDA index : BMI else11 : BCC endif11
+    LDA index : BMI else11 : BCS endif11
         \ draw lasered sprite
         JMP drawLaseredObject \ implicit RTS
     .else11
