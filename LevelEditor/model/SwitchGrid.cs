@@ -1,6 +1,8 @@
 // This file is Copyright © 2025 - Mark John Leece - All rights reserved
 using System;
+using System.Data;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Channels;
 
 namespace LevelEditor
@@ -13,7 +15,7 @@ namespace LevelEditor
         {
             return new SwitchGrid()
             {
-                SwitchIndices = new Dictionary<Tuple<int, int>, char>(SwitchIndices)
+                SwitchPairings = new Dictionary<Tuple<int, int>, char>(SwitchPairings)
             };
         }
 
@@ -21,7 +23,7 @@ namespace LevelEditor
         {
             get
             {
-                if (SwitchIndices.TryGetValue(Tuple.Create(x, y), out char switchChar))
+                if (SwitchPairings.TryGetValue(Tuple.Create(x, y), out char switchChar))
                 {
                     return switchChar;
                 }
@@ -32,12 +34,12 @@ namespace LevelEditor
             set
             {
                 var key = Tuple.Create(x, y);
-                
-                SwitchIndices.Remove(key);
+
+                SwitchPairings.Remove(key);
 
                 if (value != null)
                 {
-                    SwitchIndices.Add(key, (char)value);
+                    SwitchPairings.Add(key, (char)value);
                 }
             }
         }
@@ -48,20 +50,16 @@ namespace LevelEditor
             byte[] buffer = new byte[SerializedSize];
             fs.ReadExactly(buffer);
 
-            // find switch-off tile index
-            int switchOffTileIndex = 0;
-            for (int i = 0; i < tiles.Length; i++)
+            // find tile index of switch-off tile
+            int switchOffTileIndex = GetSwitchOffTileIndex(tiles);
+            if (switchOffTileIndex == -1)
             {
-                if (tiles[i].Type == Tile.TileType.SwitchOff)
-                {
-                    switchOffTileIndex = i;
-                    break;
-                }
+                return;
             }
 
             // for each set of switch pairings...
             int bufferIndex = 0;
-            int switchIndex = 0;
+            int pairingIndex = 0;
 
             while (buffer[bufferIndex++] != 0)
             {
@@ -76,9 +74,9 @@ namespace LevelEditor
                             continue;
                         }
 
-                        if (switchIndex == switchOffTileCount++)
+                        if (pairingIndex == switchOffTileCount++)
                         {
-                            this[tileX, tileY] = (char)('1' + switchIndex);
+                            this[tileX, tileY] = (char)('1' + pairingIndex);
                             tileX = tileGrid.Width;
                             tileY = tileGrid.Height;
                         }
@@ -90,6 +88,7 @@ namespace LevelEditor
                 for (int j = 0; j < objectListCount; j++)
                 {
                     int objectIndex = buffer[bufferIndex++];
+
                     Object obj = objects[objectIndex];
 
                     int tileX = obj.PosX;
@@ -100,7 +99,7 @@ namespace LevelEditor
                         tileY++;
                     }
 
-                    this[tileX, tileY] = (char)('1' + switchIndex);
+                    this[tileX, tileY] = (char)('1' + pairingIndex);
                 }
 
                 // populate paired tiles
@@ -110,10 +109,10 @@ namespace LevelEditor
                     int tileX = buffer[bufferIndex++];
                     int tileY = buffer[bufferIndex++];
 
-                    this[tileX, tileY] = (char)('1' + switchIndex);
+                    this[tileX, tileY] = (char)('1' + pairingIndex);
                 }
 
-                switchIndex++;
+                pairingIndex++;
             }
         }
 
@@ -121,101 +120,92 @@ namespace LevelEditor
         {
             List<byte> buffer = [];
 
-            // collect switch pairings
-            Dictionary<char, List<int>> objectsByIndex = [];
-            Dictionary<char, List<Point>> tilesByIndex = [];
+            // populate pairings
+            List<char> pairings = [];
+            Dictionary<char, List<int>> pairedObjects = [];
+            Dictionary<char, List<Point>> pairedTiles = [];
 
-            foreach (var entry in SwitchIndices)
+            int switchOffTileIndex = GetSwitchOffTileIndex(tiles);
+
+            for (int tileY = 0; tileY < tileGrid.Height; tileY++)
             {
-                char switchIndex = entry.Value;
+                for (int tileX = 0; tileX < tileGrid.Width; tileX++)
+                {
+                    if (tileGrid[tileX, tileY] == switchOffTileIndex)
+                    {
+                        char? pairing = this[tileX, tileY];
+                        pairing ??= NextPairing();
+
+                        pairings.Add((char)pairing);
+                        pairedObjects.Add((char)pairing, []);
+                        pairedTiles.Add((char)pairing, []);
+                    }
+                }
+            }
+
+            // populate pairing tile and object lists
+            foreach (var entry in SwitchPairings)
+            {
+                char pairing = entry.Value;
 
                 int tileX = entry.Key.Item1;
                 int tileY = entry.Key.Item2;
+
+                bool paired = false;
 
                 for (int j = 0; j < objects.Length; j++)
                 {
                     Object obj = objects[j];
                     if (tileX == obj.PosX && (tileY == obj.PosY || tileY - 1 == obj.PosY))
                     {
-                        if (objectsByIndex.TryGetValue(switchIndex, out List<int>? objectList))
-                        {
-                            objectList.Add(switchIndex);
-                        }
-                        else
-                        {
-                            objectsByIndex.Add(switchIndex, [j]);
-                        }
-
-                        continue;
+                        pairedObjects[pairing].Add(j);
+                        paired = true;
+                        break;
                     }
                 }
 
-                int tileIndex = tileGrid[tileX, tileY];
-                Tile.TileType tileType = tiles[tileIndex].Type;
-                if (tileType == Tile.TileType.SwitchOff || tileType == Tile.TileType.SwitchOn)
+                if (!paired)
                 {
-                    continue; // ignore switches
-                }
-
-                if (tilesByIndex.TryGetValue(switchIndex, out List<Point>? tileList))
-                {
-                    tileList.Add(new Point(tileX, tileY));
-                }
-                else
-                {
-                    tilesByIndex.Add(switchIndex, [new Point(tileX, tileY)]);
+                    int tileIndex = tileGrid[tileX, tileY];
+                    if (tileIndex < Level.TileCount && tiles[tileIndex].Type != Tile.TileType.SwitchOff)
+                    {
+                        pairedTiles[pairing].Add(new Point(tileX, tileY));
+                    }
                 }
             }
 
             // write switch pairings
-            List<char> switchIndices = [];
-
-            for (int tileY = 0; tileY < tileGrid.Height; tileY++)
+            foreach (char pairing in pairings)
             {
-                for (int tileX = 0; tileX < tileGrid.Width; tileX++)
-                {
-                    char? index = this[tileX, tileY];
-                    if (index != null && !switchIndices.Contains((char)index))
-                    {
-                        switchIndices.Add((char)index);
-                    }
-                }
-            }
+                // construct switch pairings data
+                List<int> switchData = [0];
 
-            foreach (char switchIndex in switchIndices)
-            {
-                List<int> switchData = [];
-
-                if (objectsByIndex.TryGetValue(switchIndex, out List<int>? objectList))
+                List<int>? objectList = pairedObjects[pairing];
+                switchData.Add(objectList.Count);
+                foreach (var obj in objectList)
                 {
-                    switchData.Add(objectList.Count);
-                    foreach (var obj in objectList)
-                    {
-                        switchData.Add(obj);
-                    }
+                    switchData.Add(obj);
                 }
 
-                if (tilesByIndex.TryGetValue(switchIndex, out List<Point>? tileList))
+                List<Point>? tileList = pairedTiles[pairing];
+                switchData.Add(tileList.Count);
+                foreach (var point in tileList)
                 {
-                    switchData.Add(tileList.Count);
-                    foreach (var point in tileList)
-                    {
-                        switchData.Add(point.X);
-                        switchData.Add(point.Y);
-                    }
+                    switchData.Add(point.X);
+                    switchData.Add(point.Y);
                 }
 
-                int switchDataSize = 1/*size*/ + switchData.Count;
+                switchData[0] = switchData.Count; // populate count
 
-                if ((buffer.Count + switchDataSize + 1/*terminator*/) > SerializedSize)
+                if ((buffer.Count + switchData.Count + 1/*terminator*/) > SerializedSize)
                 {
                     MessageBox.Show("Too many switch pairings\n\n" + 
-                                    $"Pairings for switch '{switchIndex}' were not saved.",
+                                    $"Pairings for switch '{pairing}' were not saved.",
                                     "Save", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     break;
                 }
 
-                buffer.Add((byte)switchDataSize);
+                // buffer.AddRange(switchData)
                 for (int i = 0; i < switchData.Count; i++)
                 {
                     buffer.Add((byte)switchData[i]);
@@ -232,33 +222,100 @@ namespace LevelEditor
             fs.Write([.. buffer]);
         }
 
-        internal List<char> Indices()
+        private static int GetSwitchOffTileIndex(Tile[] tiles)
         {
-            List<char> indices = [];
-            foreach (var entry in SwitchIndices)
+            for (int i = 0; i < tiles.Length; i++)
             {
-                if (!indices.Contains(entry.Value))
+                if (tiles[i].Type == Tile.TileType.SwitchOff)
                 {
-                    indices.Add(entry.Value);
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        internal void RemovePairing(int tileX, int tileY, Tile[] tiles, TileGrid tileGrid)
+        {
+            var key = Tuple.Create(tileX, tileY);
+            if (SwitchPairings.TryGetValue(key, out char pairing))
+            {
+                int? tileIndex = tileGrid[tileX, tileY];
+
+                bool removeAllPairings =
+                    (CountPairings((char)pairing) == 2) ||
+                    (tileIndex != null &&
+                     tileIndex < Level.TileCount &&
+                     tiles[(int)tileIndex].Type == Tile.TileType.SwitchOff);
+
+                if (removeAllPairings)
+                {
+                    RemovePairing(pairing);
+                }
+                else
+                {
+                    SwitchPairings.Remove(key);
+                }
+            }
+        }
+
+        private void RemovePairing(char pairing)
+        {
+            List<Tuple<int, int>> keysToRemove = [];
+
+            foreach (var entry in SwitchPairings)
+            {
+                if (entry.Value == pairing)
+                {
+                    keysToRemove.Add(entry.Key);
                 }
             }
 
-            indices.Sort();
-
-            return indices;
-        }
-
-        internal char NextIndex()
-        {
-            var indices = Indices();
-            char nextIndex = '1';
-            while (indices.Contains(nextIndex))
+            foreach (var key in keysToRemove)
             {
-                nextIndex++;
+                SwitchPairings.Remove(key);
             }
-            return nextIndex;
         }
 
-        private Dictionary<Tuple<int, int>, char> SwitchIndices = [];
+        internal int CountPairings(char pairing)
+        {
+            int pairingCount = 0;
+            foreach (var entry in SwitchPairings)
+            {
+                if (entry.Value == pairing)
+                {
+                    pairingCount++;
+                }
+            }
+            return pairingCount;
+        }
+
+        internal List<char> Pairings()
+        {
+            List<char> pairings = [];
+            foreach (var entry in SwitchPairings)
+            {
+                if (!pairings.Contains(entry.Value))
+                {
+                    pairings.Add(entry.Value);
+                }
+            }
+
+            pairings.Sort();
+
+            return pairings;
+        }
+
+        internal char NextPairing()
+        {
+            var pairings = Pairings();
+            char nextPairing = '1';
+            while (pairings.Contains(nextPairing))
+            {
+                nextPairing++;
+            }
+            return nextPairing;
+        }
+
+        private Dictionary<Tuple<int, int>, char> SwitchPairings = [];
     }
 }

@@ -35,7 +35,7 @@ namespace LevelEditor
                 }
             }
 
-            ResetState(true/*reset view*/);
+            ResetState(resetView: true);
 
             // load object tile bitmaps
             ObjectBitmaps[0] = LevelEditor.Properties.Resources.K9LookLeft;
@@ -137,7 +137,7 @@ namespace LevelEditor
             SaveLevelOperation op = new(LevelData);
             if (UndoRedoHistory.Execute(op))
             {
-                ResetState(false/*resetView*/);
+                ResetState(resetView: false);
             }
         }
 
@@ -146,7 +146,7 @@ namespace LevelEditor
             SaveAsLevelOperation op = new(LevelData);
             if (UndoRedoHistory.Execute(op))
             {
-                ResetState(false/*resetView*/);
+                ResetState(resetView: false);
             }
         }
 
@@ -160,7 +160,7 @@ namespace LevelEditor
             if (UndoRedoHistory.CanUndo())
             {
                 UndoRedoHistory.Undo();
-                ResetState(false/*resetView*/);
+                ResetState(resetView: false);
             }
         }
 
@@ -174,7 +174,7 @@ namespace LevelEditor
             if (UndoRedoHistory.CanRedo())
             {
                 UndoRedoHistory.Redo();
-                ResetState(false/*resetView*/);
+                ResetState(resetView: false);
             }
         }
 
@@ -198,7 +198,7 @@ namespace LevelEditor
             EditPaletteOperation op = new(LevelData);
             if (UndoRedoHistory.Execute(op))
             {
-                ResetState(false/*resetView*/);
+                ResetState(resetView: false);
             }
         }
 
@@ -355,9 +355,9 @@ namespace LevelEditor
         {
             Rectangle clippingRect = e.ClipRectangle;
 
-            var channelSize = TileGridTileSize / 3;
-            var channelOffset = TileGridTileSize / 12;
-            var channelFont = new Font(FontFamily.GenericSansSerif, channelSize, FontStyle.Bold, GraphicsUnit.Pixel);
+            var tagSize = TileGridTileSize / 3;
+            var tagOffset = TileGridTileSize / 12;
+            var tagFont = new Font(FontFamily.GenericSansSerif, tagSize, FontStyle.Bold, GraphicsUnit.Pixel);
 
             // draw tiles
             for (int y = 0; y < LevelData.TileGrid.Height; y++)
@@ -387,14 +387,22 @@ namespace LevelEditor
                     char? teleport = LevelData.TeleportGrid[x, y];
                     if (teleport != null)
                     {
-                        DrawTag((char)teleport, bounds, channelSize, channelOffset, channelFont, e);
+                        var rect = new Rectangle(bounds.Left + tagOffset, bounds.Top + tagOffset, tagSize, tagSize);
+                        e.Graphics.FillRectangle(Brushes.White, rect);
+                        e.Graphics.DrawString($"{(char)teleport}", tagFont, Brushes.Black, rect);
                     }
 
                     // draw switch-pairing tag
                     char? switchPairing = LevelData.SwitchGrid[x, y];
                     if (switchPairing != null)
                     {
-                        DrawTag((char)switchPairing, bounds, channelSize, channelOffset, channelFont, e);
+                        var rect = new Rectangle(bounds.Left + tagOffset, bounds.Top + tagOffset, tagSize, tagSize);
+                        if (teleport != null)
+                        {
+                            rect.Offset(tagSize + 4, 0);
+                        }
+                        e.Graphics.FillRectangle(Brushes.White, rect);
+                        e.Graphics.DrawString($"{(char)switchPairing}", tagFont, Brushes.Black, rect);
                     }
                 }
             }
@@ -439,23 +447,8 @@ namespace LevelEditor
             }
         }
 
-        private static void DrawTag(char ch, Rectangle bounds, int channelSize, int channelOffset, Font channelFont, PaintEventArgs e)
-        {
-            var channelRect = new Rectangle(
-                bounds.Left + channelOffset,
-                bounds.Top + channelOffset,
-                channelSize, channelSize);
-
-            e.Graphics.FillRectangle(Brushes.White, channelRect);
-            e.Graphics.DrawString($"{ch}", channelFont, Brushes.Black, channelRect);
-        }
-
         private void TileGridPanel_MouseDown(object sender, MouseEventArgs e)
         {
-            if ((Control.ModifierKeys & Keys.Control) == Keys.Control)
-            {
-            }
-            
             EraseMode = (e.Button == MouseButtons.Right);
 
             int clickX = -tileGridPanel.AutoScrollPosition.X + e.X;
@@ -467,9 +460,21 @@ namespace LevelEditor
             if (tileX >= 0 && tileX < LevelData.TileGrid.Width &&
                 tileY >= 0 && tileY < LevelData.TileGrid.Height)
             {
-                OverlayActive = true;
-                OverlayStartPosition = new Point(tileX, tileY);
-                SetOverlayTile(tileX, tileY, true/*set*/);
+                if ((Control.ModifierKeys & Keys.Control) == Keys.Control)
+                {
+                    EditSwitchGridOperation op = new(LevelData, tileX, tileY);
+                    if (UndoRedoHistory.Execute(op))
+                    {
+                        ResetState(resetView: false);
+                    }
+                }
+                else
+                {
+                    EditSwitchGridOperation.CurrentPairing = null;
+                    OverlayActive = true;
+                    OverlayStartPosition = new Point(tileX, tileY);
+                    SetOverlayTile(tileX, tileY, true/*set*/);
+                }
             }
         }
 
@@ -483,7 +488,14 @@ namespace LevelEditor
                 EditTileGridOperation op = new(LevelData, tileCoords, tileIndex);
                 UndoRedoHistory.Execute(op);
                 {
-                    UpdateButtons();
+                    if (op.SwitchGridModified)
+                    {
+                        ResetState(resetView: false);
+                    }
+                    else
+                    {
+                        UpdateButtons();
+                    }
                 }
 
                 ClearOverlay();

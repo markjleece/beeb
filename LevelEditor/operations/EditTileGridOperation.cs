@@ -20,33 +20,59 @@ namespace LevelEditor
                 {
                     NewTeleportIndex = null;
                 }
-
-                if (tileType == Tile.TileType.SwitchOff)
-                {
-                    NewSwitchIndex = LevelData.SwitchGrid.NextIndex();
-                }
-                else
-                {
-                    NewSwitchIndex = null;
-                }
             }
 
             TileCoords = new Point[tileCoords.Length];
             OldTileIndices = new byte[tileCoords.Length];
             OldTeleportIndices = new char?[tileCoords.Length];
-            OldSwitchIndices = new char?[tileCoords.Length];
 
             for (int i = 0; i < tileCoords.Length; i++)
             {
                 TileCoords[i] = tileCoords[i];
                 OldTileIndices[i] = levelData.TileGrid[tileCoords[i].X, tileCoords[i].Y];
                 OldTeleportIndices[i] = levelData.TeleportGrid[tileCoords[i].X, tileCoords[i].Y];
-                OldSwitchIndices[i] = levelData.SwitchGrid[tileCoords[i].X, tileCoords[i].Y];
+            }
+
+            // determine if operation modifies the switch grid
+            SwitchGridModified = false;
+            for (int i = 0; i < tileCoords.Length; i++)
+            {
+                if (LevelData.SwitchGrid[tileCoords[i].X, tileCoords[i].Y] != null)
+                {
+                    SwitchGridModified = true;
+                    break;
+                }
+            }
+
+            if (SwitchGridModified)
+            {
+                NewSwitchGrid = LevelData.SwitchGrid.Clone();
+                OldSwitchGrid = LevelData.SwitchGrid.Clone();
+
+                for (int i = 0; i < tileCoords.Length; i++)
+                {
+                    NewSwitchGrid.RemovePairing(tileCoords[i].X, tileCoords[i].Y, LevelData.Tiles, LevelData.TileGrid);
+                }
+            }
+            else
+            {
+                NewSwitchGrid = LevelData.SwitchGrid;
+                OldSwitchGrid = LevelData.SwitchGrid;
             }
         }
 
         internal override bool Execute()
         {
+            // ensure its not a switch-on tile 
+            if (NewTileIndex == LevelData.GetTileIndex(Tile.TileType.SwitchOn))
+            {
+                MessageBox.Show(
+                    "Switches can only be turned on in the game\n\n" + 
+                    "Did you mean to place a SwitchOff tile instead?",
+                    "Set Tile", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
             if (NewTileIndex >= Level.TileCount) // object tile?
             {
                 // classify tile index
@@ -66,15 +92,6 @@ namespace LevelEditor
                     case TileGrid.EnemyMoveRight:
                         isEnemy = true;
                         break;
-                }
-
-                // ensure its not a switch-on tile 
-                if (NewTileIndex == LevelData.GetTileIndex(Tile.TileType.SwitchOn))
-                {
-                    MessageBox.Show(
-                        "Did you mean to place a 'SwitchOff' type tile?\\n",
-                        "Set Tile", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return false;
                 }
 
                 // check if the maximum number of objects has been reached
@@ -104,7 +121,6 @@ namespace LevelEditor
                             "Set Character", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return false;
                     }
-
                 }
 
                 // check that the character is placed in space
@@ -143,7 +159,7 @@ namespace LevelEditor
             {
                 LevelData.TileGrid[TileCoords[i].X, TileCoords[i].Y] = NewTileIndex;
                 LevelData.TeleportGrid[TileCoords[i].X, TileCoords[i].Y] = NewTeleportIndex;
-                LevelData.SwitchGrid[TileCoords[i].X, TileCoords[i].Y] = NewSwitchIndex;
+                LevelData.SwitchGrid = NewSwitchGrid;
             }
         }
 
@@ -153,17 +169,18 @@ namespace LevelEditor
             {
                 LevelData.TileGrid[TileCoords[i].X, TileCoords[i].Y] = OldTileIndices[i];
                 LevelData.TeleportGrid[TileCoords[i].X, TileCoords[i].Y] = OldTeleportIndices[i];
-                LevelData.SwitchGrid[TileCoords[i].X, TileCoords[i].Y] = OldSwitchIndices[i];
+                LevelData.SwitchGrid = OldSwitchGrid;
             }
         }
 
         private readonly Point[] TileCoords;
         private readonly byte[] OldTileIndices;
         private readonly char?[] OldTeleportIndices;
-        private readonly char?[] OldSwitchIndices;
         private readonly byte NewTileIndex;
         private readonly char? NewTeleportIndex;
-        private readonly char? NewSwitchIndex;
-        readonly Level LevelData;
+        private readonly SwitchGrid OldSwitchGrid;
+        private readonly SwitchGrid NewSwitchGrid;
+        private readonly Level LevelData;
+        internal readonly bool SwitchGridModified;
     }
 }

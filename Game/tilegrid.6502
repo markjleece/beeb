@@ -385,17 +385,14 @@
 .getTileGridAddr
 {
     \ tileGridAddr = levelTileGrid + 128|64|32|16 * topLo / 16
-    LDA topLo
-    TAY
+    LDY topLo
     LDA topHi
-    ADC #0
 
     \ common code...
     JSR getTileAddrCommon1
 
     \ tileGridAddr += leftLo / 16
-    LDA leftLo
-    TAY
+    LDY leftLo
     LDA leftHi
 
     \ common code...

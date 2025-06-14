@@ -716,18 +716,18 @@ ENDIF
     .skip1
 
     \ get tile type
-    TYA \ <-- index & flags 
+    TYA \ <-- index & flags
     AND #TILE_GRID_INDEX_MASK
     TAY
     LDA levelTileTypes, Y
 
     \ hit destructible wall?
-    LDY #0
-    CMP #TILE_TYPE_DESTRUCTIBLE_WALL : BEQ laseredTileHit
+    LDY #0 \ replace wall with space
+    CMP #TILE_TYPE_DESTRUCTIBLE_WALL : BEQ laseredTileHit \ implicit RTS
 
     \ hit off-switch?
-    LDY switchOnTileIndex
-    CMP #TILE_TYPE_SWITCH_OFF : BEQ laseredTileHit
+    LDY switchOnTileGridValue \ replace off-switch with on-switch
+    CMP #TILE_TYPE_SWITCH_OFF : BEQ laseredTileHit \ implicit RTS
 
     RTS
 }
@@ -738,17 +738,17 @@ ENDIF
 \ params:
 \   leftLo, topLo   Screen coordinates
 \   tileGridAddr    Tile grid address
-\   Y register      New tile index
+\   Y register      Replacement tile index
 \
 .laseredTileHit
 {
-    STY index
+    STY outerIndex
 
     \ draw lasered tile
     LDA #LO(-1)
     JSR drawTile
 
-    \ mark for redraw
+    \ redraw tile when laser beam is undrawn
     INC laseredTileRedraw
    
     \ if (laseredTileTop/Left == top/left) ..
@@ -758,13 +758,17 @@ ENDIF
         \ if (--laseredTileStrength == 0)
         DEC laseredTileStrength : BNE endif
 
-            \ replace lasered tile with new tile index
-            LDA index
-            LDY #0
-            STA (tileGridAddr), Y
-
             \ stop laser
             INC laserInhibited
+
+            \ replace lasered tile with new one
+            LDY #0
+            LDA outerIndex
+            STA (tileGridAddr), Y
+
+            \ activate switch?
+            BNE activateSwitch \ implicit RTS
+
             RTS
     .else
         \ remember tile's position
@@ -781,22 +785,24 @@ ENDIF
 \
 \ switches...
 \
-.switchOnTileIndex          SKIP 1
-.switchOffTileIndex         SKIP 1
+.switchOffTileIndex     SKIP 1
+.switchOnTileIndex      SKIP 1
+.switchOnTileGridValue  SKIP 1
+.switchPairings         SKIP 16
 
 \
-\ findSwitchIndex(tileGridAddr)
+\ activateSwitch(tileGridAddr)
 \
-\ the switch index is resulted in the X register
+\ activates a switch
 \
 \ params:
 \   tileGridAddr    Tile grid address of switch
 \
 \ modifies:
-\   tileGridAddr
 \
-.findSwitchIndex
+.activateSwitch
 {
+    \ determine switch index (X register)
     LDX #0
     LDY #0
 
@@ -808,45 +814,30 @@ ENDIF
         .skip1
         DEC tileGridAddr
 
-        \ if (*tileGridAddr == switchOffTileIndex) 
+        \ if (*tileGridAddr == switchOffTileIndex || *tileGridAddr == switchOnTileIndex)
         LDA (tileGridAddr), Y
         AND #TILE_GRID_INDEX_MASK
-        CMP switchOffTileIndex
-        BNE skip2
-            INX \ found!
-        .skip2
+        CMP switchOffTileIndex : BEQ then
+        CMP switchOnTileIndex : BNE endif
+        .then
+            INX \ X++
+        .endif
 
         \ loop while tileGridAddr > levelTileGrid
         LDA tileGridAddr+1
-        CMP HI(levelTileGrid - 1)
+        CMP #HI(levelTileGrid - 1)
         BNE loop
     .loopEnd
 
-    RTS
-}
-
-\
-\ activateSwitch(X register)
-\
-\ activates a switch
-\
-\ params:
-\   X register  Switch index
-\
-\ modifies:
-\
-.switchPairings SKIP 32
-
-.activateSwitch
-{
     \ skip to switch X
     LDY #0
+    TXA
     BEQ loop1End
     .loop1
         TYA
+        CLC
         ADC switchPairings, Y
         TAY
-        INY
 
         DEX
         BNE loop1
@@ -861,8 +852,8 @@ ENDIF
     .loop2
         \ object Id
         LDA switchPairings, Y
-        STA index
         INY
+        STA index
 
         \ activate object
         JSR activateObject
@@ -878,13 +869,13 @@ ENDIF
     .loop3
         \ tile X
         LDA switchPairings, Y
-        STA leftLo
         INY
+        STA leftLo
 
         \ tile Y
         LDA switchPairings, Y
-        STA topLo
         INY
+        STA topLo
 
         \ activate tile
         JSR activateTile
@@ -901,6 +892,7 @@ ENDIF
 \
 \ params:
 \   index     Object index
+\
 .activateObject
 {
     \ preserve X
@@ -908,11 +900,10 @@ ENDIF
     
     LDX index
     LDA objectType, X
-    TAY
     AND #OBJECT_TYPE_MASK
     CMP #OBJECT_TYPE_ENEMY : BNE else
         \ if (action == PURSUE_LEFT, PURSUE_RIGHT ...) break
-        TYA
+        LDA objectType, X
         BMI endif
 
         \ enemy action = 'PACE'
@@ -956,7 +947,8 @@ ENDIF
 
     \ convert tile to a space
     JSR getTileGridAddr
-    LDA #0
+    LDY #0
+    TYA
     STA (tileGridAddr), Y
 
     \ convert coords to screen space
@@ -968,7 +960,6 @@ ENDIF
     SBC scrnLeftHi
     BNE clipped \ fully clipped
 
-    \ top -= scrnTop
     LDA topLo
     SEC
     SBC scrnTopLo

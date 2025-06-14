@@ -23,11 +23,6 @@
 \
 .rideElevator
 {
-    \ check if elevator is operational
-    LDA objectState, X
-    AND #OBJECT_STATE_FLAGS_DISABLED
-    BNE autoScroll
-
     \ check if passed object is standing on an elevator (sets tileGridAddr)
     LDA #TILE_TYPE_ELEVATOR
     JSR queryObjectOnTiles : BEQ endif
@@ -45,6 +40,10 @@
 
     \ find elevator that passed object is on (result index returned in X)
     JSR findObjectsElevator : CPX #0 : BEQ failure
+
+    \ check if elevator is disabled
+    LDA objectState, X
+    AND #OBJECT_STATE_FLAGS_DISABLED : BNE failure
 
     \ queries and sets the destination elevator as occuplied (passenger is going to occupy it)
     JSR querySetElevatorTileOccupied : BNE success
@@ -208,10 +207,9 @@
     AND #7
     BNE return
 
-    \ check if elevator is operational?
+    \ check if elevator is disabled
     LDA objectState, X
-    AND #OBJECT_STATE_FLAGS_DISABLED
-    BEQ return
+    AND #OBJECT_STATE_FLAGS_DISABLED : BNE return
 
     \ next keyframe
     JSR elevatorNextKeyframe
@@ -656,7 +654,7 @@
     AND #7
     BNE rts_11
 
-    \ check is teleport is operational
+    \ check if teleport is disabled
     LDA objectState, X
     AND #OBJECT_STATE_FLAGS_DISABLED : BNE rts_11
 
@@ -684,16 +682,16 @@
 \
 .rideTeleport
 {
-    \ check if teleport is operational
-    LDA objectState, X
-    AND #OBJECT_STATE_FLAGS_DISABLED : BNE rts_11
-
     \ check if k9 is standing on a teleport (sets tileGridAddr)
     LDA #TILE_TYPE_TELEPORT
     JSR queryObjectOnTiles : BNE rts_11
 
     \ find teleport object (result index returned in X)
     JSR findObjectsElevator : TXA : BEQ rts_11
+
+    \ check if teleport is disabled
+    LDA objectState, X
+    AND #OBJECT_STATE_FLAGS_DISABLED : BNE rts_11
 
     \ get destination teleport index (held in teleport's objectFrameCounter)
     LDY objectFrameCounter, X

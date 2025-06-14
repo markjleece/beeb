@@ -81,6 +81,10 @@
     STA doorScrollRedrawCount
     STA inhibitMoveSoundEffect
     STA groanInhibited
+    STA laseredTileLeft
+    STA laseredTileTop
+    STA laseredTileStrength
+    STA laseredTileRedraw
 
     LDA #12 : STA healthHi
     LDA #&FF : STA healthLo : STA enemyHealthLo
@@ -96,6 +100,11 @@
     LDA levelLaserStrengthLoaded : STA laserStrength
     LDA levelLaserHealthDrainLoaded : STA laserHealthDrain
     LDA levelJewelHealthGainHiLoaded : STA jewelHealthGainHi
+
+    \ set level switch tile indices
+    LDA levelSwitchOffTileIndex : STA switchOffTileIndex
+    LDA levelSwitchOnTileIndex : STA switchOnTileIndex
+    ORA #TILE_GRID_FLAGS_OPAQUE : STA switchOnTileGridValue
 
     \ set primarySamplesEnabled flag
     LDA primarySamplesROMSEL : BEQ skip1
@@ -529,6 +538,20 @@
     JSR memcpy
 
     \
+    \ relocate switch pairings
+    \
+    LDA #LO(levelSwitchPairings) : STA srcAddr
+    LDA #HI(levelSwitchPairings) : STA srcAddr+1
+
+    LDA #LO(switchPairings) : STA dstAddr
+    LDA #HI(switchPairings) : STA dstAddr+1
+
+    LDA #LO(16) : STA sizeLo
+    LDA #HI(16) : STA sizeHi
+
+    JSR memcpy
+
+    \
     \ relocate sprite data
     \
 
@@ -770,11 +793,19 @@
 
         \ objectType = animation | type
         LDA levelObjectsLoaded, Y
-        BPL skip
+        BPL skip1
             JMP loop_exit \ sentinel, so exit loop
-        .skip
+        .skip1
         INY
+
+        STA temp
+        AND #(OBJECT_TYPE_MASK OR ANIMATE_MASK)
         STA objectType, X
+
+        \ disabled
+        LDA temp
+        AND #&40
+        STA disabled
         
         \ objectX = (posX * 16)
         LDA levelObjectsLoaded, Y
@@ -927,9 +958,17 @@
         JSR cacheObjectExtents
         JSR setObjectInsideTileFlags
 
-        \ set redraw flag
-        JSR setRedrawFlag
-
+        \ clear disabled and redraw flags
+        LDA disabled : BEQ else3
+            LDA objectState, X
+            ORA #OBJECT_STATE_FLAGS_DISABLED
+            AND #LO(NOT(OBJECT_STATE_FLAGS_REDRAW))
+            STA objectState, X
+            BNE endif3
+        .else3
+            JSR setRedrawFlag
+        .endif3
+        
         \ index += 4
         LDA index
         CLC
@@ -954,6 +993,8 @@
         BPL loop2
 
     JMP sortObjectDrawOrder \ implicit RTS
+
+.disabled SKIP 1
 }
 
 \

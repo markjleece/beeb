@@ -24,6 +24,15 @@ namespace LevelEditor
                 throw new Exception("Unexpected end-of-stream");
             }
 
+            if (Type == Object.Type_DisabledDoor)
+            {
+                Type = Object.Type_Door;
+            }
+            else if (Type == Object.Type_DisabledElevator)
+            {
+                Type = Object.Type_Elevator;
+            }
+
             PosX = fs.ReadByte();
             if (PosX == -1)
             {
@@ -88,6 +97,10 @@ namespace LevelEditor
         internal const int Type_Enemy = 1;
         internal const int Type_Elevator = 2;
         internal const int Type_Door = 3;
+
+        // disabled elevator and door
+        internal const int Type_DisabledElevator = 0x40 | Type_Elevator;
+        internal const int Type_DisabledDoor = 0x40 | Type_Door;
 
         // bits 2..4
         internal const int Animate_Mask = 0x1C;

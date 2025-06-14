@@ -106,8 +106,12 @@ namespace LevelEditor
                 objects[i].Read(fs);
             }
 
+            // skip over switch on and off tile indices
+            fs.ReadByte();
+            fs.ReadByte();
+
             // switch grid
-            // switchGrid.Read(fs);
+            SwitchGrid.Read(fs, objects, Tiles, TileGrid);
 
             PropagateObjects(objects);
         }
@@ -278,7 +282,9 @@ namespace LevelEditor
                         continue; // not an elevator or teleport
                     }
 
-                    objects.Add(new Object(Object.Type_Elevator, tileX, tileY));
+                    bool disabled = (SwitchGrid[tileX, tileY] != null);
+
+                    objects.Add(new Object(disabled ? Object.Type_DisabledElevator : Object.Type_Elevator, tileX, tileY));
 
                     tileX++; // skip next tile, as elevators are two tiles wide
                 }
@@ -338,7 +344,9 @@ namespace LevelEditor
                         continue; // not a door
                     }
 
-                    objects.Add(new Object(Object.Type_Door, tileX, tileY));
+                    bool disabled = (SwitchGrid[tileX, tileY] != null);
+
+                    objects.Add(new Object(disabled ? Object.Type_DisabledDoor : Object.Type_Door, tileX, tileY));
 
                     tileY++; // skip next tile, as doors are two tiles high
                 }
