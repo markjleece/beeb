@@ -7,12 +7,14 @@ using System.DirectoryServices.ActiveDirectory;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Net.NetworkInformation;
 using System.Numerics;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using System.Xml.XPath;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace LevelEditor
 {
@@ -21,6 +23,8 @@ namespace LevelEditor
         public LevelEditorForm()
         {
             InitializeComponent();
+
+            TileSelectorTooltipTimer.Tick += TileSelectorTooltipTimerEvent;
         }
 
         private void LevelEditorForm_Load(object sender, EventArgs e)
@@ -273,6 +277,45 @@ namespace LevelEditor
             }
         }
 
+        private void TileSelectorPanel_MouseLeave(object sender, EventArgs e)
+        {
+            TileSelectorTooltip.Hide(tileSelectorPanel);
+            TileSelectorTooltipTimer.Stop();
+        }
+
+        private void TileSelectorPanel_MouseMove(object sender, MouseEventArgs e)
+        {
+            int tileIndex = TileSelectedPanel_HitTest(e.X, e.Y);
+            TileSelectorTooltipText = tileIndex switch
+            {
+                TileGrid.K9LookLeft => "K9 (looking left)",
+                TileGrid.K9LookRight => "K9 (looking right)",
+                TileGrid.EnemyLookLeft => "Foe (looking left)",
+                TileGrid.EnemyLookRight => "Foe (looking right)",
+                TileGrid.EnemyMoveLeft => "Foe (moving left)",
+                TileGrid.EnemyMoveRight => "Foe (moving right)",
+                -1 => string.Empty,
+                _ => LevelData.Tiles[tileIndex].Type.ToString(),
+            };
+
+            if (TileSelectorTooltipText != string.Empty)
+            {
+                TileSelectorTooltipTimer.Interval = 1000;
+                TileSelectorTooltipTimer.Start();
+                TileSelectorTooltipOffset = new Point(e.X, e.Y + 40);
+            }
+            else 
+            {
+                TileSelectorTooltip.Hide(tileSelectorPanel);
+                TileSelectorTooltipTimer.Stop();
+            }
+        }
+
+        private void TileSelectorTooltipTimerEvent(object? sender, EventArgs e)
+        {
+            TileSelectorTooltip.Show(TileSelectorTooltipText, tileSelectorPanel, TileSelectorTooltipOffset);
+        }
+
         private int TileSelectedPanel_HitTest(int x, int y)
         {
             for (int i = 0; i < TileSelectorCount; i++)
@@ -357,7 +400,7 @@ namespace LevelEditor
 
             var tagSize = TileGridTileSize / 3;
             var tagOffset = TileGridTileSize / 12;
-            var tagFont = new Font(FontFamily.GenericSansSerif, tagSize, FontStyle.Bold, GraphicsUnit.Pixel);
+            var tagFont = new System.Drawing.Font(FontFamily.GenericSansSerif, tagSize, FontStyle.Bold, GraphicsUnit.Pixel);
 
             // draw tiles
             for (int y = 0; y < LevelData.TileGrid.Height; y++)
@@ -813,7 +856,7 @@ namespace LevelEditor
         private void SetOverlayLine(int tileX, int tileY)
         {
             // draw line onto canvas
-            bool[,] canvas = new bool[ LevelData.TileGrid.Width, LevelData.TileGrid.Height ];
+            bool[,] canvas = new bool[LevelData.TileGrid.Width, LevelData.TileGrid.Height];
 
             Point from = new(tileX, tileY);
             Point to = new(OverlayStartPosition.X, OverlayStartPosition.Y);
@@ -1046,6 +1089,10 @@ namespace LevelEditor
         private Rectangle FocusRect = Rectangle.Empty;
         private CachedBitmap[] CachedTileGridBitmaps = new CachedBitmap[TileSelectorCount];
         private readonly Bitmap[] ObjectBitmaps = new Bitmap[6];
+        private readonly ToolTip TileSelectorTooltip = new();
+        private readonly System.Windows.Forms.Timer TileSelectorTooltipTimer = new();
+        private string TileSelectorTooltipText = String.Empty;
+        private Point TileSelectorTooltipOffset;
 
         private const int TileSelectorCount = 34; // 28 regular tiles + 6 object tiles
     }

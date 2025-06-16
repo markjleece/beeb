@@ -4,6 +4,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Channels;
+using System.Windows.Forms;
 
 namespace LevelEditor
 {
@@ -45,43 +46,43 @@ namespace LevelEditor
         }
 
         internal void Read(FileStream fs, Object[] objects, Tile[] tiles, TileGrid tileGrid)
-        {
+        { 
             // read switch pairings
             byte[] buffer = new byte[SerializedSize];
             fs.ReadExactly(buffer);
 
-            // find tile index of switch-off tile
+            // populate switch pairings
+            Dictionary<int, char> pairings = [];
+
             int switchOffTileIndex = GetSwitchOffTileIndex(tiles);
-            if (switchOffTileIndex == -1)
+            char pairing = '1';
+
+            for (int tileY = 0; tileY < tileGrid.Height; tileY++)
             {
-                return;
+                for (int tileX = 0; tileX < tileGrid.Width; tileX++)
+                {
+                    if (tileGrid[tileX, tileY] == switchOffTileIndex)
+                    {
+                        this[tileX, tileY] = pairing;
+                        pairings.Add(tileGrid.GetRuntimeAddress(tileX, tileY), pairing++);
+                    }
+                }
             }
 
             // for each set of switch pairings...
             int bufferIndex = 0;
-            int pairingIndex = 0;
 
-            while (buffer[bufferIndex++] != 0)
+            while (bufferIndex < SerializedSize - 2)
             {
-                // populate paired switch
-                int switchOffTileCount = 0;
-                for (int tileY = 0; tileY < tileGrid.Height; tileY++)
+                // switch address
+                int switchAddress = buffer[bufferIndex++];
+                switchAddress += buffer[bufferIndex++] * 256;
+                if (switchAddress == 0)
                 {
-                    for (int tileX = 0; tileX < tileGrid.Width; tileX++)
-                    {
-                        if (tileGrid[tileX, tileY] != switchOffTileIndex)
-                        {
-                            continue;
-                        }
-
-                        if (pairingIndex == switchOffTileCount++)
-                        {
-                            this[tileX, tileY] = (char)('1' + pairingIndex);
-                            tileX = tileGrid.Width;
-                            tileY = tileGrid.Height;
-                        }
-                    }
+                    break;
                 }
+
+                pairing = pairings[switchAddress];
 
                 // populate paired objects
                 int objectListCount = buffer[bufferIndex++];
@@ -99,7 +100,7 @@ namespace LevelEditor
                         tileY++;
                     }
 
-                    this[tileX, tileY] = (char)('1' + pairingIndex);
+                    this[tileX, tileY] = pairing;
                 }
 
                 // populate paired tiles
@@ -109,10 +110,8 @@ namespace LevelEditor
                     int tileX = buffer[bufferIndex++];
                     int tileY = buffer[bufferIndex++];
 
-                    this[tileX, tileY] = (char)('1' + pairingIndex);
+                    this[tileX, tileY] = pairing;
                 }
-
-                pairingIndex++;
             }
         }
 
@@ -120,8 +119,9 @@ namespace LevelEditor
         {
             List<byte> buffer = [];
 
-            // populate pairings
+            // collect pairings
             List<char> pairings = [];
+            Dictionary<char, int> pairedSwitchAddresses = [];
             Dictionary<char, List<int>> pairedObjects = [];
             Dictionary<char, List<Point>> pairedTiles = [];
 
@@ -135,15 +135,15 @@ namespace LevelEditor
                     {
                         char? pairing = this[tileX, tileY];
                         pairing ??= NextPairing();
-
                         pairings.Add((char)pairing);
+                        pairedSwitchAddresses.Add((char)pairing, tileGrid.GetRuntimeAddress(tileX, tileY));
                         pairedObjects.Add((char)pairing, []);
                         pairedTiles.Add((char)pairing, []);
                     }
                 }
             }
 
-            // populate pairing tile and object lists
+            // populate tile and object pairings
             foreach (var entry in SwitchPairings)
             {
                 char pairing = entry.Value;
@@ -175,34 +175,51 @@ namespace LevelEditor
             }
 
             // write switch pairings
+            int remainingPairingBytes = SerializedSize - (pairings.Count * 4);
+            if (remainingPairingBytes < 0)
+            {
+                throw new Exception("Too many switches to save");
+            }
+
             foreach (char pairing in pairings)
             {
                 // construct switch pairings data
-                List<int> switchData = [0];
+                List<int> switchData = [];
 
-                List<int>? objectList = pairedObjects[pairing];
-                switchData.Add(objectList.Count);
-                foreach (var obj in objectList)
+                int switchAddress = pairedSwitchAddresses[pairing];
+                switchData.Add(switchAddress % 256); // low-byte
+                switchData.Add(switchAddress / 256); // high-byte
+
+                List<int> objectList = pairedObjects[pairing];
+                List<Point> tileList = pairedTiles[pairing];
+
+                int pairingBytes = objectList.Count + tileList.Count * 2;
+
+                if (pairingBytes <= remainingPairingBytes)
                 {
-                    switchData.Add(obj);
+                    remainingPairingBytes -= pairingBytes;
+
+                    switchData.Add(objectList.Count);
+                    foreach (var obj in objectList)
+                    {
+                        switchData.Add(obj);
+                    }
+
+                    switchData.Add(tileList.Count);
+                    foreach (var point in tileList)
+                    {
+                        switchData.Add(point.X);
+                        switchData.Add(point.Y);
+                    }
                 }
-
-                List<Point>? tileList = pairedTiles[pairing];
-                switchData.Add(tileList.Count);
-                foreach (var point in tileList)
+                else
                 {
-                    switchData.Add(point.X);
-                    switchData.Add(point.Y);
-                }
-
-                switchData[0] = switchData.Count; // populate count
-
-                if ((buffer.Count + switchData.Count + 1/*terminator*/) > SerializedSize)
-                {
-                    MessageBox.Show("Too many switch pairings\n\n" + 
+                    MessageBox.Show("Too many switch pairings\n\n" +
                                     $"Pairings for switch '{pairing}' were not saved.",
                                     "Save", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    break;
+
+                    switchData.Add(0); // paired object count
+                    switchData.Add(0); // paired tile count
                 }
 
                 // buffer.AddRange(switchData)

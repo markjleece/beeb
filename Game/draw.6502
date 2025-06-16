@@ -612,7 +612,7 @@ ENDIF
 \   topLo       Screen Y coordinate (0..255)
 \
 \ modifies: 
-\   dstAddr, srcAddr, leftLo, topLo, stride
+\   X, Y, index, dstAddr, srcAddr, leftLo, topLo, stride
 \
 .drawTile
 {
@@ -742,7 +742,7 @@ ENDIF
 \
 .laseredTileHit
 {
-    STY outerIndex
+    STY outerIndex \ --> replacement tile
 
     \ draw lasered tile
     LDA #LO(-1)
@@ -763,13 +763,12 @@ ENDIF
 
             \ replace lasered tile with new one
             LDY #0
-            LDA outerIndex
+            LDA outerIndex \ <-- replacement tile
             STA (tileGridAddr), Y
 
             \ activate switch?
-            BNE activateSwitch \ implicit RTS
-
-            RTS
+            BEQ endif
+            JMP activateSwitch \ implicit RTS
     .else
         \ remember tile's position
         LDA leftLo : STA laseredTileLeft
@@ -779,202 +778,6 @@ ENDIF
         LDA #LASERED_TILE_STRENGTH : STA laseredTileStrength
     .endif
 
-    RTS
-}
-
-\
-\ switches...
-\
-.switchOffTileIndex     SKIP 1
-.switchOnTileIndex      SKIP 1
-.switchOnTileGridValue  SKIP 1
-.switchPairings         SKIP 16
-
-\
-\ activateSwitch(tileGridAddr)
-\
-\ activates a switch
-\
-\ params:
-\   tileGridAddr    Tile grid address of switch
-\
-\ modifies:
-\
-.activateSwitch
-{
-    \ determine switch index (X register)
-    LDX #0
-    LDY #0
-
-    .loop
-        \ srcAddr--
-        LDA tileGridAddr
-        BNE skip1
-            DEC tileGridAddr+1
-        .skip1
-        DEC tileGridAddr
-
-        \ if (*tileGridAddr == switchOffTileIndex || *tileGridAddr == switchOnTileIndex)
-        LDA (tileGridAddr), Y
-        AND #TILE_GRID_INDEX_MASK
-        CMP switchOffTileIndex : BEQ then
-        CMP switchOnTileIndex : BNE endif
-        .then
-            INX \ X++
-        .endif
-
-        \ loop while tileGridAddr > levelTileGrid
-        LDA tileGridAddr+1
-        CMP #HI(levelTileGrid - 1)
-        BNE loop
-    .loopEnd
-
-    \ skip to switch X
-    LDY #0
-    TXA
-    BEQ loop1End
-    .loop1
-        TYA
-        CLC
-        ADC switchPairings, Y
-        TAY
-
-        DEX
-        BNE loop1
-    .loop1End
-
-    INY \ skip over switch byte count
-
-    \ for each paired object
-    LDA switchPairings, Y
-    INY
-    TAX : BEQ loop2End
-    .loop2
-        \ object Id
-        LDA switchPairings, Y
-        INY
-        STA index
-
-        \ activate object
-        JSR activateObject
-
-        DEX
-        BNE loop2
-    .loop2End
-
-    \ for each paired tile...
-    LDA switchPairings, Y
-    INY
-    TAX : BEQ loopEnd3
-    .loop3
-        \ tile X
-        LDA switchPairings, Y
-        INY
-        STA leftLo
-
-        \ tile Y
-        LDA switchPairings, Y
-        INY
-        STA topLo
-
-        \ activate tile
-        JSR activateTile
-
-        DEX
-        BNE loop3
-    .loopEnd3
-
-    RTS
-}
-
-\
-\ activateObject(index)
-\
-\ params:
-\   index     Object index
-\
-.activateObject
-{
-    \ preserve X
-    TXA : PHA
-    
-    LDX index
-    LDA objectType, X
-    AND #OBJECT_TYPE_MASK
-    CMP #OBJECT_TYPE_ENEMY : BNE else
-        \ if (action == PURSUE_LEFT, PURSUE_RIGHT ...) break
-        LDA objectType, X
-        BMI endif
-
-        \ enemy action = 'PACE'
-        AND #LO(NOT(ANIMATE_MASK))
-        ORA #(ACTION_PACE)
-        STA objectType, X
-
-        BNE endif
-    .else
-        \ clear disabled flag
-        LDA objectState, X
-        AND #LO(NOT(OBJECT_STATE_FLAGS_DISABLED))
-        STA objectState, X
-    .endif
-
-    \ restore X
-    PLA : TAX
-    RTS
-}
-
-\
-\ activateTile(leftLo, topLo)
-\
-\ params:
-\   leftLo      Tile X position (tile coords)
-\   topLo       Tile Y position (tile coords)
-\
-.activateTile
-{
-    \ preserve X & Y
-    TXA : PHA : TYA : PHA
-
-    \ convert tile coords to level coords
-    LDA #0 : STA leftHi : STA topHi
-    LDY #4
-    .loop
-        ASL leftLo : ROL leftHi
-        ASL topLo : ROL topHi
-        DEY
-        BNE loop
-
-    \ convert tile to a space
-    JSR getTileGridAddr
-    LDY #0
-    TYA
-    STA (tileGridAddr), Y
-
-    \ convert coords to screen space
-    LDA leftLo
-    SEC
-    SBC scrnLeftLo
-    STA leftLo
-    LDA leftHi
-    SBC scrnLeftHi
-    BNE clipped \ fully clipped
-
-    LDA topLo
-    SEC
-    SBC scrnTopLo
-    STA topLo
-    LDA topHi
-    SBC scrnTopHi
-    BNE clipped \ fully clipped
-
-    \ draw tile
-    JSR drawTile
-
-    .clipped
-
-    \ restore X & Y
-    PLA : TAY : PLA : TAX
     RTS
 }
 

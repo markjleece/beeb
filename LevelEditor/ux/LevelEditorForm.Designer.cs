@@ -67,6 +67,8 @@ namespace LevelEditor
             tileSelectorPanel.Paint += TileSelectorPanel_Paint;
             tileSelectorPanel.MouseClick += TileSelectorPanel_MouseClick;
             tileSelectorPanel.MouseDoubleClick += TileSelectorPanel_MouseDoubleClick;
+            tileSelectorPanel.MouseLeave += TileSelectorPanel_MouseLeave;
+            tileSelectorPanel.MouseMove += TileSelectorPanel_MouseMove;
             // 
             // tileGridPanel
             // 

@@ -51,34 +51,34 @@ namespace BMPConverter
                         string folderPath = string.Format(assetsFolderPath, level);
                         byte[] data;
 
-                        data = ConvertBMPFile(folderPath + "enemy_left.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
+                        data = ConvertBMPFile(folderPath + "enemy_left.bmp", spriteCount: 4, spriteWidth: 24, spriteHeight: 32, palette);
                         fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "enemy_right.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
+                        data = ConvertBMPFile(folderPath + "enemy_right.bmp", spriteCount: 4, spriteWidth: 24, spriteHeight: 32, palette);
                         fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "enemy_turn.bmp", 3/*spriteCount*/, 24/*spriteWidth*/, 32/*spriteHeight*/, palette);
+                        data = ConvertBMPFile(folderPath + "enemy_turn.bmp", spriteCount: 3, spriteWidth: 24, spriteHeight: 32, palette);
                         fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "door.bmp", 4/*spriteCount*/, 4/*spriteWidth*/, 32/*spriteHeight*/, palette);
+                        data = ConvertBMPFile(folderPath + "door.bmp", spriteCount: 4, spriteWidth: 4, spriteHeight: 32, palette);
                         fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "elevator.bmp", 4/*spriteCount*/, 32/*spriteWidth*/, 3/*spriteHeight*/, palette);
+                        data = ConvertBMPFile(folderPath + "elevator.bmp", spriteCount: 4, spriteWidth: 32, spriteHeight: 3, palette);
                         fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "teleport.bmp", 4/*spriteCount*/, 32/*spriteWidth*/, 3/*spriteHeight*/, palette);
+                        data = ConvertBMPFile(folderPath + "teleport.bmp", spriteCount: 4, spriteWidth: 32, spriteHeight: 3, palette);
                         fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "k9_left.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);
+                        data = ConvertBMPFile(folderPath + "k9_left.bmp", spriteCount: 4, spriteWidth: 24, spriteHeight: 16, palette);
                         fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "k9_right.bmp", 4/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);
+                        data = ConvertBMPFile(folderPath + "k9_right.bmp", spriteCount: 4, spriteWidth: 24, spriteHeight: 16, palette);
                         fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "k9_turn.bmp", 3/*spriteCount*/, 24/*spriteWidth*/, 16/*spriteHeight*/, palette);
+                        data = ConvertBMPFile(folderPath + "k9_turn.bmp", spriteCount: 3, spriteWidth: 24, spriteHeight: 16, palette);
                         fs.Write(data, 0, data.Length);
 
-                        data = ConvertBMPFile(folderPath + "gamebar.bmp", 1/*spriteCount*/, 112/*spriteWidth*/, 8/*spriteHeight*/, palette);
+                        data = ConvertBMPFile(folderPath + "gamebar.bmp", spriteCount: 1, spriteWidth: 112, spriteHeight: 8, palette);
                         fs.Write(data, 0, data.Length);
                     }
                 }

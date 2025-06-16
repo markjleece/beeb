@@ -130,14 +130,14 @@ namespace LevelEditor
                     if (coords.X >= LevelData.TileGrid.Width || coords.Y < 0)
                     {
                         MessageBox.Show(
-                            "Characters cannot cross page boundaries.\n\n" +
-                            "Ensure there is sufficient space above and to the right in the page for the character.", 
+                            "Characters cannot cross tile grid boundaries.\n\n" +
+                            "Ensure there is sufficient space above and to the right for the character.", 
                             "Set Character", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return false;
                     }
 
                     int tileIndex = LevelData.TileGrid[coords.X, coords.Y];
-                    if (tileIndex > 31 || LevelData.Tiles[tileIndex].Type != Tile.TileType.Space)
+                    if (tileIndex >= Level.TileCount || LevelData.Tiles[tileIndex].Type != Tile.TileType.Space)
                     {
                         MessageBox.Show(
                             "Characters must be placed in space.\n\n" +

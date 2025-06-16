@@ -1,0 +1,142 @@
+\ This file is Copyright © 2025 - Mark John Leece - All rights reserved
+
+\
+\ switch data and routines
+\ 
+
+.switchOffTileIndex     SKIP 1
+.switchOnTileIndex      SKIP 1
+.switchOnTileGridValue  SKIP 1
+.switchPairings         SKIP 16
+
+\
+\ activateSwitch(tileGridAddr)
+\
+\ activates a switch
+\
+\ params:
+\   tileGridAddr    Tile grid address of switch
+\
+\ modifies:
+\   X, Y, count, outerIndex
+\   
+.activateSwitch
+{
+    \ find matching switch pairings
+    LDX #2
+    .loop1
+        \ if (switchPairings[x].TileGridAddr != tileGridAddr)
+        LDA switchPairings-2, X : CMP tileGridAddr : BNE continue
+        LDA switchPairings-1, X : CMP tileGridAddr+1 : BEQ loop1End
+        .continue
+            \ skip over pairings
+            TXA
+            CLC
+            ADC switchPairings, X
+            TAX
+            ADC switchPairings+1, X
+            ADC switchPairings+1, X
+            ADC #4
+            TAX
+            BNE loop1
+    .loop1End
+
+    \ activate each paired object...
+    INX
+    LDA switchPairings-1, X
+    BEQ loop2End
+    STA count
+    .loop2
+        \ read paired object index
+        LDY switchPairings, X
+        INX
+
+        \ if (type == enemy)
+        LDA objectType, Y
+        AND #OBJECT_TYPE_MASK
+        CMP #OBJECT_TYPE_ENEMY : BNE else
+
+            \ if (enemy action != PURSUE_LEFT, PURSUE_RIGHT ...) 
+            LDA objectType, Y : BMI endif
+        
+                \ enemy action = 'PACE'
+                AND #LO(NOT(ANIMATE_MASK))
+                ORA #(ACTION_PACE)
+                STA objectType, Y
+
+            BNE endif
+        .else
+            \ clear elevator/teleport/door disabled flag
+            LDA objectState, Y
+            AND #LO(NOT(OBJECT_STATE_FLAGS_DISABLED))
+            STA objectState, Y
+        .endif            
+
+        DEC count
+        BNE loop2
+    .loop2End
+
+    \ clear each paired tile...
+    INX
+    LDA switchPairings-1, X
+    BEQ loop3End
+    STA count
+    .loop3
+        \ read paired tile X coord
+        LDA switchPairings, X
+        INX
+        STA leftLo
+
+        \ read paired tile Y coord
+        LDA switchPairings, X
+        INX
+        STA topLo
+
+        \ convert tile coords to level coords
+        LDA #0 : STA leftHi : STA topHi
+
+        LDY #4
+        .loop4
+            ASL leftLo : ROL leftHi
+            ASL topLo : ROL topHi
+            DEY
+            BNE loop4
+
+        \ convert tile to a space
+        JSR getTileGridAddr
+        LDY #0
+        TYA
+        STA (tileGridAddr), Y
+
+        \ convert coords to screen space
+        LDA leftLo
+        SEC
+        SBC scrnLeftLo
+        STA leftLo
+        LDA leftHi
+        SBC scrnLeftHi
+        BNE skipDraw \ fully clipped
+
+        LDA topLo
+        SEC
+        SBC scrnTopLo
+        STA topLo
+        LDA topHi
+        SBC scrnTopHi
+        BNE skipDraw \ fully clipped
+
+        \ draw tile
+        TXA : PHA \ save X
+        JSR drawTile
+        PLA : TAX \ restore X
+
+        .skipDraw
+
+        DEC count
+        BNE loop3
+    .loop3End
+
+    RTS
+}
+
+\ end file

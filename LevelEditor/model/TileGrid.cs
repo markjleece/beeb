@@ -108,10 +108,16 @@ namespace LevelEditor
             set => TileIndices[y * Width + x] = value;
         }
 
+        internal int GetRuntimeAddress(int tileX, int tileY)
+        {
+            return RuntimeAddress + (tileY * Width) + tileX;
+        }
+
         private const int DefaultWidth = 4 * 16;
         private const int DefaultHeight = 2 * 16;
         private const int TileIndexMask = 0x1F;
         private const int TileFlagsMask = 0xE0;
+        private const int RuntimeAddress = 0x3800;
 
         internal int Width;
         internal int Height;
