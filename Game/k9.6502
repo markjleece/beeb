@@ -230,14 +230,11 @@
     LDA #FRAME_COUNT_K9_TURN
     STA objectFrameCounter
 
-    \ set redraw flag
-    JSR setRedrawFlag
-
     \ sound effect
     JSR moveSoundEffect
 
-    \ return success
-    LDA #0
+    \ set redraw flag (returns success)
+    JSR setRedrawFlag
 
     \ fall throught to RTS
 }

@@ -166,7 +166,32 @@
         ORA #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_REDRAW)
     .endif
     STA objectState, X
+
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_12
+{
     RTS
+}
+
+\
+\ elevatorFrameCallback(X register) - animation frame callback
+\
+\ frame callback for a static (non moving) elevator
+\
+\ params:
+\   X register   Elevator index
+\
+.elevatorFrameCallback
+{
+    \ default behavior
+    JSR frameCallback_IntermittentRedraw : BNE rts_12
+    
+    \ fall through to elevatorNextKeyframe
 }
 
 \
@@ -187,37 +212,6 @@
         LDA #SPRITE_INDEX_ELEVATOR
     .skip
     STA objectSpriteIndex, X
-    RTS
-}
-
-\
-\ elevatorFrameCallback(X register) - animation frame callback
-\
-\ frame callback for a static (non moving) elevator
-\
-\ params:
-\   X register   Elevator index
-\
-.elevatorFrameCallback
-{
-    \ switch keyframe every 8 frames
-    TXA
-    CLC
-    ADC frameCount
-    AND #7
-    BNE return
-
-    \ check if elevator is disabled
-    LDA objectState, X
-    AND #OBJECT_STATE_FLAGS_DISABLED : BNE return
-
-    \ next keyframe
-    JSR elevatorNextKeyframe
-
-    \ set redraw flag
-    JMP setRedrawFlag \ implicit RTS
-
-.return
     RTS
 }
 
@@ -647,16 +641,8 @@
 \
 .teleportFrameCallback
 {
-    \ switch keyframe every 8 frames
-    TXA
-    CLC
-    ADC frameCount
-    AND #7
-    BNE rts_11
-
-    \ check if teleport is disabled
-    LDA objectState, X
-    AND #OBJECT_STATE_FLAGS_DISABLED : BNE rts_11
+    \ default behavior
+    JSR frameCallback_IntermittentRedraw : BNE rts_11
 
     \ next keyframe
     LDA objectSpriteIndex, X
@@ -668,8 +654,7 @@
     .skip
     STA objectSpriteIndex, X
 
-    \ set redraw flag
-    JMP setRedrawFlag \ implicit RTS
+    RTS
 }
 
 \
@@ -696,7 +681,7 @@
     \ get destination teleport index (held in teleport's objectFrameCounter)
     LDY objectFrameCounter, X
 
-    \ delta  = objectXY[dest teleport] - objectXY[teleport]
+    \ deltaXY = objectXY[dest teleport] - objectXY[teleport]
     LDA objectXLo, Y
     SEC
     SBC objectXLo, X

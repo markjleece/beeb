@@ -4,7 +4,7 @@
 \ switch data and routines
 \ 
 
-.switchPairings SKIP 16
+.switchPairings SKIP 32
 
 \
 \ activateSwitch(tileGridAddr)
@@ -33,7 +33,7 @@
             TAX
             LDY #4
             .innerLoop
-                ADC switchPairings, X
+                ADC switchPairings+1, X
                 DEY
                 BNE innerLoop
             ADC #4

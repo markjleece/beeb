@@ -556,8 +556,8 @@
     LDA #LO(switchPairings) : STA dstAddr
     LDA #HI(switchPairings) : STA dstAddr+1
 
-    LDA #LO(16) : STA sizeLo
-    LDA #HI(16) : STA sizeHi
+    LDA #LO(32) : STA sizeLo
+    LDA #HI(32) : STA sizeHi
 
     JSR memcpy
 

@@ -10,7 +10,7 @@ namespace LevelEditor
 {
     class SwitchGrid
     {
-        static readonly int SerializedSize = 16;
+        static readonly int SerializedSize = 32;
 
         internal SwitchGrid Clone()
         {

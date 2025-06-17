@@ -1,20 +1,8 @@
 ﻿// This file is Copyright © 2025 - Mark John Leece - All rights reserved
-using System.Collections;
-using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
-using System.DirectoryServices.ActiveDirectory;
-using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using System.Net.NetworkInformation;
-using System.Numerics;
-using System.Reflection.Metadata;
-using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
-using System.Windows.Forms;
-using System.Xml.XPath;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace LevelEditor
 {

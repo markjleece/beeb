@@ -21,14 +21,7 @@
     CLC
     ADC frameCount
     AND #7
-    BEQ skip1
-        .return
-        RTS
-    .skip1
-
-    \ check if door is disabled
-    LDA objectState, X
-    AND #OBJECT_STATE_FLAGS_DISABLED : BNE return
+    BNE return
 
     \ temp = union of left and right opaque/enemy flags
     LDA #(DOOR_SPRITE_HEIGHT - 1) : STA offsetY
@@ -39,6 +32,13 @@
 
     AND #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY)
     STA temp
+
+    \ check if door is disabled
+    LDA objectState, X
+    AND #OBJECT_STATE_FLAGS_DISABLED : BEQ skip1
+        .return
+        RTS
+    .skip1
 
     \ is the door open?
     LDA objectState, X
@@ -125,12 +125,10 @@
 
     \ set redraw flag after scrolling?
     LDA doorScrollRedrawCount
-    BEQ skip3
-        DEC doorScrollRedrawCount
-        JMP setRedrawFlag \ implicit RTS
-    .skip3
+    BEQ return
 
-    RTS
+    DEC doorScrollRedrawCount
+    JMP setRedrawFlag \ implicit RTS
 }
 
 \ end file

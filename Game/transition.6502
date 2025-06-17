@@ -34,7 +34,7 @@
     \ if (transitionState != TRANSITION_COMPLETE) return
     LDA transitionState : BPL rts_9
 
-    \ transitionState == TRANSITION_VOID
+    \ transitionState = TRANSITION_VOID
     LDA #TRANSITION_VOID
     STA transitionState
 

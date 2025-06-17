@@ -128,7 +128,7 @@ osfile = &FFDD
 
 \ debug flags
 DEBUG_TILE_GRID_FLAGS = 0       \ overlay tile grid flags (super useful)
-DEBUG_DISABLE_SIDEWAYS_RAM = 0  \ disable sideways RAM
+DEBUG_DISABLE_SIDEWAYS_RAM = 1  \ disable sideways RAM
 DEBUG_WAIT_TENTHS = 0           \ waitTenths util routine
 
 \ keys (keyTbl indices)
@@ -1095,6 +1095,11 @@ INCLUDE "utils.6502"
 \
 \ frame callback that sets the redraw flag every 8 frames, offset by the object index
 \
+\ the redraw flags is not set for disabled elevators, teleports, and doors
+\
+\ returns:
+\   none-zero if no further processing should occur
+\
 \ params:
 \   X register   Object index
 \
@@ -1106,11 +1111,19 @@ INCLUDE "utils.6502"
     AND #7
     BNE rts_0
 
-    \ fall through to set redraw flag
+    CPX enemyCount : BCC endif : BEQ endif 
+        LDA objectState, X
+        AND #OBJECT_STATE_FLAGS_DISABLED
+        BNE rts_0
+    .endif
+
+    \ fall through to set redraw flag, returning zero
 }
 
 \
 \ setRedrawFlag(X register)
+\
+\ always returns zero, denoting success
 \
 \ params:
 \   X register   Object index 
@@ -1121,6 +1134,7 @@ INCLUDE "utils.6502"
     ORA #OBJECT_STATE_FLAGS_REDRAW
     STA objectState, X
 
+    LDA #0 \ return success
     \ fall through to RTS
 }
 
