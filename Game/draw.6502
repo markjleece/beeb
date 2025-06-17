@@ -80,7 +80,7 @@ ENDIF
 \
 .drawGameBar    
 {
-IF DEBUG_TILE_GRID_FLAGS != 1
+IF DEBUG_TILE_GRID_FLAGS != 0
     RTS
 ELSE
     \ dstAddr = scrnAddr + 384
@@ -1197,7 +1197,6 @@ ENDIF
 \   innerCount      number of inner head loop iterations
 \   offset          holds topLo MOD 8
 \
-
 .drawObject
 {
     \ leftLo/Hi = objectXLo/Hi[0] & 0xFFFC
@@ -1606,34 +1605,14 @@ ENDIF
         LDA headCount : STA count
         BEQ skipHeadLoop
 
+        LDX innerCount
         .headLoop
             
             \ draw half character
-            LDX innerCount
-            BEQ skipHeadInnerLoop
-
-            .headInnerLoop
-                LDA (srcAddr), Y
-                STA flags
-                LSR A : LSR A : LSR A : LSR A
-                AND flags
-                STA (dstAddr), Y
-                INY
-                DEX
-                BNE headInnerLoop
-
-            .skipHeadInnerLoop
+            JSR drawHalfCharacter
 
             \ dstAddr += 512
-            LDA #2
-            CLC
-            ADC dstAddr+1
-            BPL nowrap3 \ if (dstAddr => &8000) dstAddr -= -&4000
-                SEC
-                SBC #&40
-                CLC
-            .nowrap3
-            STA dstAddr+1
+            JSR dstAddr_add_512
 
             \ srcAddr += 8
             LDA #8
@@ -1650,25 +1629,15 @@ ENDIF
             \ reset inner loop counter
             LDX #8
 
-            \ loop while (--headCount > 0)\
+            \ loop while (--headCount > 0)
             DEC count
-            BNE headInnerLoop
+            BNE headLoop
 
         .skipHeadLoop
 
         \ draw tail half character
         LDX temp \ <-- tail count
-        BEQ skipTailLoop 
-        .tailLoop
-            LDA (srcAddr), Y
-            STA flags
-            LSR A : LSR A : LSR A : LSR A
-            AND flags
-            STA (dstAddr), Y
-            INY
-            DEX
-            BNE tailLoop
-        .skipTailLoop
+        JSR drawHalfCharacter
 
         \ erase below?
         LDA eraseBelow : BEQ skipEraseBelow
@@ -1682,6 +1651,65 @@ ENDIF
 
 .return
     PLA : TAX \ restore X register
+    RTS
+
+.drawHalfCharacter
+    BEQ loopEnd
+    .loop
+        LDA (srcAddr), Y
+        STA flags
+        LSR A : LSR A : LSR A : LSR A
+        AND flags
+        STA (dstAddr), Y
+        INY
+        DEX
+        BNE loop
+    .loopEnd
+    RTS
+}
+
+\
+\ drawObjectUpdateSrcDstAddrsAndEraseAbove
+\
+\ common outer loop code
+\
+.drawObjectUpdateSrcDstAddrsAndEraseAbove
+{
+    \ srcAddr = srcBaseAddr, srcBaseAddr += stride
+    LDA srcBaseAddr+1 : STA srcAddr+1
+    LDA srcBaseAddr : STA srcAddr
+    CLC
+    ADC stride
+    STA srcBaseAddr
+    BCC nocarry1
+        INC srcBaseAddr+1
+        CLC
+    .nocarry1
+
+    \ dstAddr = dstBaseAddr, dstBaseAddr += 8
+    LDA dstBaseAddr+1 : STA dstAddr+1
+    LDA dstBaseAddr : STA dstAddr
+    ADC #8
+    STA dstBaseAddr
+    BCC nocarry2
+        INC dstBaseAddr+1
+        BPL nowrap \ if (dstBaseAddr >= &8000) dstBaseAddr -= &4000
+            LDA dstBaseAddr+1
+            SBC #&40
+            STA dstBaseAddr+1
+        .nowrap
+        CLC
+    .nocarry2
+
+    \ initialize indexer
+    LDY offset \ (top % 8)
+
+    \ erase above?
+    LDA eraseAbove : BEQ skip
+        LDA #0
+        STA (dstAddr), Y
+        INY
+    .skip
 
     \ fall through to RTS
 }
@@ -1806,53 +1834,6 @@ ENDIF
     CMP #&FF : BEQ skip5
         STA (dstAddr), Y
     .skip5
-
-.return
-    RTS
-}
-
-\
-\ drawObjectUpdateSrcDstAddrsAndEraseAbove
-\
-\ common outer loop code
-\
-.drawObjectUpdateSrcDstAddrsAndEraseAbove
-{
-    \ srcAddr = srcBaseAddr, srcBaseAddr += stride
-    LDA srcBaseAddr+1 : STA srcAddr+1
-    LDA srcBaseAddr : STA srcAddr
-    CLC
-    ADC stride
-    STA srcBaseAddr
-    BCC nocarry1
-        INC srcBaseAddr+1
-        CLC
-    .nocarry1
-
-    \ dstAddr = dstBaseAddr, dstBaseAddr += 8
-    LDA dstBaseAddr+1 : STA dstAddr+1
-    LDA dstBaseAddr : STA dstAddr
-    ADC #8
-    STA dstBaseAddr
-    BCC nocarry2
-        INC dstBaseAddr+1
-        BPL nowrap \ if (dstBaseAddr >= &8000) dstBaseAddr -= &4000
-            LDA dstBaseAddr+1
-            SBC #&40
-            STA dstBaseAddr+1
-        .nowrap
-        CLC
-    .nocarry2
-
-    \ initialize indexer
-    LDY offset \ (top % 8)
-
-    \ erase above?
-    LDA eraseAbove : BEQ skip
-        LDA #0
-        STA (dstAddr), Y
-        INY
-    .skip
 
     RTS
 }

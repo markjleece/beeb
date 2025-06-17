@@ -404,9 +404,7 @@ levelLaserHealthDrainLoaded = &4020     \ level laser health drain (relocated to
 levelJewelHealthGainHiLoaded = &4021    \ level jewel health gain (relocated to jewelHealthGainHi)
 levelSampleSoundsEnabledLoaded = &4022  \ level sound samples enabled flag (used in setting primarySamplesEnabled and secondarySamplesEnabled)
 levelObjectsLoaded = &4023              \ 48 x 4 byte level objects descriptors (used to populate game objects)
-levelSwitchOffTileIndex = &40E3         \ level switch-off tile index
-levelSwitchOnTileIndex = &40E4          \ level switch-on tile index
-levelSwitchPairings = &40E5             \ 16 x 1 byte switch pairings
+levelSwitchPairings = &40E3             \ 16 x 1 byte switch pairings
 
 \ drawObject head and tail jump offset tables
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
@@ -489,6 +487,7 @@ ORG 0
 .laseredTileTop             SKIP 1
 .laseredTileStrength        SKIP 1  \ lasered tile strength
 .laseredTileRedraw          SKIP 1  \ lasered tile redraw flag
+.switchOnTileGridValue      SKIP 1  \ switch-on tile grid value
 
 \ transient data (values do not persist across frames)
 .deltaXLo                   SKIP 1

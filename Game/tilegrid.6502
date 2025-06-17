@@ -188,13 +188,7 @@
     STA (tileGridAddr), Y
 
     \ clear tile flags above
-    LDA tileGridAddr
-    SEC
-    SBC horzTileCount
-    STA tileGridAddr
-    BCS skip
-        DEC tileGridAddr+1
-    .skip
+    JSR tileGridAddr_sub_horzTileCount
 
     LDA temp \ <-- flags XOR &FF
     AND (tileGridAddr), Y
@@ -384,14 +378,14 @@
 \
 .getTileGridAddr
 {
-    \ tileGridAddr = levelTileGrid + 128|64|32|16 * topLo / 16
+    \ tileGridAddr = levelTileGrid + 128|64|32|16 * top / 16
     LDY topLo
     LDA topHi
 
     \ common code...
     JSR getTileAddrCommon1
 
-    \ tileGridAddr += leftLo / 16
+    \ tileGridAddr += left / 16
     LDY leftLo
     LDA leftHi
 

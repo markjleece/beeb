@@ -101,10 +101,20 @@
     LDA levelLaserHealthDrainLoaded : STA laserHealthDrain
     LDA levelJewelHealthGainHiLoaded : STA jewelHealthGainHi
 
-    \ set level switch tile indices
-    LDA levelSwitchOffTileIndex : STA switchOffTileIndex
-    LDA levelSwitchOnTileIndex : STA switchOnTileIndex
-    ORA #TILE_GRID_FLAGS_OPAQUE : STA switchOnTileGridValue
+    \ set switchOnTileGridValue
+    LDY #0
+    STY switchOnTileGridValue
+    .loop
+        LDA levelTileTypesLoaded, Y
+        CMP #TILE_TYPE_SWITCH_ON
+        BNE skip
+            TYA
+            ORA #TILE_GRID_FLAGS_OPAQUE
+            STA switchOnTileGridValue
+        .skip
+        INY
+        CPY #TILE_COUNT
+        BNE loop
 
     \ set primarySamplesEnabled flag
     LDA primarySamplesROMSEL : BEQ skip1

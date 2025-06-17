@@ -27,6 +27,18 @@ namespace LevelEditor
             EditTileDialog dialog = new(NewTile, LevelData.Palette);
             if (dialog.ShowDialog() == DialogResult.OK)
             {
+                if (NewTile.Type == Tile.TileType.SwitchOff && IsTileAlreadyDefined(Tile.TileType.SwitchOff))
+                {
+                    MessageBox.Show("Only one SwitchOff tile can be defined", "Edit Tile", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+
+                if (NewTile.Type == Tile.TileType.SwitchOn && IsTileAlreadyDefined(Tile.TileType.SwitchOn))
+                {
+                    MessageBox.Show("Only one SwitchOn tile can be defined", "Edit Tile", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+
                 Redo();
                 return true;
             }
@@ -43,6 +55,19 @@ namespace LevelEditor
         {
             LevelData.Tiles[TileIndex] = OldTile;
         }
+
+        private bool IsTileAlreadyDefined(Tile.TileType tileType)
+        {
+            for (int i = 0; i < LevelData.Tiles.Length; i++)
+            {
+                if (i != TileIndex && LevelData.Tiles[i].Type == tileType)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
 
         private readonly Level LevelData;
         private readonly int TileIndex;

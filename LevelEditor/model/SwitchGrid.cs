@@ -107,8 +107,15 @@ namespace LevelEditor
                 int tileListCount = buffer[bufferIndex++];
                 for (int j = 0; j < tileListCount; j++)
                 {
-                    int tileX = buffer[bufferIndex++];
-                    int tileY = buffer[bufferIndex++];
+                    // read lever coords
+                    int leftLo = buffer[bufferIndex++];
+                    int leftHi = buffer[bufferIndex++];
+                    int topLo = buffer[bufferIndex++];
+                    int topHi = buffer[bufferIndex++];
+
+                    // convert to tile coords
+                    int tileX = (256 * leftHi + leftLo) / 16;
+                    int tileY = (256 * topHi + topLo) / 16;
 
                     this[tileX, tileY] = pairing;
                 }
@@ -193,7 +200,7 @@ namespace LevelEditor
                 List<int> objectList = pairedObjects[pairing];
                 List<Point> tileList = pairedTiles[pairing];
 
-                int pairingBytes = objectList.Count + tileList.Count * 2;
+                int pairingBytes = objectList.Count + tileList.Count * 4;
 
                 if (pairingBytes <= remainingPairingBytes)
                 {
@@ -208,8 +215,11 @@ namespace LevelEditor
                     switchData.Add(tileList.Count);
                     foreach (var point in tileList)
                     {
-                        switchData.Add(point.X);
-                        switchData.Add(point.Y);
+                        var levelCoords = new Point(16 * point.X, 16 * point.Y);
+                        switchData.Add(levelCoords.X % 256);
+                        switchData.Add(levelCoords.X / 256);
+                        switchData.Add(levelCoords.Y % 256);
+                        switchData.Add(levelCoords.Y / 256);
                     }
                 }
                 else

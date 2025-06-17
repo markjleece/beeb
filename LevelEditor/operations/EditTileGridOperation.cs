@@ -73,6 +73,17 @@ namespace LevelEditor
                 return false;
             }
 
+            // ensure a switch-on tile is defined if a switch-off tile is set
+            if (NewTileIndex == LevelData.GetTileIndex(Tile.TileType.SwitchOff) &&
+                LevelData.GetTileIndex(Tile.TileType.SwitchOn) == -1)
+            {
+                MessageBox.Show(
+                    "When a SwitchOff tile is placed, a SwitchOn tile must also be defined.\n\n" +
+                    "Define a SwitchOn tile and then try again",
+                    "Set Tile", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
             if (NewTileIndex >= Level.TileCount) // object tile?
             {
                 // classify tile index

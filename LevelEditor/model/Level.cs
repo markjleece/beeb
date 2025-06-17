@@ -106,10 +106,6 @@ namespace LevelEditor
                 objects[i].Read(fs);
             }
 
-            // skip over switch on and off tile indices
-            fs.ReadByte();
-            fs.ReadByte();
-
             // switch grid
             SwitchGrid.Read(fs, objects, Tiles, TileGrid);
 
@@ -158,10 +154,6 @@ namespace LevelEditor
                 }
             }
 
-            // switch on and off tile indices
-            fs.WriteByte((byte)GetTileIndex(Tile.TileType.SwitchOff));
-            fs.WriteByte((byte)GetTileIndex(Tile.TileType.SwitchOn));
-
             // switch grid
             SwitchGrid.Write(fs, objects, Tiles, TileGrid);
 
@@ -190,19 +182,6 @@ namespace LevelEditor
                 }
             }
             return -1;
-        }
-
-        private int GetTileCount(Tile.TileType tileType)
-        {
-            int count = 0;
-            for (int i = 0; i < Tiles.Length; i++)
-            {
-                if (Tiles[i].Type == tileType)
-                {
-                    count++;
-                }
-            }
-            return count;
         }
 
         internal Object[] CollectObjects()

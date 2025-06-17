@@ -26,17 +26,14 @@
         RTS
     .skip1
 
-    \ check if door is operational
+    \ check if door is disabled
     LDA objectState, X
     AND #OBJECT_STATE_FLAGS_DISABLED : BNE return
 
     \ temp = union of left and right opaque/enemy flags
     LDA #(DOOR_SPRITE_HEIGHT - 1) : STA offsetY
     LDA #LO(-9) : STA offsetX
-    JSR getObjectTileGridAddr
-
-    LDY #0
-    LDA (tileGridAddr), Y
+    JSR getObjectTileGridValue
     INY : INY
     ORA (tileGridAddr), Y
 
@@ -48,7 +45,7 @@
     AND #DOOR_STATE_FLAGS_DOOR_OPEN
 
     \ open / close door?
-    ASL A : ASL A : ASL A : ASL A \ shift so door-open and opaque flag aligns
+    ASL A : ASL A : ASL A : ASL A \ shift so door-open and opaque flags aligns
     EOR temp
     AND #TILE_GRID_FLAGS_OPAQUE : BEQ endif1
 
@@ -98,17 +95,11 @@
         EOR #TILE_GRID_FLAGS_OPAQUE
         STA (tileGridAddr), Y
 
-        LDA tileGridAddr
-        SEC
-        SBC horzTileCount
-        STA dstAddr
-        LDA tileGridAddr+1
-        SBC #0
-        STA dstAddr+1
+        JSR tileGridAddr_sub_horzTileCount
 
-        LDA (dstAddr), Y
+        LDA (tileGridAddr), Y
         EOR #TILE_GRID_FLAGS_OPAQUE
-        STA (dstAddr), Y
+        STA (tileGridAddr), Y
     .endif1
 
     \ set sprite index

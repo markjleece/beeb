@@ -4,10 +4,7 @@
 \ switch data and routines
 \ 
 
-.switchOffTileIndex     SKIP 1
-.switchOnTileIndex      SKIP 1
-.switchOnTileGridValue  SKIP 1
-.switchPairings         SKIP 16
+.switchPairings SKIP 16
 
 \
 \ activateSwitch(tileGridAddr)
@@ -34,8 +31,11 @@
             CLC
             ADC switchPairings, X
             TAX
-            ADC switchPairings+1, X
-            ADC switchPairings+1, X
+            LDY #4
+            .innerLoop
+                ADC switchPairings, X
+                DEY
+                BNE innerLoop
             ADC #4
             TAX
             BNE loop1
@@ -82,24 +82,14 @@
     BEQ loop3End
     STA count
     .loop3
-        \ read paired tile X coord
-        LDA switchPairings, X
-        INX
-        STA leftLo
-
-        \ read paired tile Y coord
-        LDA switchPairings, X
-        INX
-        STA topLo
-
-        \ convert tile coords to level coords
-        LDA #0 : STA leftHi : STA topHi
-
-        LDY #4
+        \ read tile coords (leftLo, leftHi, topLo, topHi)
+        LDY #0
         .loop4
-            ASL leftLo : ROL leftHi
-            ASL topLo : ROL topHi
-            DEY
+            LDA switchPairings, X
+            INX
+            STA leftLo, Y
+            INY
+            CPY #4
             BNE loop4
 
         \ convert tile to a space
