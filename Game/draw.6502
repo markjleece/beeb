@@ -10,11 +10,9 @@
 \ modifies:
 \   getScreenTileGridAddr: tileGridAddr, temp, Y
 \
+IF DEBUG_TILE_GRID_FLAGS != 0
 .debugTileGridFlags
 {
-IF DEBUG_TILE_GRID_FLAGS = 0
-    RTS
-ELSE
     \ calc screen address and tileGridAddr of top-left fully visible tile
     LDA #15 : STA topLo : STA leftLo
     JSR getTileScreenAddr
@@ -71,9 +69,9 @@ ELSE
 
     RTS
 
-    SKIP 147 \ report same number of unsued code/data bytes
-ENDIF
+    SKIP 143 \ report same number of unsued code/data bytes
 }
+ENDIF
 
 \
 \ drawGameBar()
@@ -760,6 +758,9 @@ ENDIF
 
             \ stop laser
             INC laserInhibited
+
+            \ sound effect
+            JSR achievementSoundEffect
 
             \ replace lasered tile with new one
             LDY #0

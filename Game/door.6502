@@ -68,7 +68,7 @@
 
                         \ use key and invoke sound effect
                         DEC keyCount
-                        JSR keyJewelSoundEffect
+                        JSR achievementSoundEffect
 
                         CLC \ set unlocked flag
             .endif3

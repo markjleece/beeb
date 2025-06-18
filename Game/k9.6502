@@ -377,7 +377,7 @@
     STA healthHi
 
     \ sound effect
-    JSR keyJewelSoundEffect
+    JSR achievementSoundEffect
 
     \ clear tile
     JMP k9ClearTile \ implicit RTS
@@ -394,7 +394,7 @@
     .maxKeyCount
 
     \ sound effect
-    JSR keyJewelSoundEffect
+    JSR achievementSoundEffect
 
     \ fall through to k9ClearTile
 }

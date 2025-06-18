@@ -328,7 +328,7 @@ SOUND_EFFECT_LASER_OFF = 8
 SOUND_EFFECT_HEART_BEAT = 12
 SOUND_EFFECT_DIED = 16
 SOUND_EFFECT_LEVEL_COMPLETE = 20
-SOUND_EFFECT_KEY_JEWEL = 24
+SOUND_EFFECT_ACHIEVEMENT = 24
 SOUND_EFFECT_BLOCKED = 28
 SOUND_EFFECT_MOVE = 32
 SOUND_EFFECT_PURSUIT_ON = 36
@@ -570,7 +570,9 @@ ORG &1100
         JSR drawObjects
         JSR drawLaser
         JSR refreshGameBar
-        JSR debugTileGridFlags
+        IF DEBUG_TILE_GRID_FLAGS != 0
+            JSR debugTileGridFlags
+        ENDIF
         JSR refreshObjectDrawOrder
         JSR keyboardInputHandlers
         JSR enemyAI

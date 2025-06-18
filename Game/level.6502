@@ -517,7 +517,7 @@
     EQUB &11, &F7, &60, &01 \ SOUND_EFFECT_HEART_BEAT
     EQUB &11, &F7, &60, &FF \ SOUND_EFFECT_DIED
     EQUB &11, &02, &00, &05 \ SOUND_EFFECT_LEVEL_COMPLETE
-    EQUB &12, &02, &18, &03 \ SOUND_EFFECT_KEY_JEWEL
+    EQUB &12, &02, &18, &03 \ SOUND_EFFECT_ACHIEVEMENT
     EQUB &12, &03, &28, &01 \ SOUND_EFFECT_BLOCKED
     EQUB &12, &FE, &00, &01 \ SOUND_EFFECT_MOVE
     EQUB &13, &04, &48, &01 \ SOUND_EFFECT_PURSUIT_ON
@@ -968,11 +968,11 @@
         JSR cacheObjectExtents
         JSR setObjectInsideTileFlags
 
-        \ clear disabled and redraw flags
+        \ set disabled and redraw flags
         LDA disabled : BEQ else3
             LDA objectState, X
-            ORA #OBJECT_STATE_FLAGS_DISABLED
-            AND #LO(NOT(OBJECT_STATE_FLAGS_REDRAW))
+            ORA #OBJECT_STATE_FLAGS_DISABLED \ set disabled
+            AND #LO(NOT(OBJECT_STATE_FLAGS_REDRAW)) \ clear redraw
             STA objectState, X
             BNE endif3
         .else3

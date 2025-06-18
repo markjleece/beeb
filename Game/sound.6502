@@ -124,16 +124,16 @@
 }
 
 \
-\ keyJewelSoundEffect
+\ achievementSoundEffect
 \
-\ sound key/jewel sound effect
+\ sound achievement sound effect
 \
-.keyJewelSoundEffect
+.achievementSoundEffect
 {
     \ inhibit move sound effects, which use the same channel
     LDA #INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT : STA inhibitMoveSoundEffect
 
-    LDA #SOUND_EFFECT_KEY_JEWEL
+    LDA #SOUND_EFFECT_ACHIEVEMENT
     BNE soundEffect \ implicit RTS
 }
 
