@@ -589,7 +589,58 @@
     CLC
     ADC frameCount
     AND #1
+
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_13
+{
     RTS
+}
+
+\
+\ clearResidualTileFlags(X)
+\
+\ if we were at the start of a move animation which set the
+\ left or right tile flags, we need to clear these flags
+\
+\ params:
+\   X register  Enemy index
+\
+\ modifies:
+\   flags
+\
+.clearResidualTileFlags
+{
+    \ set flags
+    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+
+    \ at start of animation?
+    LDA objectFrameCounter, X : BNE rts_13
+
+    \ Y register = object[X].XPos MOD 16
+    LDA objectXLo, X
+    AND #&F
+    TAY
+
+    \ if (animation == MOVE_LEFT)
+    LDA objectType, X
+    AND #ANIMATE_MASK
+    CMP #ANIMATE_MOVE_LEFT : BNE else
+        \ if (object[X].XPos MOD 16) == 0)
+        TYA : BNE rts_13
+            \ clear left tile flags
+            JMP clearObjectLeftTileFlags \ implcit RTS
+    .else
+    \ if (animation == MOVE_RIGHT && (object[X].XPos MOD 16) == 8)
+    CMP #ANIMATE_MOVE_RIGHT : BNE rts_13
+        \ if (object[X].XPos MOD 16) == 8)
+        TYA : CMP #8 : BNE rts_13
+            \ clear right tile flags
+            JMP clearObjectRightTileFlags \ implicit RTS
 }
 
 \
@@ -707,7 +758,7 @@
             LDA #ANIMATE_LOOK_LEFT
             BEQ enemyAnimate \ implicit RTS
 .return
-        RTS
+    RTS
 }
 
 \
@@ -795,27 +846,9 @@
 {
     PHA \ --> new animation
 
-    \ set flags, used by clearObjectLeftTileFlags, clearObjectRightTileFlags
-    \ and roundFourObjectPosition below
-    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
-
     \ if we were at the start of a move animation which set the
-    \ left or right tile flags, we need to clear these
-    LDA objectFrameCounter, X : BNE endif
-        LDA objectXLo, X
-        AND #&F
-        TAY
-        LDA objectType, X
-        AND #ANIMATE_MASK
-        CMP #ANIMATE_MOVE_LEFT : BNE else
-            TYA : BNE endif
-                JSR clearObjectLeftTileFlags
-            JMP endif
-        .else
-        CMP #ANIMATE_MOVE_RIGHT : BNE endif
-            TYA : CMP #8 : BNE endif
-                JSR clearObjectRightTileFlags
-    .endif
+    \ left or right tile flags, we need to clear these flags
+    JSR clearResidualTileFlags \ also sets flags
 
     \ temp = new animation
     PLA
@@ -1010,6 +1043,9 @@
     ORA #(OBJECT_STATE_FLAGS_LASERED OR OBJECT_STATE_FLAGS_REDRAW)
     STA objectState, X
 
+    \ cache enemy extents
+    JSR cacheObjectExtents
+
     \ enemy destroyed?
     LDA temp \ <-- remaining health
     BNE skip1
@@ -1024,9 +1060,11 @@
         LDA #LO(rts_0) : STA objectFrameCallbackLo, X
         LDA #HI(rts_0) : STA objectFrameCallbackHi, X
 
+        \ if we were at the start of a move animation which set the
+        \ left or right tile flags, we need to clear these flags
+        JSR clearResidualTileFlags \ also sets flags 
+
         \ clear inside tile flags
-        JSR cacheObjectExtents
-        LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
         JSR clearObjectInsideTileFlags 
 
         \ end pursuit sound effect?

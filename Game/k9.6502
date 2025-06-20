@@ -370,6 +370,7 @@
 {
     \ increase health (high-byte)
     LDA healthHi
+    CLC
     ADC jewelHealthGainHi
     CMP #MAX_HEALTH_HI : BCC maxHealth
         LDA #MAX_HEALTH_HI

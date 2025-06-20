@@ -1097,8 +1097,8 @@ ENDIF
 \
 .calcScreenDstAddrOffset
 {
-    CLC
     TXA \ <-- offset (low-byte)
+    CLC
     ADC scrnAddr
     STA dstAddr
     TYA \ <-- offset (high-byte)
