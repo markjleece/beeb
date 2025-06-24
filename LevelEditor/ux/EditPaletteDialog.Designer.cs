@@ -29,6 +29,7 @@ namespace LevelEditor.ux
         /// </summary>
         private void InitializeComponent()
         {
+            label3 = new Label();
             label2 = new Label();
             label1 = new Label();
             paletteLabel = new Label();
@@ -39,6 +40,16 @@ namespace LevelEditor.ux
             cancelButton = new Button();
             okayButton = new Button();
             SuspendLayout();
+            // 
+            // label3
+            // 
+            label3.AutoSize = true;
+            label3.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
+            label3.Location = new Point(210, 94);
+            label3.Name = "label3";
+            label3.Size = new Size(49, 25);
+            label3.TabIndex = 19;
+            label3.Text = "laser";
             // 
             // label2
             // 
@@ -142,6 +153,7 @@ namespace LevelEditor.ux
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = cancelButton;
             ClientSize = new Size(356, 275);
+            Controls.Add(label3);
             Controls.Add(label2);
             Controls.Add(label1);
             Controls.Add(paletteLabel);
@@ -160,6 +172,7 @@ namespace LevelEditor.ux
 
         #endregion
 
+        private Label label3;
         private Label label2;
         private Label label1;
         private Label paletteLabel;

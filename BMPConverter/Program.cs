@@ -20,7 +20,8 @@ namespace BMPConverter
 
     internal class Program
     {
-        const char LevelCount = '3';
+        const char LevelCount = '5';
+
         private static readonly string assetsFolderPath = GetSolutionFolder() + "\\Game\\assets\\level{0}\\";
         private static readonly string dataFolderPath = GetSolutionFolder() + "\\Game\\data\\";
 
@@ -247,7 +248,7 @@ namespace BMPConverter
                         break;
 
                     case Color.Magenta:
-                        if (red > 192 && green < 64 && blue < 192) return i;
+                        if (red > 192 && green < 64 && blue > 192) return i;
                         break;
 
                     case Color.Cyan:

@@ -119,17 +119,13 @@
 \ Constants (addresses & VALUES)
 \
 
-osbyte = &FFF4
-oswrch = &FFEE
-osasci = &FFE3
-oscli = &FFF7
-osword = &FFF1
-osfile = &FFDD
-
 \ debug flags
 DEBUG_TILE_GRID_FLAGS = 0       \ overlay tile grid flags (super useful)
 DEBUG_DISABLE_SIDEWAYS_RAM = 0  \ disable sideways RAM
 DEBUG_WAIT_TENTHS = 0           \ waitTenths util routine
+
+\ number of levels
+LEVEL_COUNT = 5 \ max supported levels is 9
 
 \ keys (keyTbl indices)
 KEY_A = 0
@@ -301,9 +297,6 @@ GAMEBAR_SPRITE_SIZE = GAMEBAR_SPRITE_WIDTH * GAMEBAR_SPRITE_HEIGHT / 4
 MAX_HEALTH_HI = 16 \ (hi-byte)
 LASER_HEALTH_THRESHOLD_HI = 5 \ (hi-byte)
 
-\ number of levels
-LEVEL_COUNT = 3 \ max supported levels is 9
-
 \ maximum key count
 MAX_KEY_COUNT = 9
 
@@ -355,6 +348,14 @@ PCM_DATA_LOAD_BUFFER_SIZE = &C9A
 TRANSITION_VOID = 0
 TRANSITION_RUNNING = 1
 TRANSITION_COMPLETE = -1
+
+\ MOS routines
+osbyte = &FFF4
+oswrch = &FFEE
+osasci = &FFE3
+oscli = &FFF7
+osword = &FFF1
+osfile = &FFDD
 
 \ sprite atlas locations
 enemyAtlas1 = &100
@@ -1533,7 +1534,35 @@ INCBIN "data\\level3.atl"       \ level atlas sprite data (enemies, elevators, d
 SAVE "level3", levelLoadAddr, levelEnd
 
 \
-\ Levels 4..9 can optionally be added here (LEVEL_COUNT will also need updating)
+\ level 4 --> SSD
+\
+CLEAR levelLoadAddr, levelCode
+
+ORG levelLoadAddr
+INCBIN "data\\level4.dat"       \ level data (palette, tile grid, tiles etc)
+INCBIN "data\\level4.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
+\INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
+\INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
+\INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
+
+SAVE "level4", levelLoadAddr, levelEnd
+
+\
+\ level 5 --> SSD
+\
+CLEAR levelLoadAddr, levelCode
+
+ORG levelLoadAddr
+INCBIN "data\\level5.dat"       \ level data (palette, tile grid, tiles etc)
+INCBIN "data\\level5.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
+\INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
+\INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
+\INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
+
+SAVE "level5", levelLoadAddr, levelEnd
+\
+
+\ Levels 6..9 can optionally be added here (LEVEL_COUNT will also need updating)
 \
 
 \ Report unused memory

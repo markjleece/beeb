@@ -159,6 +159,10 @@
         \ signal vsync (so game loop can continue to run)
         INC vsync
 
+        \ stop transition?
+        LDA transitionCounter
+        BEQ stop_transition
+
         \ initiate timer for crop effect
         LDA transitionUpperTimer : STA &FE44
         LDA transitionUpperTimer+1 : STA &FE45
@@ -198,10 +202,6 @@
             LDA #&FF
             STA &FE44
             STA &FE45
-
-            \ stop transition?
-            LDA transitionCounter
-            BEQ stop_transition
 
             \ transitionUpperTimer += transitionUpperTimerDelta
             CLC
