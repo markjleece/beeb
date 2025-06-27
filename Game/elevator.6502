@@ -674,9 +674,12 @@
     \ find teleport object (result index returned in X)
     JSR findObjectsElevator : TXA : BEQ rts_11
 
-    \ check if teleport is disabled
+    \ check if teleport is disabled, or a transition or scroll is in progress
     LDA objectState, X
-    AND #OBJECT_STATE_FLAGS_DISABLED : BNE rts_11
+    AND #OBJECT_STATE_FLAGS_DISABLED
+    ORA transitionState
+    ORA scrollCounter
+    BNE rts_11
 
     \ get destination teleport index (held in teleport's objectFrameCounter)
     LDY objectFrameCounter, X
@@ -758,7 +761,6 @@
 
     \ set tile flags at new position
     LDX #0 \ <-- K9's index
-    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
     JSR setObjectInsideTileFlags
 
     \ redraw K9
