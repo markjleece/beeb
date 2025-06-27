@@ -31,6 +31,7 @@ namespace LevelEditor
         /// </summary>
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(LevelEditorForm));
             tileSelectorPanel = new TileSelectorPanel();
             tileGridPanel = new TileGridPanel();
@@ -55,7 +56,12 @@ namespace LevelEditor
             zoomInButton = new ToolStripButton();
             zoomOutButton = new ToolStripButton();
             helpButton = new ToolStripButton();
+            tileSelectorContextMenu = new ContextMenuStrip(components);
+            tileSelectorContentMenuItemEdit = new ToolStripMenuItem();
+            tileSelectorContentMenuItemCopy = new ToolStripMenuItem();
+            tileSelectorContentMenuItemPaste = new ToolStripMenuItem();
             toolStrip.SuspendLayout();
+            tileSelectorContextMenu.SuspendLayout();
             SuspendLayout();
             // 
             // tileSelectorPanel
@@ -67,6 +73,7 @@ namespace LevelEditor
             tileSelectorPanel.Paint += TileSelectorPanel_Paint;
             tileSelectorPanel.MouseClick += TileSelectorPanel_MouseClick;
             tileSelectorPanel.MouseDoubleClick += TileSelectorPanel_MouseDoubleClick;
+            tileSelectorPanel.MouseDown += TileSelectorPanel_MousePress;
             tileSelectorPanel.MouseLeave += TileSelectorPanel_MouseLeave;
             tileSelectorPanel.MouseMove += TileSelectorPanel_MouseMove;
             // 
@@ -289,6 +296,34 @@ namespace LevelEditor
             helpButton.ToolTipText = "Help";
             helpButton.Click += HelpButton_Click;
             // 
+            // tileSelectorContextMenu
+            // 
+            tileSelectorContextMenu.ImageScalingSize = new Size(24, 24);
+            tileSelectorContextMenu.Items.AddRange(new ToolStripItem[] { tileSelectorContentMenuItemEdit, tileSelectorContentMenuItemCopy, tileSelectorContentMenuItemPaste });
+            tileSelectorContextMenu.Name = "tileSelectorContextMenu";
+            tileSelectorContextMenu.Size = new Size(241, 133);
+            // 
+            // tileSelectorContentMenuItemEdit
+            // 
+            tileSelectorContentMenuItemEdit.Name = "tileSelectorContentMenuItemEdit";
+            tileSelectorContentMenuItemEdit.Size = new Size(240, 32);
+            tileSelectorContentMenuItemEdit.Text = "Edit";
+            tileSelectorContentMenuItemEdit.Click += TileSelectorContentMenuItemEditClick;
+            // 
+            // tileSelectorContentMenuItemCopy
+            // 
+            tileSelectorContentMenuItemCopy.Name = "tileSelectorContentMenuItemCopy";
+            tileSelectorContentMenuItemCopy.Size = new Size(240, 32);
+            tileSelectorContentMenuItemCopy.Text = "Copy";
+            tileSelectorContentMenuItemCopy.Click += TileSelectorContentMenuItemCopyClick;
+            // 
+            // tileSelectorContentMenuItemPaste
+            // 
+            tileSelectorContentMenuItemPaste.Name = "tileSelectorContentMenuItemPaste";
+            tileSelectorContentMenuItemPaste.Size = new Size(240, 32);
+            tileSelectorContentMenuItemPaste.Text = "Paste";
+            tileSelectorContentMenuItemPaste.Click += TileSelectorContentMenuItemPasteClick;
+            // 
             // LevelEditorForm
             // 
             AutoScaleDimensions = new SizeF(10F, 25F);
@@ -304,6 +339,7 @@ namespace LevelEditor
             Resize += LevelEditorForm_Resize;
             toolStrip.ResumeLayout(false);
             toolStrip.PerformLayout();
+            tileSelectorContextMenu.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -333,5 +369,9 @@ namespace LevelEditor
         private ToolStripButton zoomOutButton;
         private ToolStripButton helpButton;
         private ToolStripButton editSettingsButton;
+        private ContextMenuStrip tileSelectorContextMenu;
+        private ToolStripMenuItem tileSelectorContentMenuItemEdit;
+        private ToolStripMenuItem tileSelectorContentMenuItemCopy;
+        private ToolStripMenuItem tileSelectorContentMenuItemPaste;
     }
 }

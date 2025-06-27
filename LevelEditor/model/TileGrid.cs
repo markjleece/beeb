@@ -124,11 +124,11 @@ namespace LevelEditor
         internal byte[] TileIndices;
 
         // special indices
-        internal const int K9LookLeft = 28;
-        internal const int K9LookRight = 29;
-        internal const int EnemyLookLeft = 30;
-        internal const int EnemyLookRight = 31;
-        internal const int EnemyMoveLeft = 32;
-        internal const int EnemyMoveRight = 33;
+        internal const int K9LookLeft = Level.TileCount + 0;
+        internal const int K9LookRight = Level.TileCount + 1;
+        internal const int EnemyLookLeft = Level.TileCount + 2;
+        internal const int EnemyLookRight = Level.TileCount + 3;
+        internal const int EnemyMoveLeft = Level.TileCount + 4;
+        internal const int EnemyMoveRight = Level.TileCount + 5;
     }
 }

@@ -1,7 +1,10 @@
 ﻿// This file is Copyright © 2025 - Mark John Leece - All rights reserved
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
+using System.Reflection.Metadata.Ecma335;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace LevelEditor
@@ -292,7 +295,7 @@ namespace LevelEditor
                 TileSelectorTooltipTimer.Start();
                 TileSelectorTooltipOffset = new Point(e.X, e.Y + 40);
             }
-            else 
+            else
             {
                 TileSelectorTooltip.Hide(tileSelectorPanel);
                 TileSelectorTooltipTimer.Stop();
@@ -318,25 +321,79 @@ namespace LevelEditor
             return -1;
         }
 
+        private void TileSelectorPanel_MousePress(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                int tileIndex = TileSelectedPanel_HitTest(e.X, e.Y);
+                if (tileIndex != -1)
+                {
+                    // select tile
+                    TileSelectorPanel_SelectTile(tileIndex);
+
+                    // display context menu
+                    bool canEdit = (tileIndex > 0 && tileIndex < Level.TileCount);
+                    bool canCopy = (tileIndex < Level.TileCount);
+                    bool canPaste = (TileSelectorCopiedTile != null);
+
+                    tileSelectorContentMenuItemEdit.Enabled = canEdit;
+                    tileSelectorContentMenuItemCopy.Enabled = canCopy;
+                    tileSelectorContentMenuItemPaste.Enabled = canPaste;
+
+                    var point = PointToScreen(e.Location);
+                    point.Offset(tileSelectorPanel.Location);
+                    tileSelectorContextMenu.Show(point);
+                }
+            }
+        }
+
+        private void TileSelectorContentMenuItemEditClick(object sender, EventArgs e)
+        {
+            EditTile(SelectedTileIndex);
+        }
+
+        private void TileSelectorContentMenuItemCopyClick(object sender, EventArgs e)
+        {
+            if (SelectedTileIndex >= Level.TileCount) return;
+
+            TileSelectorCopiedTile = LevelData.Tiles[SelectedTileIndex].Clone();
+        }
+
+        private void TileSelectorContentMenuItemPasteClick(object sender, EventArgs e)
+        {
+            if (TileSelectorCopiedTile == null || SelectedTileIndex == 0 || SelectedTileIndex >= Level.TileCount) return;
+
+            PasteTileOperation op = new(LevelData, SelectedTileIndex, (Tile)TileSelectorCopiedTile);
+            if (UndoRedoHistory.Execute(op))
+            {
+                ResetState(false/*reset view*/);
+            }
+        }
+
         private void TileSelectorPanel_MouseClick(object sender, MouseEventArgs e)
         {
             int tileIndex = TileSelectedPanel_HitTest(e.X, e.Y);
             if (tileIndex != -1 && tileIndex != SelectedTileIndex)
             {
-                bool updateButtons = ((tileIndex < Level.TileCount) != (SelectedTileIndex < Level.TileCount));
+                TileSelectorPanel_SelectTile(tileIndex);
+            }
+        }
 
-                Rectangle rect = GetTileSelectorRect(SelectedTileIndex);
-                tileSelectorPanel.Invalidate(rect);
+        private void TileSelectorPanel_SelectTile(int tileIndex)
+        {
+            bool updateButtons = ((tileIndex < Level.TileCount) != (SelectedTileIndex < Level.TileCount));
 
-                rect = GetTileSelectorRect(tileIndex);
-                tileSelectorPanel.Invalidate(rect);
+            Rectangle rect = GetTileSelectorRect(SelectedTileIndex);
+            tileSelectorPanel.Invalidate(rect);
 
-                SelectedTileIndex = tileIndex;
+            rect = GetTileSelectorRect(tileIndex);
+            tileSelectorPanel.Invalidate(rect);
 
-                if (updateButtons)
-                {
-                    UpdateButtons();
-                }
+            SelectedTileIndex = tileIndex;
+
+            if (updateButtons)
+            {
+                UpdateButtons();
             }
         }
 
@@ -1081,7 +1138,7 @@ namespace LevelEditor
         private readonly System.Windows.Forms.Timer TileSelectorTooltipTimer = new();
         private string TileSelectorTooltipText = String.Empty;
         private Point TileSelectorTooltipOffset;
-
+        private Tile? TileSelectorCopiedTile;
         private const int TileSelectorCount = 34; // 28 regular tiles + 6 object tiles
     }
 
