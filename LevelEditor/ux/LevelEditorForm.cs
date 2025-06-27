@@ -1,10 +1,7 @@
 ﻿// This file is Copyright © 2025 - Mark John Leece - All rights reserved
-using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
-using System.Reflection.Metadata.Ecma335;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace LevelEditor
@@ -225,12 +222,12 @@ namespace LevelEditor
             CutTile();
         }
 
-        private void copyTile_Click(object sender, EventArgs e)
+        private void CopyTile_Click(object sender, EventArgs e)
         {
             CopyTile();
         }
 
-        private void pasteTile_Click(object sender, EventArgs e)
+        private void PasteTile_Click(object sender, EventArgs e)
         {
             PasteTile();
         }

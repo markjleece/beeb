@@ -107,15 +107,15 @@ namespace LevelEditor
 
             int idx = 0;
 
-            for (int i = height, accumY = 0; i != 0; i--)
+            for (int i = height, accumulatorY = 0; i != 0; i--)
             {
-                int yMul16 = (accumY >> 16) * 16;
-                accumY += deltaY;
+                int yMul16 = (accumulatorY >> 16) * 16;
+                accumulatorY += deltaY;
 
-                for (int j = width, accumX = 0; j != 0; j--)
+                for (int j = width, accumulatorX = 0; j != 0; j--)
                 {
-                    int x = (accumX >> 16);
-                    accumX += deltaX;
+                    int x = (accumulatorX >> 16);
+                    accumulatorX += deltaX;
 
                     int paletteIndex = (byte)Pixels[yMul16 + x];
                     uint argb = palette[paletteIndex];

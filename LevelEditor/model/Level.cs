@@ -1,8 +1,5 @@
 // This file is Copyright © 2025 - Mark John Leece - All rights reserved
-using System;
-using System.Data;
 using System.Diagnostics;
-using static LevelEditor.Tile;
 
 namespace LevelEditor
 {

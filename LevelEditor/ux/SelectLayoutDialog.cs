@@ -1,17 +1,4 @@
 ﻿// This file is Copyright © 2025 - Mark John Leece - All rights reserved
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Drawing.Drawing2D;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-
 namespace LevelEditor.ux
 {
     public partial class SelectLayoutDialog : Form
@@ -129,7 +116,7 @@ namespace LevelEditor.ux
                 maxValue = Math.Max(maxValue, Math.Abs(pageCoords[i, 1]));
             }
 
-            // draw page rects
+            // draw page rectangles
             bounds.Inflate(-10, -10);
 
             double scale = 0.5 * bounds.Width / maxValue;

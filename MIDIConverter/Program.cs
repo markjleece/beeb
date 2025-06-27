@@ -6,8 +6,6 @@
 //
 // The app also prints a pitch table which is embedded in music.6502.
 //
-using System.Diagnostics;
-
 namespace MIDIConverter
 {
 
@@ -39,7 +37,7 @@ namespace MIDIConverter
                 }
                 else
                 {
-                    // calculate tone generator frequency value (formlula from Beeb Advanced User Guide)
+                    // calculate tone generator frequency value (formula from Beeb Advanced User Guide)
                     values[i] = (int)Math.Round(4000000.0 / (32.0 * frequency), MidpointRounding.ToZero);
                 }
             }
@@ -172,7 +170,7 @@ namespace MIDIConverter
             // sort all note events by absolute time, volume, and tone generator
             noteEvents.Sort(CompareNoteEventsByTimeToneGeneratorAndVolume);
 
-            // remove any rudundant note off events
+            // remove any redundant note off events
             List<NoteEvent> eventsToRemove = [];
             NoteEvent? lastNoteEvent = null;
             foreach (var noteEvent in noteEvents)

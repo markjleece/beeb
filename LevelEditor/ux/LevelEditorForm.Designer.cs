@@ -172,7 +172,7 @@ namespace LevelEditor
             copyTileButton.Name = "copyTileButton";
             copyTileButton.Size = new Size(34, 28);
             copyTileButton.Text = "Copy Tile";
-            copyTileButton.Click += copyTile_Click;
+            copyTileButton.Click += CopyTile_Click;
             // 
             // pasteTileButton
             // 
@@ -182,7 +182,7 @@ namespace LevelEditor
             pasteTileButton.Name = "pasteTileButton";
             pasteTileButton.Size = new Size(34, 28);
             pasteTileButton.Text = "Paste Tile";
-            pasteTileButton.Click += pasteTile_Click;
+            pasteTileButton.Click += PasteTile_Click;
             // 
             // toolStripSeparator1
             // 

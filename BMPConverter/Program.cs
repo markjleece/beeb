@@ -114,7 +114,7 @@ namespace BMPConverter
         }
 
         //
-        // Convert BMP file into beeb sprite data (column based, 4-color data)
+        // Convert BMP file into bbc sprite data (column based, 4-color data)
         //
         static private byte[] ConvertBMPFile(string bmpFilePathName, int spriteCount, int spriteWidth, int spriteHeight, Color[] palette)
         {
@@ -132,7 +132,7 @@ namespace BMPConverter
             ReadShort(fileStream); // skip reserved
             ReadShort(fileStream); // skip reserved
 
-            int pixelDataOffet = ReadInt(fileStream);
+            int pixelDataOffset = ReadInt(fileStream);
 
             // read DIB header
             int DIBHeaderSize = ReadInt(fileStream);
@@ -148,8 +148,8 @@ namespace BMPConverter
             short bitsPerPixel = ReadShort(fileStream);
             ReadInt(fileStream); // skip compressionMethod
             ReadInt(fileStream); // skip imageSizeInBytes
-            ReadInt(fileStream); // skip horzRes
-            ReadInt(fileStream); // skip vertRes
+            ReadInt(fileStream); // skip horizontal Res
+            ReadInt(fileStream); // skip vertical Res
             int logicalColorCount = ReadInt(fileStream);
             ReadInt(fileStream); // skip importantColorCount
 
@@ -178,7 +178,7 @@ namespace BMPConverter
             // read image data
             int[] bitmapData = new int[bitmapWidth * bitmapHeight];
 
-            fileStream.Seek(pixelDataOffet, SeekOrigin.Begin);
+            fileStream.Seek(pixelDataOffset, SeekOrigin.Begin);
             for (int i = 0; i < bitmapWidth * bitmapHeight; i++)
             {
                 bitmapData[i] = ReadInt(fileStream);
@@ -194,7 +194,7 @@ namespace BMPConverter
                 {
                     int idx = (y * bitmapWidth) + x; // pixel index
 
-                    // construct bbcScrnByte (four spliced pixels)
+                    // construct bbcScreenByte (four spliced pixels)
                     byte bbcScreenByte = 0;
                     for (int i = 0; i < 4; i++)
                     {

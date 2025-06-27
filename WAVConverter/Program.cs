@@ -6,9 +6,6 @@
 // The app also prints address tables which are embedded in sound.6503.  If the 
 // WAV files change, the tables in sound.6502 will need updating.
 //
-using System.Runtime.InteropServices;
-using System.Xml.Linq;
-
 namespace WAVConverter
 {
     internal class Program
@@ -135,9 +132,9 @@ namespace WAVConverter
         private static int SampleToVolumeRegister(int value)
         {
             // non-linear lookup
-            for (int i = 0; i < VolumeToRegiserLookup.Length; i++)
+            for (int i = 0; i < VolumeToRegisterLookup.Length; i++)
             {
-                if (value >= VolumeToRegiserLookup[i])
+                if (value >= VolumeToRegisterLookup[i])
                 {
                     return i;
                 }
@@ -146,7 +143,7 @@ namespace WAVConverter
             return 0;
         }
 
-        private static readonly int[] VolumeToRegiserLookup = [204, 162, 129, 103, 82, 65, 52, 41, 33, 27, 21, 17, 14, 11, 8, 0];
+        private static readonly int[] VolumeToRegisterLookup = [204, 162, 129, 103, 82, 65, 52, 41, 33, 27, 21, 17, 14, 11, 8, 0];
 
         private static byte[] ReadPCMData(string filePath, out long pcmPosition)
         {
@@ -247,7 +244,7 @@ namespace WAVConverter
 
             for (int i = 0; i < pcmData.Length; i++)
             {
-                // requantize to 4-bits
+                // re-quantize to 4-bits
                 pcmData[i] = (byte)(pcmData[i] & 0xF8);
             }
 

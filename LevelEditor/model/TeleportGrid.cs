@@ -70,7 +70,7 @@ namespace LevelEditor
             var counts = new Dictionary<char, int>();
             foreach (var entry in TeleportIndices)
             {
-                if (counts.TryGetValue(entry.Value, out int value))
+                if (counts.TryGetValue(entry.Value, out _))
                 {
                     counts[entry.Value]++;
                 }
