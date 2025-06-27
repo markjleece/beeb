@@ -125,7 +125,7 @@ DEBUG_DISABLE_SIDEWAYS_RAM = 0  \ disable sideways RAM
 DEBUG_WAIT_TENTHS = 0           \ waitTenths util routine
 
 \ number of levels
-LEVEL_COUNT = 5 \ max supported levels is 9
+LEVEL_COUNT = 6 \ max supported levels is 9
 
 \ keys (keyTbl indices)
 KEY_A = 0
@@ -1560,8 +1560,22 @@ INCBIN "data\\level5.atl"       \ level atlas sprite data (enemies, elevators, d
 \INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
 
 SAVE "level5", levelLoadAddr, levelEnd
-\
 
+\
+\ level 6 --> SSD
+\
+CLEAR levelLoadAddr, levelCode
+
+ORG levelLoadAddr
+INCBIN "data\\level6.dat"       \ level data (palette, tile grid, tiles etc)
+INCBIN "data\\level6.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
+\INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
+\INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
+\INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
+
+SAVE "level6", levelLoadAddr, levelEnd
+
+\
 \ Levels 6..9 can optionally be added here (LEVEL_COUNT will also need updating)
 \
 

@@ -20,7 +20,7 @@ namespace BMPConverter
 
     internal class Program
     {
-        const char LevelCount = '5';
+        const char LevelCount = '6';
 
         private static readonly string assetsFolderPath = GetSolutionFolder() + "\\Game\\assets\\level{0}\\";
         private static readonly string dataFolderPath = GetSolutionFolder() + "\\Game\\data\\";
