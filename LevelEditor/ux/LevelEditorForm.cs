@@ -334,7 +334,7 @@ namespace LevelEditor
                     // display context menu
                     bool canEdit = (tileIndex > 0 && tileIndex < Level.TileCount);
                     bool canCopy = (tileIndex < Level.TileCount);
-                    bool canPaste = (TileSelectorCopiedTile != null);
+                    bool canPaste = (tileIndex > 0 && tileIndex < Level.TileCount && TileSelectorCopiedTile != null);
 
                     tileSelectorContentMenuItemEdit.Enabled = canEdit;
                     tileSelectorContentMenuItemCopy.Enabled = canCopy;
