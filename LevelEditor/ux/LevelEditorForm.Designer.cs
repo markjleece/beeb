@@ -40,6 +40,10 @@ namespace LevelEditor
             openButton = new ToolStripButton();
             saveButton = new ToolStripButton();
             saveAsButton = new ToolStripButton();
+            toolStripSeparator5 = new ToolStripSeparator();
+            cutTileButton = new ToolStripButton();
+            copyTileButton = new ToolStripButton();
+            pasteTileButton = new ToolStripButton();
             toolStripSeparator1 = new ToolStripSeparator();
             undoButton = new ToolStripButton();
             redoButton = new ToolStripButton();
@@ -58,6 +62,7 @@ namespace LevelEditor
             helpButton = new ToolStripButton();
             tileSelectorContextMenu = new ContextMenuStrip(components);
             tileSelectorContentMenuItemEdit = new ToolStripMenuItem();
+            tileSelectorContentMenuItemCut = new ToolStripMenuItem();
             tileSelectorContentMenuItemCopy = new ToolStripMenuItem();
             tileSelectorContentMenuItemPaste = new ToolStripMenuItem();
             toolStrip.SuspendLayout();
@@ -96,7 +101,7 @@ namespace LevelEditor
             // toolStrip
             // 
             toolStrip.ImageScalingSize = new Size(24, 24);
-            toolStrip.Items.AddRange(new ToolStripItem[] { newButton, openButton, saveButton, saveAsButton, toolStripSeparator1, undoButton, redoButton, toolStripSeparator3, editSettingsButton, selectLayoutButton, editPaletteButton, editTileButton, toolStripSeparator2, freeformModeButton, lineModeButton, rectModeButton, toolStripSeparator4, zoomInButton, zoomOutButton, helpButton });
+            toolStrip.Items.AddRange(new ToolStripItem[] { newButton, openButton, saveButton, saveAsButton, toolStripSeparator5, cutTileButton, copyTileButton, pasteTileButton, toolStripSeparator1, undoButton, redoButton, toolStripSeparator3, editSettingsButton, selectLayoutButton, editPaletteButton, editTileButton, toolStripSeparator2, freeformModeButton, lineModeButton, rectModeButton, toolStripSeparator4, zoomInButton, zoomOutButton, helpButton });
             toolStrip.Location = new Point(0, 0);
             toolStrip.Name = "toolStrip";
             toolStrip.Size = new Size(1885, 33);
@@ -143,6 +148,41 @@ namespace LevelEditor
             saveAsButton.Size = new Size(34, 28);
             saveAsButton.Text = "Save As";
             saveAsButton.Click += SaveAsButton_Click;
+            // 
+            // toolStripSeparator5
+            // 
+            toolStripSeparator5.Name = "toolStripSeparator5";
+            toolStripSeparator5.Size = new Size(6, 33);
+            // 
+            // cutTileButton
+            // 
+            cutTileButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            cutTileButton.Image = (Image)resources.GetObject("cutTileButton.Image");
+            cutTileButton.ImageTransparentColor = Color.Magenta;
+            cutTileButton.Name = "cutTileButton";
+            cutTileButton.Size = new Size(34, 28);
+            cutTileButton.Text = "Cut Tile";
+            cutTileButton.Click += CutTile_Click;
+            // 
+            // copyTileButton
+            // 
+            copyTileButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            copyTileButton.Image = (Image)resources.GetObject("copyTileButton.Image");
+            copyTileButton.ImageTransparentColor = Color.Magenta;
+            copyTileButton.Name = "copyTileButton";
+            copyTileButton.Size = new Size(34, 28);
+            copyTileButton.Text = "Copy Tile";
+            copyTileButton.Click += copyTile_Click;
+            // 
+            // pasteTileButton
+            // 
+            pasteTileButton.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            pasteTileButton.Image = (Image)resources.GetObject("pasteTileButton.Image");
+            pasteTileButton.ImageTransparentColor = Color.Magenta;
+            pasteTileButton.Name = "pasteTileButton";
+            pasteTileButton.Size = new Size(34, 28);
+            pasteTileButton.Text = "Paste Tile";
+            pasteTileButton.Click += pasteTile_Click;
             // 
             // toolStripSeparator1
             // 
@@ -292,35 +332,46 @@ namespace LevelEditor
             helpButton.ImageTransparentColor = Color.Magenta;
             helpButton.Name = "helpButton";
             helpButton.Size = new Size(34, 28);
-            helpButton.Text = "toolStripButton1";
+            helpButton.Text = "Help";
             helpButton.ToolTipText = "Help";
             helpButton.Click += HelpButton_Click;
             // 
             // tileSelectorContextMenu
             // 
             tileSelectorContextMenu.ImageScalingSize = new Size(24, 24);
-            tileSelectorContextMenu.Items.AddRange(new ToolStripItem[] { tileSelectorContentMenuItemEdit, tileSelectorContentMenuItemCopy, tileSelectorContentMenuItemPaste });
+            tileSelectorContextMenu.Items.AddRange(new ToolStripItem[] { tileSelectorContentMenuItemEdit, tileSelectorContentMenuItemCut, tileSelectorContentMenuItemCopy, tileSelectorContentMenuItemPaste });
             tileSelectorContextMenu.Name = "tileSelectorContextMenu";
-            tileSelectorContextMenu.Size = new Size(241, 133);
+            tileSelectorContextMenu.Size = new Size(249, 165);
             // 
             // tileSelectorContentMenuItemEdit
             // 
+            tileSelectorContentMenuItemEdit.Image = (Image)resources.GetObject("tileSelectorContentMenuItemEdit.Image");
             tileSelectorContentMenuItemEdit.Name = "tileSelectorContentMenuItemEdit";
-            tileSelectorContentMenuItemEdit.Size = new Size(240, 32);
+            tileSelectorContentMenuItemEdit.Size = new Size(248, 32);
             tileSelectorContentMenuItemEdit.Text = "Edit";
             tileSelectorContentMenuItemEdit.Click += TileSelectorContentMenuItemEditClick;
             // 
+            // tileSelectorContentMenuItemCut
+            // 
+            tileSelectorContentMenuItemCut.Image = (Image)resources.GetObject("tileSelectorContentMenuItemCut.Image");
+            tileSelectorContentMenuItemCut.Name = "tileSelectorContentMenuItemCut";
+            tileSelectorContentMenuItemCut.Size = new Size(248, 32);
+            tileSelectorContentMenuItemCut.Text = "Cut";
+            tileSelectorContentMenuItemCut.Click += TileSelectorContentMenuItemCutClick;
+            // 
             // tileSelectorContentMenuItemCopy
             // 
+            tileSelectorContentMenuItemCopy.Image = (Image)resources.GetObject("tileSelectorContentMenuItemCopy.Image");
             tileSelectorContentMenuItemCopy.Name = "tileSelectorContentMenuItemCopy";
-            tileSelectorContentMenuItemCopy.Size = new Size(240, 32);
+            tileSelectorContentMenuItemCopy.Size = new Size(248, 32);
             tileSelectorContentMenuItemCopy.Text = "Copy";
             tileSelectorContentMenuItemCopy.Click += TileSelectorContentMenuItemCopyClick;
             // 
             // tileSelectorContentMenuItemPaste
             // 
+            tileSelectorContentMenuItemPaste.Image = (Image)resources.GetObject("tileSelectorContentMenuItemPaste.Image");
             tileSelectorContentMenuItemPaste.Name = "tileSelectorContentMenuItemPaste";
-            tileSelectorContentMenuItemPaste.Size = new Size(240, 32);
+            tileSelectorContentMenuItemPaste.Size = new Size(248, 32);
             tileSelectorContentMenuItemPaste.Text = "Paste";
             tileSelectorContentMenuItemPaste.Click += TileSelectorContentMenuItemPasteClick;
             // 
@@ -371,7 +422,12 @@ namespace LevelEditor
         private ToolStripButton editSettingsButton;
         private ContextMenuStrip tileSelectorContextMenu;
         private ToolStripMenuItem tileSelectorContentMenuItemEdit;
+        private ToolStripMenuItem tileSelectorContentMenuItemCut;
         private ToolStripMenuItem tileSelectorContentMenuItemCopy;
         private ToolStripMenuItem tileSelectorContentMenuItemPaste;
+        private ToolStripSeparator toolStripSeparator5;
+        private ToolStripButton cutTileButton;
+        private ToolStripButton copyTileButton;
+        private ToolStripButton pasteTileButton;
     }
 }

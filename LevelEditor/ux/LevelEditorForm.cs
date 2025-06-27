@@ -220,6 +220,21 @@ namespace LevelEditor
             }
         }
 
+        private void CutTile_Click(object sender, EventArgs e)
+        {
+            CutTile();
+        }
+
+        private void copyTile_Click(object sender, EventArgs e)
+        {
+            CopyTile();
+        }
+
+        private void pasteTile_Click(object sender, EventArgs e)
+        {
+            PasteTile();
+        }
+
         private void LevelEditorForm_Resize(object sender, EventArgs e)
         {
             int borderWidth = (Width - ClientSize.Width) / 2;
@@ -337,6 +352,7 @@ namespace LevelEditor
                     bool canPaste = (tileIndex > 0 && tileIndex < Level.TileCount && TileSelectorCopiedTile != null);
 
                     tileSelectorContentMenuItemEdit.Enabled = canEdit;
+                    tileSelectorContentMenuItemCut.Enabled = canEdit;
                     tileSelectorContentMenuItemCopy.Enabled = canCopy;
                     tileSelectorContentMenuItemPaste.Enabled = canPaste;
 
@@ -352,18 +368,46 @@ namespace LevelEditor
             EditTile(SelectedTileIndex);
         }
 
+        private void TileSelectorContentMenuItemCutClick(object sender, EventArgs e)
+        {
+            CutTile();
+        }
+
         private void TileSelectorContentMenuItemCopyClick(object sender, EventArgs e)
+        {
+            CopyTile();
+        }
+
+        private void TileSelectorContentMenuItemPasteClick(object sender, EventArgs e)
+        {
+            PasteTile();
+        }
+
+        private void CutTile()
+        { 
+            if (SelectedTileIndex == 0 || SelectedTileIndex >= Level.TileCount) return;
+
+            TileSelectorCopiedTile = LevelData.Tiles[SelectedTileIndex].Clone();
+
+            PasteTileOperation op = new(LevelData, SelectedTileIndex, new Tile()/*blank tile*/);
+            if (UndoRedoHistory.Execute(op))
+            {
+                ResetState(false/*reset view*/);
+            }
+        }
+
+        private void CopyTile()
         {
             if (SelectedTileIndex >= Level.TileCount) return;
 
             TileSelectorCopiedTile = LevelData.Tiles[SelectedTileIndex].Clone();
         }
 
-        private void TileSelectorContentMenuItemPasteClick(object sender, EventArgs e)
+        private void PasteTile()
         {
             if (TileSelectorCopiedTile == null || SelectedTileIndex == 0 || SelectedTileIndex >= Level.TileCount) return;
 
-            PasteTileOperation op = new(LevelData, SelectedTileIndex, (Tile)TileSelectorCopiedTile);
+            PasteTileOperation op = new(LevelData, SelectedTileIndex, TileSelectorCopiedTile);
             if (UndoRedoHistory.Execute(op))
             {
                 ResetState(false/*reset view*/);
@@ -381,8 +425,6 @@ namespace LevelEditor
 
         private void TileSelectorPanel_SelectTile(int tileIndex)
         {
-            bool updateButtons = ((tileIndex < Level.TileCount) != (SelectedTileIndex < Level.TileCount));
-
             Rectangle rect = GetTileSelectorRect(SelectedTileIndex);
             tileSelectorPanel.Invalidate(rect);
 
@@ -391,10 +433,7 @@ namespace LevelEditor
 
             SelectedTileIndex = tileIndex;
 
-            if (updateButtons)
-            {
-                UpdateButtons();
-            }
+            UpdateButtons();
         }
 
         private CachedBitmap GetTileSelectorBitmap(int tileIndex, Graphics graphics)
@@ -1084,6 +1123,10 @@ namespace LevelEditor
         }
         private void UpdateButtons()
         {
+            cutTileButton.Enabled = (SelectedTileIndex > 0 && SelectedTileIndex < Level.TileCount);
+            copyTileButton.Enabled = (SelectedTileIndex < Level.TileCount);
+            pasteTileButton.Enabled = (SelectedTileIndex > 0 && SelectedTileIndex < Level.TileCount && TileSelectorCopiedTile != null); ;
+
             undoButton.Enabled = UndoRedoHistory.CanUndo();
             redoButton.Enabled = UndoRedoHistory.CanRedo();
 
