@@ -11,6 +11,9 @@
 \
 .showBatteryFlatScreen
 {
+    \ relocate sound effect data (which might have been modified by DFS)
+    JSR relocateSoundEffectData
+
     \ sound effect
     LDA #SOUND_EFFECT_DIED
     JSR soundEffect
@@ -41,6 +44,9 @@ INCBIN "data\\died.bin"
 \
 .showLevelCompletedScreen
 {
+    \ relocate sound effect data (which might have been modified by DFS)
+    JSR relocateSoundEffectData
+
     \ invoke sound effect
     JSR levelCompleteSoundEffect
 

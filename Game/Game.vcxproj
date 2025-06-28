@@ -111,7 +111,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <CustomBuildStep>
-      <Command>C:\dev\beebasm\beebasm.exe -i program.6502 -do program.ssd -boot program -vc -dd -labels labels.txt</Command>
+      <Command>C:\dev\beebasm\beebasm.exe -v -i program.6502 -do program.ssd -boot program -vc -dd -labels labels.txt</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Beebasm.exe</Message>
