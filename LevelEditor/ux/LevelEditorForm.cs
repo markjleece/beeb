@@ -1142,12 +1142,14 @@ namespace LevelEditor
                 "The main panel shows the design of the level. Its layout can be modified by using the 'Select Layout' button.\n\n" +
                 "Tiles can be set by first selecting a tile from the left palette, and then clicking and dragging within the main panel.\n\n" +
                 "The current draw mode (freeform, line, rectangle) effects how tiles are drawn when dragging the mouse.\n\n" +
-                "The left panel shows a palette of 30 tiles, plus six 'object' tiles which can be used to place K9 and enemies.\n\n" +
+                "The left panel shows a palette of 28 tiles, plus six 'object' tiles which can be used to place K9 and enemies.\n\n" +
                 "The background tile is implicitly selected when the right mouse button is used.\n\n" +
                 "Tiles can be edited by double clicking on them within the left palette. The background tile and object tiles cannot be edited.\n\n" +
                 "Tiles also have a type, which effects their behavior within the game.\n\n" +
+                "Teleport tiles are automatically paired when placed. A letter depicts the pairing.\n\n" +
+                "Switch tiles are paired manually using the Ctrl key. First Ctrl+click on the switch, then Ctrl+click on the tile/object to pair. A digit depicts the pairing.\n\n" +
                 "The four color palette can be modified using the 'Edit Palette' button.\n\n" +
-                "The 'Edit Settings' button can be used to modify the relative strengths of K9, enemies, and Jewels.",
+                "The 'Edit Settings' button can be used to modify the relative strengths of K9, enemies, and Jewels, and disable sample-based sound effects.",
                 "Help", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
