@@ -645,7 +645,7 @@ ENDIF
     .skip3
     STA innerLoop+2
 
-    \ draw upper character row
+    \ render the tile
     LDX #2
     .outerLoop
 

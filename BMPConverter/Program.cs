@@ -198,12 +198,22 @@ namespace BMPConverter
                     byte bbcScreenByte = 0;
                     for (int i = 0; i < 4; i++)
                     {
+                        // get pixel
                         int rgba = bitmapData[idx + i];
-                            byte bbcLogicalColor = RGBAtoLogicalColor(rgba, redMask, greenMask, blueMask, redShift, greenShift, blueShift, palette);
+
+                        // extract color components
+                        int red = (rgba & redMask) >> redShift;
+                        int green = (rgba & greenMask) >> greenShift;
+                        int blue = (rgba & blueMask) >> blueShift;
+
+                        // convert to bbc logical color
+                        byte bbcLogicalColor = RGBAtoLogicalColor(red, green, blue, palette);
+
+                        // update bbc screen byte
                         bbcScreenByte |= bbcScreenBits[i][bbcLogicalColor];
                     }
 
-                    // output screen byte, buffered
+                    // set output bbc screen byte
                     result[index++] = (byte)bbcScreenByte;
                 }
             }
@@ -211,17 +221,8 @@ namespace BMPConverter
             return result;
         }
          
-        private static byte RGBAtoLogicalColor(
-            int rgba, 
-            int redMask, int greenMask, int blueMask, 
-            int redShift, int greenShift, int blueShift,
-            Color[] palette)
+        private static byte RGBAtoLogicalColor(int red, int green, int blue, Color[] palette)
         {
-            // extract color components
-            int red = (rgba & redMask) >> redShift;
-            int green = (rgba & greenMask) >> greenShift;
-            int blue = (rgba & blueMask) >> blueShift;
-
             // match against palette entries
             for (byte i = 0; i < 4; i++)
             {

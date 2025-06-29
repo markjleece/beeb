@@ -459,9 +459,9 @@ ORG 0
 .enemyHealthLo              SKIP 1  \ low health byte of enemy. Used to decrement ememy health
 .k9DamageCounter            SKIP 1  \ set to ENEMY_WEAPON_DAMAGE_COUNTER when enemy uses weapon
 .endPursuitCounter          SKIP 1  \ set to ENEMY_END_PURSUIT_COUNTER when k9 is in sight
-.pursuitSoundEffectCounter  SKIP 1  \ sound effect counter. Used to ingore duplicate requests and repeat sample
-.laserSoundEffectOn         SKIP 1  \ sound effect flag. Used to ingore duplicate requests
-.blockedSoundEffectOn       SKIP 1  \ sound effect flag. Used to ingore duplicate requests
+.pursuitSoundEffectCounter  SKIP 1  \ sound effect counter. Used to ignore duplicate requests and repeat sample
+.laserSoundEffectOn         SKIP 1  \ sound effect flag. Used to ignore duplicate requests
+.blockedSoundEffectOn       SKIP 1  \ sound effect flag. Used to ignore duplicate requests
 .inhibitMoveSoundEffect     SKIP 1  \ sound effect flag. Used to inhibit move sound effects.
 .groanInhibited             SKIP 1  \ sound effect flag. Used to inhibit groan sample.
 .enemyHitTestLastFound      SKIP 1  \ cached hit test result (hit-test optimization)

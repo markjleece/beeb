@@ -385,7 +385,7 @@ AMPLITUDE_PHASE_RELEASE = 3
         .skip2
     
         \ set tone generator's volume
-        JSR setSoundChipVolume
+        JMP setSoundChipVolume \ implicit RTS
     .skip1
 
     RTS

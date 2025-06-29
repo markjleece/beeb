@@ -69,20 +69,20 @@ namespace LevelEditor
             // 16 byte palette
             Palette.Read(fs);
 
-            // 29 x 64 byte tiles
+            // 27 x 64 byte tiles
             for (int i = 1; i < TileCount; i++)
             {
                 Tiles[i].Read(fs);
             }
 
-            // 2k tile grid
+            // 2K tile grid
             TileGrid.Read(fs);
 
             // tile grid width & height
             TileGrid.Width = fs.ReadByte();
             TileGrid.Height = fs.ReadByte();
 
-            // read tile types
+            // 28 x 1 byte tile types
             byte[] tileTypes = new byte[TileCount];
             fs.ReadExactly(tileTypes);
 
@@ -92,10 +92,10 @@ namespace LevelEditor
                 Tiles[i].Type = (Tile.TileType)tileTypes[i];
             }
 
-            // 6 byte settings
+            // settings (5 bytes)
             Settings.Read(fs);
 
-            // 48 x 3 byte objects
+            // 48 x 4 byte objects
             Object[] objects = new Object[ObjectCount];
             for (int i = 0; i < ObjectCount; i++)
             {
@@ -103,7 +103,7 @@ namespace LevelEditor
                 objects[i].Read(fs);
             }
 
-            // switch grid
+            // switch pairings (32 bytes)
             SwitchGrid.Read(fs, objects, Tiles, TileGrid);
 
             PropagateObjects(objects);
@@ -114,13 +114,13 @@ namespace LevelEditor
             // 16 byte palette (loaded @ 30B0)
             Palette.Write(fs);
 
-            // 29 x 64 byte tiles
+            // 27 x 64 byte tiles
             for (int i = 1; i < TileCount; i++)
             {
                 Tiles[i].Write(fs);
             }
 
-            // 2k tile grid
+            // 2K tile grid
             TileGrid.Write(fs, Tiles);
 
             // tile grid width & height
@@ -133,7 +133,7 @@ namespace LevelEditor
                 fs.WriteByte((byte)tile.Type);
             }
 
-            // 6 byte settings
+            // settings (5 bytes)
             Settings.Write(fs);
 
             // 48 x 4 byte objects
@@ -151,7 +151,7 @@ namespace LevelEditor
                 }
             }
 
-            // switch grid
+            // switch pairings (32 bytes)
             SwitchGrid.Write(fs, objects, Tiles, TileGrid);
 
             if (objects[0].Type == Object.Type_Unknown)
