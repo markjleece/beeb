@@ -714,21 +714,25 @@
         JMP success
     .skip1
 
+    \ sound achievement effect
+    LDA #SOUND_EFFECT_ACHIEVEMENT
+    JSR soundEffect
+
     \ perform crop close transition
     JSR cropCloseTransition
-
-    \ clear tile flag at existing location
-    LDX #0 \ <-- k9's index
-    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
-    JSR clearObjectInsideTileFlags
 
     \ undraw K9 from the screen
     LDA objectSpriteIndex : PHA
 
     LDA #&FF : STA objectSpriteIndex
+    LDX #0 \ <-- k9's index
     JSR drawObject
 
     PLA : STA objectSpriteIndex
+
+    \ clear tile flags at existing location
+    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
+    JSR clearObjectInsideTileFlags
 
     \ K9 position += delta
     LDA objectXLo
@@ -747,6 +751,9 @@
     ADC deltaYHi
     STA objectYHi
 
+    \ set tile flags at new position
+    JSR setObjectInsideTileFlags
+
     \ scroll destination teleport into view
     LDX #LO(DIRECTION_LEFT)
     LDA #LO(DIRECTION_RIGHT)
@@ -759,25 +766,19 @@
     LDA #LO(DIRECTION_DOWN)
     JSR scroll
 
-    \ set tile flags at new position
-    LDX #0 \ <-- K9's index
-    JSR setObjectInsideTileFlags
-
     \ redraw K9
+    LDX #0 \ <-- k9's index
     JSR setRedrawFlag
 
-    \ start crop open transition
-    LDA #LO(callback)
-    LDY #HI(callback)
+    \ start crop open transition, setting level palette on completion
+    LDA #LO(setLevelPalette)
+    LDY #HI(setLevelPalette)
     JSR startCropOpenTransition
 
     \ return success
-    .success
+.success
     LDA #0
     RTS
-
-.callback
-    JMP setLevelPalette \ implicit RTS
 
 .scroll
     \ deltaX = ABS(deltaX)
