@@ -391,9 +391,9 @@ spriteHealthBarTbl = &10E0              \ 12 byte sprite health bar table (repur
 \ level data locations
 levelLoadAddr = &3130                   \ address where level data is loaded
 levelPalette = &3130                    \ 16 byte level palette
-levelTiles = &3140                      \ 29 x 64 byte tiles.  Each tile contain two character rows of texel quads. Tiles are indexed from 1. Tile 0 is implicitly filled with zeros.
+levelTiles = &3140                      \ 27 x 64 byte tiles.  Each tile contain two character rows of texel quads. Tiles are indexed from 1. Tile 0 is implicitly filled with zeros.
 levelTileGrid = &3800                   \ 2K of tile values (flags/indicies)
-levelTileTypes = &03E0                  \ 32 x 1-byte tile types (repurposes MOS keyboard buffer)
+levelTileTypes = &03E0                  \ 28 x 1-byte tile types (repurposes MOS keyboard buffer)
 
 \ level load locations (data loaded into screen memory and relocated)
 levelHorzTileCountLoaded = &4000        \ level width in tiles (copied to horzTileCount)
@@ -405,7 +405,7 @@ levelLaserHealthDrainLoaded = &4020     \ level laser health drain (relocated to
 levelJewelHealthGainHiLoaded = &4021    \ level jewel health gain (relocated to jewelHealthGainHi)
 levelSampleSoundsEnabledLoaded = &4022  \ level sound samples enabled flag (used in setting primarySamplesEnabled and secondarySamplesEnabled)
 levelObjectsLoaded = &4023              \ 48 x 4 byte level objects descriptors (used to populate game objects)
-levelSwitchPairings = &40E3             \ 16 x 1 byte switch pairings
+levelSwitchPairings = &40E3             \ 32 x 1 byte switch pairings
 
 \ drawObject head and tail jump offset tables
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
