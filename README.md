@@ -3,13 +3,16 @@ A Doctor Who themed platform game for the BBC Micro Model B, titled '**An Advent
 
 <img width="300" alt="titles" src="https://github.com/user-attachments/assets/2d5c8a01-ad5c-495b-a8e4-86b7a18ca086" />
 <img width="300" alt="instructions" src="https://github.com/user-attachments/assets/199b29fe-49ce-4788-a66a-7428c1ce5e2b" />
-<img width="300" alt="level1" src="https://github.com/user-attachments/assets/75d3b139-19ad-47e5-b6f6-f67028624c57" />
-<img width="300" alt="level2" src="https://github.com/user-attachments/assets/14876180-d68b-407d-bba9-56ab4de8bd61" />
-<img width="300" alt="level3" src="https://github.com/user-attachments/assets/97ffe41d-e558-4c4f-bc8f-657dac17487d" />
+<img width="300" alt="level1" src="https://github.com/user-attachments/assets/aae50eb1-49fe-4717-8860-2717ac371b12" />
+<img width="300" alt="level2" src="https://github.com/user-attachments/assets/ee76ce82-2ce1-4beb-bdf0-f8d033634c08" />
+<img width="300" alt="level3" src="https://github.com/user-attachments/assets/ff179e81-ce36-45ad-ab3b-48c2cdbb7741" />
+<img width="300" alt="level4" src="https://github.com/user-attachments/assets/62dada4e-25e5-4213-bb21-f117c45bf230" />
+<img width="300" alt="level5" src="https://github.com/user-attachments/assets/e2db08e2-2ac9-47cc-a406-98ca7f782e03" />
+<img width="300" alt="level6" src="https://github.com/user-attachments/assets/fb26a278-8689-4269-82bb-226342dd59ba" />
 
 **Features**
-- Docter Who title music is played while the title and instructions screens are shown.
-- The game contains three levels, of increasing difficulty.
+- Docter Who title music is played while the title, instructions, game complete and credits screens are shown.
+- The game contains six levels, of increasing difficulty.
 - Dalek samples are played if 16K of sideways RAM is available. Additional samples are played if 32K of sideways RAM is available.
 - Level editor, which can be used to edit and add new levels (see below).
   
@@ -35,7 +38,7 @@ To run the game from Visual Studio, select the **Game** project in **Solution Ex
 ## Level Editor
 This project contains a Windows Forms based level editor, that allows levels to be created and edited. Instructions on how to use the editor can be found by clicking on the question mark icon in the toolbar.  The levels files are located in the **game\\data** folder and are named **level1.dat**, **level2.dat** etc.
 
-<img width="400" alt="editor" src="https://github.com/user-attachments/assets/a4808ee7-d6f9-4219-b2e8-34fd04152909" />
+<img width="400" alt="editor" src="https://github.com/user-attachments/assets/0a09165f-529e-484e-bf6e-5dae6642a124" />
 
 To run the level editor from Visual Studio, select the **LevelEditor** project in **Solution Explorer**, select '**Set as Startup Project**' from the **Project** menu, and the press **Ctrl+F5**
 
@@ -68,7 +71,7 @@ This project is used to convert a type-0 MIDI file (**game\\assets\\music\\music
 To run the MIDI converter from Visual Studio, select the **MIDIConverter** project in **Solution Explorer**, select '**Set as Startup Project**' from the **Project** menu, and the press **Ctrl+F5**.
 
 ## WAV Converter
-This project is used to convert and combine sound effect 8/8K WAV files, located in **game\\assets\\samples**, into a more compact and Beeb friendly format (**game\\data\\pcm_primary.dat** and **game\\data\\pcm_secondary.dat**). The game loads the samples into 16K or 32K of sideways RAM, if available. The app also generates an associated index which is embedded in **sample.6502**.
+This project is used to convert and combine sound effect 8/8K WAV files, located in **game\\assets\\samples**, into a more compact and Beeb friendly format (**game\\data\\pcm_primary.dat** and **game\\data\\pcm_secondary.dat**). The game loads the primary samples into the first 16K of sideways RAM, if available. It then loads the secondary samples into the next 16K of sideways RAM, if available.  The app also generates an associated index which is embedded in **sound.6502**.  The index will need updating if the source WAV files are modified.
 
 To run the WAV converter from Visual Studio, select the **WAVConverter** project in **Solution Explorer**, select '**Set as Startup Project**' from the **Project** menu, and the press **Ctrl+F5**.
 
@@ -80,6 +83,11 @@ To run the WAV converter from Visual Studio, select the **WAVConverter** project
 | game\assets\music\music.sib | A Sibelius music score containing the Doctor Who music and arrangement by Ron Grainer & Delia Derbyshire |
 | game\assets\music\music.midi | A type-0 MIDI file created using Sibelius |
 | game\programs.mmd | A multi-disc image that can be copied to a micro-sd card and used to play the game on a Beeb which has MMFS Turbo support. Note that building the solution does not update the mmd file |
-| game\data\titles.bin | Titles screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format |
-| game\data\instructions.bin | Instructions screen teletext file created using [Teletext editor](https://zxnet.co.uk/teletext/editor/), in display RAM format ||---|---|
+| game\data\titles.bin | Titles screen teletext file** |
+| game\data\instructions.bin | Instructions screen teletext file** |
+| game\data\complete.bin | Level complete screen teletext file** |
+| game\data\died.bin | K9 died screen teletext file** |
+| game\data\congrats.bin | Game complete screen teletext file** |
+| game\data\credits.bin | Credits screen teletext file** |
 
+** The teletext files were created in display RAM format using [Teletext editor](https://zxnet.co.uk/teletext/editor/).
