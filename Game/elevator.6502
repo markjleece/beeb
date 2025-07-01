@@ -23,14 +23,9 @@
 \
 .rideElevator
 {
-    \ check if passed object is standing on an elevator (sets tileGridAddr)
+    \ check if passed object is standing on an elevator (sets tileGridAddr), otherwise auto scroll
     LDA #TILE_TYPE_ELEVATOR
-    JSR queryObjectOnTiles : BEQ endif
-    .autoScroll
-        LDA direction
-        BMI autoScrollUp \ implicit RTS
-        BPL autoScrollDown \ implicit RTS
-    .endif
+    JSR queryObjectOnTiles : BNE autoScrollVertically \ implicit RTS
 
     \ save object index
     STX temp \ --> k9/enemy index
@@ -98,50 +93,34 @@
 }
 
 \
-\ autoScrollUp(X)
+\ autoScrollVertically(X)
 \
 \ auto scrolls up if K9 is at or beyond the scroll threshold
 \
 \ always returns zero flag clear
 \
 \ params:
+\    direction   DIRECTION_UP (-1) or DIRECTION_DOWN (1)
 \    X register  game object index
 \
-.autoScrollUp
+.autoScrollVertically
 {
     CPX #0 : BNE noscroll \ is K9?
     LDA scrollCounter : AND #1 : BNE noscroll \ if scrollCounter is even
         LDA objectYLo
         SEC 
         SBC scrnTopLo
-        CMP #AUTO_SCROLL_THRESHOLD : BEQ then : BCS noscroll
-        .then
-            LDA #LO(DIRECTION_UP) : STA scrollDirection
-            LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
-    .noscroll
-    RTS
-}
-
-\
-\ autoScrollDowm(X)
-\
-\ auto scrolls down if K9 is at or beyond the scroll threshold
-\
-\ always returns zero flag clear
-\
-\ params:
-\    X register  game object index
-\
-.autoScrollDown
-{
-    CPX #0 : BNE noscroll \ is K9?
-    LDA scrollCounter : AND #1 : BNE noscroll \ if scrollCounter is even
-        LDA objectYLo
-        SEC 
-        SBC scrnTopLo
-        CMP #(255 - AUTO_SCROLL_THRESHOLD) : BCC noscroll
-            LDA #LO(DIRECTION_DOWN) : STA scrollDirection
-            LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
+        BIT direction : BMI down
+        .up
+            CMP #(255 - AUTO_SCROLL_THRESHOLD) : BCC noscroll
+                LDA #LO(DIRECTION_DOWN) : STA scrollDirection
+                LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
+                RTS
+        .down
+            CMP #AUTO_SCROLL_THRESHOLD : BEQ then : BCS noscroll
+            .then
+                LDA #LO(DIRECTION_UP) : STA scrollDirection
+                LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
     .noscroll
     RTS
 }
@@ -271,7 +250,8 @@
     JSR elevatorMoveObjectUp
 
     \ auto scroll screen (if passenger is K9)?
-    JSR autoScrollUp
+    LDA #LO(DIRECTION_UP) : STA direction
+    JSR autoScrollVertically
     
     LDX temp \ <-- elevator index
 
@@ -334,7 +314,8 @@
     JSR elevatorMoveObjectDown
 
     \ auto scroll screen (if passenger is K9)?
-    JSR autoScrollDown
+    LDA #DIRECTION_DOWN : STA direction
+    JSR autoScrollVertically
 
     LDX temp \ <-- elevator index
 
