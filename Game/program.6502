@@ -6,7 +6,7 @@
 \ God mode - activated by pressing and holding 'D' 'G' 'O' in quick succession
 \  - gives K9 unlimited health and keys
 \  - enables scrolling using the arror keys
-\  - enables a specific level to be loaded using the number keys: 1..3
+\  - enables a specific level to be loaded using the number keys: 1..LEVEL_COUNT
 \
 \ Memory map:
 \
@@ -247,8 +247,11 @@ ENEMY_LOOK_RANGE = 12 \ range enemies can see (in tiles)
 ENEMY_WEAPON_RANGE = 3 \ range of enemy weapons (in tiles)
 ENEMY_WEAPON_THRESHOLD = 2 \ enemy health required to use weapon
 ENEMY_SPRINT_THRESHOLD = 4 \ enemy health required to move quickly
-ENEMY_WEAPON_DAMAGE_COUNTER = 2 \ weapon damage counter (used to inflict damage on K9)
 ENEMY_END_PURSUIT_COUNTER = 32 \ number of frames (x16) before enemies give up pursuit (10 seconds)
+
+\ K9 damage counters
+K9_DAMAGE_ON_COUNTER = 8 \ when to start inflicting damage on K9
+K9_DAMAGE_OFF_COUNTER = 4 \ when to end inflicting damage on K9
 
 \ lasered tile constants
 LASERED_TILE_STRENGTH = 20 \ strength of lasered tile (destructible wall or off-switch)
@@ -411,8 +414,8 @@ levelSwitchPairings = &40E3             \ 32 x 1 byte switch pairings
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
 drawObject_tailJumpTbl = &10F6          \ 10 byte tail jump offset table (repurposes DFS &10E0-&10FF workspace)
 
-\ loadLevel page backup (see loadLevel)
-loadLevelPageBackup = &7B00
+\ dfs command page backup (see dfsCommand)
+dfsCommandPageBackup = &7B00
 
 \ PCM data load address (located below page backup)
 pcmDataLoadBuffer = &7B00 - PCM_DATA_LOAD_BUFFER_SIZE
@@ -551,7 +554,7 @@ ORG &400
 .objectFrameCallbackLo      SKIP MAX_OBJECT_COUNT \ frame callback, called every frame
 .objectFrameCallbackHi      SKIP MAX_OBJECT_COUNT 
 
-\ array holding object indices, in draw order
+\ array holding object indices, in draw order (top to bottom)
 .objectDrawOrder            SKIP MAX_OBJECT_COUNT   
 
 \
@@ -1072,9 +1075,16 @@ INCLUDE "utils.6502"
     \ decrement damage counter
     DEC k9DamageCounter
 
+    \ if (damageCounter <= K9_DAMAGE_OFF_COUNTER) return
+    CPY #(K9_DAMAGE_OFF_COUNTER + 1)
+    BCC rts_0
+
+    \ sound exterminate in the pause, and not before
+    LDA #18 : STA pursuitSoundEffectCounter
+
     \ inflict damage on K9
     LDA healthLo
-    SEC 
+    SEC
     SBC enemyWeaponStrength
     STA healthLo
     LDA healthHi
@@ -1375,8 +1385,8 @@ ASSERT (HI(P%) > &17) \ ensure dfsCommand is assembled after page &17
 
 .dfsCommand
 {
-    \ clear page &17 (after saving the code) so DFS uses it as a buffer
-    COPY_CLEAR_PAGE loadLevelPageBackup, &1700
+    \ clear page &17 (after saving the code) as DFS uses it as a buffer
+    COPY_CLEAR_PAGE dfsCommandPageBackup, &1700
 
     \ switch to DFS
     JSR selectDFS
@@ -1387,7 +1397,7 @@ ASSERT (HI(P%) > &17) \ ensure dfsCommand is assembled after page &17
     JSR oscli
 
     \ restore code in page &17
-    COPY_PAGE &1700, loadLevelPageBackup
+    COPY_PAGE &1700, dfsCommandPageBackup
 
     RTS
 }

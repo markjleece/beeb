@@ -156,9 +156,9 @@
     CMP #ENEMY_WEAPON_RANGE
     BCS stopFiring
 
-    \ set damage counter (processed in inflictK9Damage)
+    \ set K9 damage counter (processed in inflictK9Damage)
     LDA k9DamageCounter : BNE skip3
-        LDA #ENEMY_WEAPON_DAMAGE_COUNTER
+        LDA #K9_DAMAGE_ON_COUNTER
         STA k9DamageCounter
     .skip3
 
