@@ -514,7 +514,8 @@
 {
     LDA tileGridAddr
     CLC
-    ADC horzTileCount
+    .^adc_inst
+    ADC #&FF \ operand patched in initializeLevelVariables()
     STA tileGridAddr
     BCC skip
         INC tileGridAddr+1
@@ -531,7 +532,8 @@
 {
     LDA tileGridAddr
     SEC
-    SBC horzTileCount
+    .^sbc_inst
+    SBC #&FF \ operand patched in initializeLevelVariables()
     STA tileGridAddr
     BCS skip
         DEC tileGridAddr+1

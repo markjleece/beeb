@@ -85,6 +85,7 @@
     STA laseredTileTop
     STA laseredTileStrength
     STA laseredTileRedraw
+    STA enemyWeaponStrengthHi
 
     LDA #12 : STA healthHi
     LDA #&FF : STA healthLo : STA enemyHealthLo
@@ -92,14 +93,15 @@
     \ make sure the space key is lifted
     INC laserInhibited
     
-    \ set horizontal tile count
-    LDA levelHorzTileCountLoaded : STA horzTileCount
-
     \ set level settings
-    LDA levelEnemyWeaponStrengthLoaded : STA enemyWeaponStrength
+    LDA levelEnemyWeaponStrengthLoaded : STA enemyWeaponStrengthLo
     LDA levelLaserStrengthLoaded : STA laserStrength
     LDA levelLaserHealthDrainLoaded : STA laserHealthDrain
     LDA levelJewelHealthGainHiLoaded : STA jewelHealthGainHi
+
+    \ enemyWeaponStrength *= 2
+    ASL enemyWeaponStrengthLo
+    ROL enemyWeaponStrengthHi
 
     \ set switchOnTileGridValue
     LDY #0
@@ -129,7 +131,7 @@
     STA secondarySamplesEnabled
 
     \ patch BCC instuction in getObjectTileGridAddr (tilegrid.6502)
-    LDA horzTileCount
+    LDA levelHorzTileCountLoaded
     CMP #128 : BNE else1
         LDA #0
         BEQ endif
@@ -147,8 +149,12 @@
     .endif
     STA bcc_inst+1
 
-    \ set scrolling limits
+    \ patch ADC and SBC operands in tileGridAddr_add_horzTileCount and tileGridAddr_sub_horzTileCount (tilegrid.6502)
     LDA levelHorzTileCountLoaded
+    STA adc_inst+1
+    STA sbc_inst+1
+
+    \ set scrolling limits
     LSR A : LSR A : LSR A : LSR A
     SEC 
     SBC #1

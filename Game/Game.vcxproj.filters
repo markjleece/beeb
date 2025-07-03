@@ -20,5 +20,6 @@
     <None Include="interstitial.6502" />
     <None Include="mode7.6502" />
     <None Include="switch.6502" />
+    <None Include="teleport.6502" />
   </ItemGroup>
 </Project>

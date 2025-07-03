@@ -167,6 +167,7 @@
     <None Include="scroll.6502" />
     <None Include="sound.6502" />
     <None Include="switch.6502" />
+    <None Include="teleport.6502" />
     <None Include="tilegrid.6502" />
     <None Include="titles.6502" />
     <None Include="transition.6502" />
