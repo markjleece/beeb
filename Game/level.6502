@@ -99,9 +99,9 @@
     LDA levelLaserHealthDrainLoaded : STA laserHealthDrain
     LDA levelJewelHealthGainHiLoaded : STA jewelHealthGainHi
 
-    \ enemyWeaponStrength *= 2
-    ASL enemyWeaponStrengthLo
-    ROL enemyWeaponStrengthHi
+    \ enemyWeaponStrength *= 4 (serialized value is divided by four)
+    ASL enemyWeaponStrengthLo : ROL enemyWeaponStrengthHi
+    ASL enemyWeaponStrengthLo : ROL enemyWeaponStrengthHi
 
     \ set switchOnTileGridValue
     LDY #0

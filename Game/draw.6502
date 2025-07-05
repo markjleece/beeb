@@ -798,9 +798,9 @@ ENDIF
 \
 .drawLaserOn
 {
-    \ enough health to use laser?
+    \ if (health <= LASER_HEALTH_THRESHOLD_HI) stop laser
     LDA healthHi
-    CMP #LASER_HEALTH_THRESHOLD_HI
+    CMP #(LASER_HEALTH_THRESHOLD_HI + 1)
     BCS skip1
         .unableToLaser
         LDA #0 : STA laserFrameCount

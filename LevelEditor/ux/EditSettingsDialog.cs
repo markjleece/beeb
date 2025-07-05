@@ -11,9 +11,9 @@ namespace LevelEditor.ux
 
         private void EditCoefficients_Load(object sender, EventArgs e)
         {
-            enemyWeaponStrengthComboBox.Items.Add("128 (high)");
-            enemyWeaponStrengthComboBox.Items.Add("64 (normal)");
-            enemyWeaponStrengthComboBox.Items.Add("32 (low)");
+            enemyWeaponStrengthComboBox.Items.Add("512 (high)");
+            enemyWeaponStrengthComboBox.Items.Add("256 (normal)");
+            enemyWeaponStrengthComboBox.Items.Add("128 (low)");
             SetSelectedValue(enemyWeaponStrengthComboBox, Settings.EnemyWeaponStrength);
 
             laserStrengthComboBox.Items.Add("64 (high)");

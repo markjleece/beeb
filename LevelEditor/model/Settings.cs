@@ -22,7 +22,7 @@ namespace LevelEditor
 
         internal void Read(FileStream fs)
         {
-            EnemyWeaponStrength = fs.ReadByte();
+            EnemyWeaponStrength = fs.ReadByte() * 4; // serialized value is divided by four
             LaserStrength = fs.ReadByte();
             LaserHealthDrain = fs.ReadByte();
             JewelHealthGain = fs.ReadByte() * 256;
@@ -31,14 +31,14 @@ namespace LevelEditor
 
         internal void Write(FileStream fs)
         {
-            fs.WriteByte((byte)EnemyWeaponStrength);
+            fs.WriteByte((byte)(EnemyWeaponStrength / 4)); // serialized value is divided by four
             fs.WriteByte((byte)LaserStrength);
             fs.WriteByte((byte)LaserHealthDrain);
             fs.WriteByte((byte)(JewelHealthGain / 256));
             fs.WriteByte((byte)SampleSoundsEnabled);
         }
 
-        internal int EnemyWeaponStrength = 64;
+        internal int EnemyWeaponStrength = 256;
         internal int JewelHealthGain = 512;
         internal int LaserHealthDrain = 8;
         internal int LaserStrength = 32;

@@ -1053,6 +1053,9 @@
         \ erase sprite
         LDA #&FF : STA objectSpriteIndex, X
 
+        \ action = ACTION_LOOK
+        JSR setActionLook
+
         \ stop laser
         INC laserInhibited
 
@@ -1074,15 +1077,9 @@
         JMP (secondarySoundVector_enemyDestroyed) \ implicit RTS
     .skip1
 
-    \ enemy have sufficient remaining health to pursue or use weapon?
+    \ does enemy have sufficient remaining health to pursue or use weapon?
     LDA temp \ <-- remaining health
-    CMP #ENEMY_WEAPON_THRESHOLD : BCS skip2
-        \ action = ACTION_LOOK
-        LDA objectType, X
-        AND #LO(NOT(ACTION_MASK))
-        STA objectType, X
-        RTS
-    .skip2
+    CMP #(ENEMY_WEAPON_THRESHOLD+1) : BCC setActionLook \ implicit RTS
     
     \ is enemy lasered from behind? (check if K9 and enemy are facing in same direction)
     JSR getObjectDirection
@@ -1105,6 +1102,13 @@
 
     \ invoke enemy lasered sound effect
     JMP (primarySoundVector_enemyLasered) \ implict RTS
+
+.setActionLook
+    \ action = ACTION_LOOK
+    LDA objectType, X
+    AND #LO(NOT(ACTION_MASK))
+    STA objectType, X
+    RTS
 }
 
 \ end file

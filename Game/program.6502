@@ -298,7 +298,7 @@ GAMEBAR_SPRITE_SIZE = GAMEBAR_SPRITE_WIDTH * GAMEBAR_SPRITE_HEIGHT / 4
 
 \ k9 health
 MAX_HEALTH_HI = 16 \ (hi-byte)
-LASER_HEALTH_THRESHOLD_HI = 5 \ (hi-byte)
+LASER_HEALTH_THRESHOLD_HI = 4 \ (hi-byte)
 
 \ maximum key count
 MAX_KEY_COUNT = 9
@@ -567,8 +567,8 @@ ORG &1100
     JSR titles
     .gameLoop
         JSR waitForVSync
-        JSR completeTransition
         INC frameCount
+        JSR completeTransition
         JSR inflictK9Damage
         JSR scrollScreen
         JSR drawObjects
@@ -1047,8 +1047,8 @@ INCLUDE "utils.6502"
 
     \ replenish god-mode health and keys
     LDA godMode : BEQ skip
-        LDA #16 : STA healthHi
-        LDA #255 : STA healthLo
+        LDA #MAX_HEALTH_HI : STA healthHi
+        LDA #&FF : STA healthLo
         LDA #MAX_KEY_COUNT : STA keyCount
     .skip
 
@@ -1058,8 +1058,10 @@ INCLUDE "utils.6502"
 
 \
 \ inflictK9Damage()
-\ 
+\
 \ inflict damange on K9
+\
+\ k9DamageCounter is used to create two black flashes, followed by a one second pause
 \
 .inflictK9Damage
 {
@@ -1080,13 +1082,15 @@ INCLUDE "utils.6502"
     CPY #(K9_DAMAGE_OFF_COUNTER + 1)
     BCC rts_0
 
+    \ if the pursuit sound effect counter is zero (because no enemies are in pursuit), just restore the palette
+    LDA pursuitSoundEffectCounter : BEQ restorePalette
+
     \ sound exterminate in the pause, and not before
     LDA #18 : STA pursuitSoundEffectCounter
 
     \ inflict damage on K9
     LDA healthLo
-    SEC
-    SBC enemyWeaponStrengthLo
+    SBC enemyWeaponStrengthLo \ carry flag set above
     STA healthLo
     LDA healthHi
     SBC enemyWeaponStrengthHi
@@ -1097,10 +1101,10 @@ INCLUDE "utils.6502"
     \ toggle palettes and play sound effect
     TYA \ <-- k9DamageCounter (before decrement)
     AND #1
-    BNE else
+    BNE restorePalette
         JSR setBlackPalette
         JMP (primarySoundVector_weaponFired) \ implicit RTS
-    .else
+    .restorePalette
         JMP setLevelPalette \ implicit RTS
 }
 
@@ -1304,7 +1308,7 @@ INCLUDE "utils.6502"
 .loadLevel
 {
     \ return if a crop transition is in progress
-    LDA transitionState : BNE return
+    LDA transitionState : BNE rts_0
 
     \ common preamble
     JSR levelEndPreamble
@@ -1314,9 +1318,6 @@ INCLUDE "utils.6502"
 
     \ initialize level
     JMP initializeLevel \ implicit RTS
-
-    .return
-    RTS
 }
 
 \

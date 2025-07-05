@@ -345,7 +345,7 @@
         JSR blockedSoundEffect
     .notDoor
     TXA \ <-- ANIMATE_LOOK_LEFT or ANIMATE_LOOK_RIGHT
-    JMP k9Animate \ explcit RTS
+    JMP k9Animate \ implicit RTS
 
 .spriteIndexTbl
     EQUB SPRITE_INDEX_K9_LEFT, SPRITE_INDEX_K9_RIGHT    \ look
@@ -377,9 +377,6 @@
     .maxHealth
     STA healthHi
 
-    \ sound effect
-    JSR achievementSoundEffect
-
     \ clear tile
     JMP k9ClearTile \ implicit RTS
 }
@@ -394,9 +391,6 @@
         INC keyCount
     .maxKeyCount
 
-    \ sound effect
-    JSR achievementSoundEffect
-
     \ fall through to k9ClearTile
 }
 
@@ -405,6 +399,9 @@
 \
 .k9ClearTile
 {
+    \ sound effect
+    JSR achievementSoundEffect
+
     \ convert tile to space (occupied by k9)
     LDY #0
     LDA #(TILE_GRID_FLAGS_K9 OR TILE_GRID_FLAGS_OPAQUE)
