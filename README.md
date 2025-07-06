@@ -1,5 +1,5 @@
 # Introduction 
-A Doctor Who themed platform game for the BBC Micro Model B, titled '**An Adventure In Time**'. The game was developed out of curiosity... to learn 6502 assembly and learn more about the Beeb, a computer I spent countless hours programing in BASIC in my youth.
+A Doctor Who fan platform game written for the BBC Micro Model B, titled '**An Adventure In Time**'. The game was developed out of curiosity... to learn 6502 assembly and learn more about the Beeb, a computer I spent countless hours programing in BASIC in my youth.
 
 <img width="300" alt="titles" src="https://github.com/user-attachments/assets/2d5c8a01-ad5c-495b-a8e4-86b7a18ca086" />
 <img width="300" alt="instructions" src="https://github.com/user-attachments/assets/199b29fe-49ce-4788-a66a-7428c1ce5e2b" />
@@ -91,3 +91,12 @@ To run the WAV converter from Visual Studio, select the **WAVConverter** project
 | game\data\credits.bin | Credits screen teletext file** |
 
 ** The teletext files were created in display RAM format using [Teletext editor](https://zxnet.co.uk/teletext/editor/).
+
+# Credits
+Thanks to Mike Hayton for his support and feedback, and thanks to all the contributors of [BeebAsm](https://github.com/stardot/beebasm) and [BeebEm](https://github.com/stardot/beebem-windows).
+
+# Copyright
+Copyright (C) 2025 Mark John Leece
+
+# License
+'An Adventure In Time' is distributed under the terms of the GNU General Public License as described in [COPYRIGHT.txt](COPYRIGHT.txt)
