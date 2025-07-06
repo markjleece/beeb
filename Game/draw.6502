@@ -89,7 +89,7 @@ IF DEBUG_TILE_GRID_FLAGS != 0
 
     RTS
 
-    SKIP 143 \ report same number of unsued code/data bytes
+    SKIP 141 \ report same number of unsued code/data bytes
 }
 ENDIF
 
@@ -216,7 +216,6 @@ ELSE
 
         \ loop?
         DEC count
-        LDA count
         BNE healthBarLoop
 
     \ draw key icon
@@ -1220,7 +1219,7 @@ ENDIF
 \
 .drawObject
 {
-    \ leftLo/Hi = objectXLo/Hi[0] & 0xFFFC
+    \ leftLo/Hi = objectXLo/Hi[X] & 0xFFFC
     LDA objectXLo, X : AND #&FC : STA leftLo
     LDA objectXHi, X : STA leftHi
 
@@ -1309,7 +1308,7 @@ ENDIF
         STY leftLo
     .endif_6
 
-    \ clip left edge?
+    \ clip right edge?
     LDA rightHi : BEQ endif_7
 
         \ width -= right - 256
@@ -1372,6 +1371,11 @@ ENDIF
     \ adjust source base address
     \ 
 
+    \ outerCount = width / 4
+    LDA width
+    LSR A: LSR A
+    STA outerCount
+
     \ offset = top % 8 
     LDA topLo
     AND #7
@@ -1400,28 +1404,21 @@ ENDIF
     LDA dstAddr : STA dstBaseAddr
     LDA dstAddr+1 : STA dstBaseAddr+1
 
-    \ outerCount = (left % 4 + width) / 4
-    LDA leftLo
-    AND #3
-    CLC
-    ADC width
-    LSR A: LSR A
-    STA outerCount
-
-    \ is enemy lasered flag set? (save state in carry)
+    \ is K9 or enemy?
     CPX enemyCount : BEQ then10 : BCS endif10
     .then10
-        SEC
+        \ is lasered flag set?
+        SEC \ --> render normal
         LDA objectState, X
         AND #OBJECT_STATE_FLAGS_LASERED
         BEQ endif10
 
-        \ clear lasered flag and set redraw
+        \ laser flag set so clear flag and set redraw (so sprite is rendered normally on the next frame)
         LDA objectState, X
         AND #LO(NOT(OBJECT_STATE_FLAGS_LASERED))
         ORA #OBJECT_STATE_FLAGS_REDRAW
         STA objectState, X
-        CLC
+        CLC \ --> render lasered
     .endif10
 
     \ handle lasered and blank effects
@@ -1499,15 +1496,15 @@ ENDIF
         .headLoop
 
             \ draw half character
-            .*head0 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-            .*head1 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-            .*head2 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-            .*head3 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-            .*head4 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-            .*head5 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-            .*head6 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-            .*head7 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-            .*head8
+            .head0 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .head1 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .head2 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .head3 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .head4 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .head5 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .head6 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .head7 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+            .head8
 
             \ dstAddr += 512
             LDA #2
@@ -1528,10 +1525,10 @@ ENDIF
             .nocarry11
             STA srcAddr
 
-            \ reset indexer    
+            \ reset indexer
             LDY #0
 
-            \ loop while (--headCount > 0)\
+            \ loop while (--headCount > 0)
             DEX
             BNE headLoop
 
@@ -1541,15 +1538,15 @@ ENDIF
         BCC tail_jump_inst \ branch to tail0..tail8 (instruction patched above)
 
         \ draw half character
-        .*tail8 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-        .*tail7 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-        .*tail6 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-        .*tail5 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-        .*tail4 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-        .*tail3 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-        .*tail2 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-        .*tail1 LDA (srcAddr), Y : STA (dstAddr), Y: INY
-        .*tail0
+        .tail8 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .tail7 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .tail6 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .tail5 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .tail4 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .tail3 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .tail2 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .tail1 LDA (srcAddr), Y : STA (dstAddr), Y: INY
+        .tail0
 
         \ erase below?
         LDA eraseBelow : BEQ skipEraseBelow
@@ -1667,8 +1664,7 @@ ENDIF
 
         \ outer loop?
         DEC outerCount
-        BEQ return
-        JMP outerLoop
+        BNE outerLoop
 
 .return
     PLA : TAX \ restore X register
