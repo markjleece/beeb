@@ -421,8 +421,8 @@ levelTileGrid = &3800                   \ 2K of tile values (flags/indicies)
 levelTileTypes = &03E0                  \ 28 x 1-byte tile types (repurposes MOS keyboard buffer)
 
 \ level load locations (data loaded into screen memory and relocated)
-levelHorzTileCountLoaded = &4000        \ level width in tiles (copied to horzTileCount)
-levelVertTileCountLoaded = &4001        \ level height in tiles (used to calculate scrnTopHiMaxMinusOne)
+levelHorzTileCountLoaded = &4000        \ level extents
+levelVertTileCountLoaded = &4001        
 levelTileTypesLoaded = &4002            \ level tile types (relocated to levelTileTypes)
 levelEnemyWeaponStrengthLoaded = &401E  \ level enemy weapon strength (relocated to enemyWeaponStrengthLo/Hi)
 levelLaserStrengthLoaded = &401F        \ level laser strength (relocated to laserStrength)
@@ -481,7 +481,7 @@ ORG 0
 .laserLength                SKIP 1  \ length of drawn laser beam (used to undraw laser beam)
 .laserLastPixels            SKIP 1  \ last pixels of drawn laser (used to undraw laser beam)
 .enemyHealthLo              SKIP 1  \ low health byte of enemy. Used to decrement ememy health
-.k9DamageCounter            SKIP 1  \ set to ENEMY_WEAPON_DAMAGE_COUNTER when enemy uses weapon
+.k9DamageCounter            SKIP 1  \ set to K9_DAMAGE_ON_COUNTER when enemy fires weapon
 .endPursuitCounter          SKIP 1  \ set to ENEMY_END_PURSUIT_COUNTER when k9 is in sight
 .pursuitSoundEffectCounter  SKIP 1  \ sound effect counter. Used to ignore duplicate requests and repeat sample
 .laserSoundEffectOn         SKIP 1  \ sound effect flag. Used to ignore duplicate requests

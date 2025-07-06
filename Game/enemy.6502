@@ -20,7 +20,6 @@
 \ Boston, MA  02110-1301, USA.
 \ --------------------------------------------------------------
 
-
 \
 \ Enemy behavior depends on the current 'action' state, which can be: ACTION_LOOK, ACTION_PACE, 
 \ or ACTION_PURSUE_LEFT/RIGHT/UP/DOWN.  The 'action' is stored in the top 3-bits of objectType[]
