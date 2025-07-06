@@ -4,7 +4,7 @@
 \ switch data and routines
 \ 
 
-.switchPairings SKIP 32
+.switchPairings SKIP SWITCH_PAIRINGS_SIZE
 
 \
 \ activateSwitch(tileGridAddr)

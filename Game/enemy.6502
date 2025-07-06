@@ -91,9 +91,7 @@
     \ does enemy have enough health to pursue K9?
     CMP #ENEMY_WEAPON_THRESHOLD : BCS skip1
         \ action = ACTION_LOOK
-        LDA objectType, X
-        AND #LO(NOT(ACTION_MASK))
-        STA objectType, X
+        JSR enemySetActionLook
 
         \ silence pursuit
         JSR silencePursuitSoundEffect
@@ -123,6 +121,7 @@
     LDA objectState \ <-- K9 state
     AND #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING) : BEQ else
         \ set enemy action to ACTION_PURSUE_UP or ACTION_PURSUE_DOWN
+        ASSERT(ACTION_PURSUE_DOWN = ACTION_PURSUE_UP OR ACTION_PURSUE_DOWN)
         ASL A : ASL A \ carry set -> ACTION_PURSUE_DOWN, carry clear -> ACTION_PURSUE_UP
         LDA objectType, X
         AND #LO(NOT(ACTION_MASK))
@@ -133,14 +132,13 @@
         BNE endif
     .else
         \ set enemy action to ACTION_PURSUE_LEFT or ACTION_PURSUE_RIGHT
-        LDA objectType, X
-        AND #ANIMATE_MASK
-        LSR A : LSR A
-        TAY \ -> animation (0..5)
+        ASSERT(ACTION_PURSUE_RIGHT = ACTION_PURSUE_LEFT OR ACTION_PURSUE_RIGHT)
         LDA objectType, X
         AND #LO(NOT(ACTION_MASK))
-        ORA pursueActionTbl, Y
-        BPL stopFiring \ enemy is turning
+        ORA #ACTION_PURSUE_LEFT
+        BIT direction : BPL skip3
+            ORA #ACTION_PURSUE_RIGHT
+        .skip3
     .endif
     STA objectType, X
 
@@ -153,14 +151,19 @@
     
     \ k9 within weapon range?
     LDA temp \ <-- distance
-    CMP #ENEMY_WEAPON_RANGE
+    CMP #(ENEMY_WEAPON_RANGE+1)
     BCS stopFiring
 
+    \ don't use weapon if K9 is on an elevator
+    LDA objectState \ <-- K9 state
+    AND #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING)
+    BNE stopFiring
+
     \ set K9 damage counter (processed in inflictK9Damage)
-    LDA k9DamageCounter : BNE skip3
+    LDA k9DamageCounter : BNE skip4
         LDA #K9_DAMAGE_ON_COUNTER
         STA k9DamageCounter
-    .skip3
+    .skip4
 
     \ set enemy 'firing' flag
     LDA objectState, X
@@ -177,11 +180,6 @@
 
 .return
     RTS
-
-.pursueActionTbl 
-    EQUB ACTION_PURSUE_LEFT, ACTION_PURSUE_RIGHT \ look
-    EQUB ACTION_PURSUE_LEFT, ACTION_PURSUE_RIGHT \ move
-    EQUB 0, 0                                    \ turn
 }
 
 \
@@ -1054,7 +1052,7 @@
         LDA #&FF : STA objectSpriteIndex, X
 
         \ action = ACTION_LOOK
-        JSR setActionLook
+        JSR enemySetActionLook
 
         \ stop laser
         INC laserInhibited
@@ -1079,7 +1077,7 @@
 
     \ does enemy have sufficient remaining health to pursue or use weapon?
     LDA temp \ <-- remaining health
-    CMP #(ENEMY_WEAPON_THRESHOLD+1) : BCC setActionLook \ implicit RTS
+    CMP #(ENEMY_WEAPON_THRESHOLD+1) : BCC enemySetActionLook \ implicit RTS
     
     \ is enemy lasered from behind? (check if K9 and enemy are facing in same direction)
     JSR getObjectDirection
@@ -1102,8 +1100,18 @@
 
     \ invoke enemy lasered sound effect
     JMP (primarySoundVector_enemyLasered) \ implict RTS
+}
 
-.setActionLook
+\
+\ enemySetActionLook(X)
+\
+\ set an enemies action to ACTION_LOOK
+\
+\ params:
+\   X register   Enemy index
+\
+.enemySetActionLook
+{
     \ action = ACTION_LOOK
     LDA objectType, X
     AND #LO(NOT(ACTION_MASK))

@@ -434,8 +434,8 @@
     LDA #LO(spriteHealthBarTbl) : STA dstAddr
     LDA #HI(spriteHealthBarTbl) : STA dstAddr+1
 
-    LDA #LO(12) : STA sizeLo
-    LDA #HI(12) : STA sizeHi
+    LDA #LO(ENEMY_HEALTH_BAR_TABLE_SIZE) : STA sizeLo
+    LDA #HI(ENEMY_HEALTH_BAR_TABLE_SIZE) : STA sizeHi
 
     JSR memcpy
 
@@ -446,8 +446,8 @@
     LDA #LO(healthBarAtlas) : STA dstAddr
     LDA #HI(healthBarAtlas) : STA dstAddr+1
 
-    LDA #LO(30) : STA sizeLo
-    LDA #HI(30) : STA sizeHi
+    LDA #LO(HEALTH_BAR_ATLAS_SIZE) : STA sizeLo
+    LDA #HI(HEALTH_BAR_ATLAS_SIZE) : STA sizeHi
 
     JMP memcpy \ implicit RTS
 
@@ -476,8 +476,8 @@
     LDA #LO(drawObject_headJumpTbl) : STA dstAddr
     LDA #HI(drawObject_headJumpTbl) : STA dstAddr+1
 
-    LDA #LO(10) : STA sizeLo
-    LDA #HI(10) : STA sizeHi
+    LDA #LO(DRAW_OBJECT_JUMP_TABLE_SIZE) : STA sizeLo
+    LDA #HI(DRAW_OBJECT_JUMP_TABLE_SIZE) : STA sizeHi
 
     JSR memcpy
 
@@ -511,8 +511,8 @@
     LDA #LO(soundEffects) : STA dstAddr
     LDA #HI(soundEffects) : STA dstAddr+1
 
-    LDA #LO(44) : STA sizeLo
-    LDA #HI(44) : STA sizeHi
+    LDA #LO(SOUND_EFFECTS_SIZE) : STA sizeLo
+    LDA #HI(SOUND_EFFECTS_SIZE) : STA sizeHi
 
     JMP memcpy \ implicit RTS
 
@@ -548,8 +548,8 @@
     LDA #LO(levelTileTypes) : STA dstAddr
     LDA #HI(levelTileTypes) : STA dstAddr+1
 
-    LDA #LO(30) : STA sizeLo
-    LDA #HI(30) : STA sizeHi
+    LDA #LO(TILE_COUNT) : STA sizeLo
+    LDA #HI(TILE_COUNT) : STA sizeHi
 
     JSR memcpy
 
@@ -562,8 +562,8 @@
     LDA #LO(switchPairings) : STA dstAddr
     LDA #HI(switchPairings) : STA dstAddr+1
 
-    LDA #LO(32) : STA sizeLo
-    LDA #HI(32) : STA sizeHi
+    LDA #LO(SWITCH_PAIRINGS_SIZE) : STA sizeLo
+    LDA #HI(SWITCH_PAIRINGS_SIZE) : STA sizeHi
 
     JSR memcpy
 

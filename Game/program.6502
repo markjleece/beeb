@@ -121,8 +121,9 @@
 
 \ debug flags
 DEBUG_TILE_GRID_FLAGS = 0       \ overlay tile grid flags (super useful)
-DEBUG_DISABLE_SIDEWAYS_RAM = 0  \ disable sideways RAM
-DEBUG_WAIT_TENTHS = 0           \ waitTenths util routine
+DEBUG_DISABLE_SIDEWAYS_RAM = 0  \ disable sideways RAM (useful to speed up startup time)
+DEBUG_GODMODE_NO_REPLENISH = 0  \ disable god mode health & key replenishment (useful for testing levels)
+DEBUG_WAIT_TENTHS = 0           \ waitTenths util routine (useful for debugging)
 
 \ number of levels
 LEVEL_COUNT = 6 \ max supported levels is 9
@@ -149,9 +150,6 @@ KEY_6 = 17
 KEY_7 = 18
 KEY_8 = 19
 KEY_9 = 20
-
-\ tile grid size (bytes)
-LEVEL_TILE_GRID_SIZE = 2048
 
 \ object types (objectType bits 0,1)
 OBJECT_TYPE_MASK = %00000011
@@ -344,8 +342,14 @@ SAMPLE_EXTERMINATE_FRAME_COUNT = 100
 \ frame counter used to inhibit move sound effects
 INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT = 30
 
-\ PCM data load buffer size
-PCM_DATA_LOAD_BUFFER_SIZE = &C9A
+\ data structure sizes (bytes)
+LEVEL_TILE_GRID_SIZE = 2048         \ tile grid size
+SOUND_EFFECTS_SIZE = 44             \ sound effects size
+SWITCH_PAIRINGS_SIZE = 48           \ switch pairings size
+DRAW_OBJECT_JUMP_TABLE_SIZE = 10    \ draw object jump tables size
+ENEMY_HEALTH_BAR_TABLE_SIZE = 12    \ health bar table size
+HEALTH_BAR_ATLAS_SIZE = 30          \ health bar atlas size
+PCM_DATA_LOAD_BUFFER_SIZE = &C9A    \ PCM data load buffer size
 
 \ crop transition flags
 TRANSITION_VOID = 0
@@ -408,7 +412,7 @@ levelLaserHealthDrainLoaded = &4020     \ level laser health drain (relocated to
 levelJewelHealthGainHiLoaded = &4021    \ level jewel health gain (relocated to jewelHealthGainHi)
 levelSampleSoundsEnabledLoaded = &4022  \ level sound samples enabled flag (used in setting primarySamplesEnabled and secondarySamplesEnabled)
 levelObjectsLoaded = &4023              \ 48 x 4 byte level objects descriptors (used to populate game objects)
-levelSwitchPairings = &40E3             \ 32 x 1 byte switch pairings
+levelSwitchPairings = &40E3             \ 48 x 1 byte switch pairings
 
 \ drawObject head and tail jump offset tables
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
@@ -743,17 +747,16 @@ INCLUDE "utils.6502"
         JMP loadLevel \ implicit RTS
     .nopress_r
 
-    \ test god mode keys?
-    LDA godMode : BNE godModeKeyboardInputHandlers \ implicit RTS
+    \ god mode?
+    LDA godMode : BEQ rts_10
 
-    RTS
-}
+    \ replenish health and keys
+IF DEBUG_GODMODE_NO_REPLENISH = 0
+    LDA #MAX_HEALTH_HI : STA healthHi
+    LDA #&FF : STA healthLo
+    LDA #MAX_KEY_COUNT : STA keyCount
+ENDIF
 
-\
-\ god mode keyboard input handlers
-\
-.godModeKeyboardInputHandlers
-{
     \ check reload level keys (1..LEVEL_COUNT)
     LDX #LEVEL_COUNT
     .loop1
@@ -766,7 +769,7 @@ INCLUDE "utils.6502"
         BNE loop1
 
     \ don't process arrow keys if scroll counter is odd
-    LDA scrollCounter : AND #1 : BNE return
+    LDA scrollCounter : AND #1 : BNE rts_10
 
     \ arrow keys
     LDX #3
@@ -779,11 +782,14 @@ INCLUDE "utils.6502"
         .nopress2
         DEX
         BPL loop2
-    
-.return
-    RTS
+
+    RTS    
 
 .directionTbl EQUB LO(DIRECTION_UP), LO(DIRECTION_DOWN), LO(DIRECTION_LEFT), LO(DIRECTION_RIGHT)
+
+IF DEBUG_GODMODE_NO_REPLENISH != 0
+    SKIP 12 \ report same number of unsued code/data bytes
+ENDIF
 }
 
 \
@@ -838,6 +844,14 @@ INCLUDE "utils.6502"
         CMP objectCount
         BNE loop
 
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_10
+{
     RTS
 }
 
@@ -882,14 +896,6 @@ INCLUDE "utils.6502"
         CMP objectCount
         BNE loop
 
-    \ fall through to RTS
-}
-
-\
-\ common RTS
-\
-.rts_10
-{
     RTS
 }
 
@@ -1044,13 +1050,6 @@ INCLUDE "utils.6502"
     AND #7
     CMP #2
     BNE rts_0
-
-    \ replenish god-mode health and keys
-    LDA godMode : BEQ skip
-        LDA #MAX_HEALTH_HI : STA healthHi
-        LDA #&FF : STA healthLo
-        LDA #MAX_KEY_COUNT : STA keyCount
-    .skip
 
     \ draw the game bar
     JMP drawGameBar \ implicit RTS
