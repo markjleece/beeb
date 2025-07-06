@@ -1,7 +1,25 @@
- \ This file is Copyright © 2025 - Mark John Leece - All rights reserved
-
+ \ --------------------------------------------------------------
+\ An Adventure In Time - A Doctor Who fan game for the BBC Micro
+\ Model B
 \
-\ beebasm ref: https://github.com/stardot/beebasm
+\ Copyright (C) 2025  Mark John Leece
+\
+\ This program is free software; you can redistribute it and/or
+\ modify it under the terms of the GNU General Public License
+\ as published by the Free Software Foundation; either version 2
+\ of the License, or (at your option) any later version.
+\
+\ This program is distributed in the hope that it will be useful,
+\ but WITHOUT ANY WARRANTY; without even the implied warranty of
+\ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+\ GNU General Public License for more details.
+\
+\ You should have received a copy of the GNU General Public
+\ License along with this program; if not, write to the Free
+\ Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+\ Boston, MA  02110-1301, USA.
+\ --------------------------------------------------------------
+
 \
 \ God mode - activated by pressing and holding 'D' 'G' 'O' in quick succession
 \  - gives K9 unlimited health and keys
@@ -1425,10 +1443,10 @@ INCLUDE "sample.6502"
 \ embed 'level1' in binary (replaced on level load/reload)
 \
 ORG levelLoadAddr
-INCBIN "data\\level1.dat" \ level data (palette, tile types, tiles, tile grid etc)
+INCBIN "data\level1.dat" \ level data (palette, tile types, tiles, tile grid etc)
 
 .levelSpriteDataLoaded
-INCBIN "data\\level1.atl" \ level atlas sprite data (enemies, elevators, doors)
+INCBIN "data\level1.atl" \ level atlas sprite data (enemies, elevators, doors)
 
 .levelCode
 INCLUDE "level.6502" \ packaged level code
@@ -1473,7 +1491,7 @@ SAVE "finale", modeSevenCode, end
 \ primary pcm data --> SSD 
 \
 ORG &8000
-INCBIN "data\\pcm_primary.dat"
+INCBIN "data\pcm_primary.dat"
 
 SAVE "pcmP1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 SAVE "pcmP2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
@@ -1486,7 +1504,7 @@ SAVE "pcmP5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOA
 \
 CLEAR &8000, &CF00
 ORG &8000
-INCBIN "data\\pcm_secondary.dat"
+INCBIN "data\pcm_secondary.dat"
 
 SAVE "pcmS1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 SAVE "pcmS2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
@@ -1508,8 +1526,8 @@ INCLUDE "interstitial.6502"     \ replace titles code with interstitial code
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "data\\level1.dat"       \ level data (palette, tile grid, tiles etc)
-INCBIN "data\\level1.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
+INCBIN "data\level1.dat"       \ level data (palette, tile grid, tiles etc)
+INCBIN "data\level1.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
 \INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
 \INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
 \INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
@@ -1522,8 +1540,8 @@ SAVE "level1", levelLoadAddr, levelEnd
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "data\\level2.dat"       \ level data (palette, tile grid, tiles etc)
-INCBIN "data\\level2.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
+INCBIN "data\level2.dat"       \ level data (palette, tile grid, tiles etc)
+INCBIN "data\level2.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
 \INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
 \INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
 \INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
@@ -1536,8 +1554,8 @@ SAVE "level2", levelLoadAddr, levelEnd
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "data\\level3.dat"       \ level data (palette, tile grid, tiles etc)
-INCBIN "data\\level3.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
+INCBIN "data\level3.dat"       \ level data (palette, tile grid, tiles etc)
+INCBIN "data\level3.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
 \INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
 \INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
 \INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
@@ -1550,8 +1568,8 @@ SAVE "level3", levelLoadAddr, levelEnd
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "data\\level4.dat"       \ level data (palette, tile grid, tiles etc)
-INCBIN "data\\level4.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
+INCBIN "data\level4.dat"       \ level data (palette, tile grid, tiles etc)
+INCBIN "data\level4.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
 \INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
 \INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
 \INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
@@ -1564,8 +1582,8 @@ SAVE "level4", levelLoadAddr, levelEnd
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "data\\level5.dat"       \ level data (palette, tile grid, tiles etc)
-INCBIN "data\\level5.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
+INCBIN "data\level5.dat"       \ level data (palette, tile grid, tiles etc)
+INCBIN "data\level5.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
 \INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
 \INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
 \INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
@@ -1578,8 +1596,8 @@ SAVE "level5", levelLoadAddr, levelEnd
 CLEAR levelLoadAddr, levelCode
 
 ORG levelLoadAddr
-INCBIN "data\\level6.dat"       \ level data (palette, tile grid, tiles etc)
-INCBIN "data\\level6.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
+INCBIN "data\level6.dat"       \ level data (palette, tile grid, tiles etc)
+INCBIN "data\level6.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
 \INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
 \INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
 \INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
