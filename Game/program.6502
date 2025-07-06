@@ -1,4 +1,4 @@
- \ --------------------------------------------------------------
+\ --------------------------------------------------------------
 \ An Adventure In Time - A Doctor Who fan game for the BBC Micro
 \ Model B
 \
@@ -21,7 +21,7 @@
 \ --------------------------------------------------------------
 
 \
-\ God mode - activated by pressing and holding 'D' 'G' 'O' in quick succession
+\ God mode - activated by pressing and holding 'G' 'O' 'D' in quick succession
 \  - gives K9 unlimited health and keys
 \  - enables scrolling using the arror keys
 \  - enables a specific level to be loaded using the number keys: 1..LEVEL_COUNT
@@ -565,8 +565,8 @@ NEXT
 \ game objects (properties are held across correlated arrays)
 \
 ORG &400
-.objectType                 SKIP MAX_OBJECT_COUNT \ object type (bits 0,1), animation (bits 2..4), enemy action (bits 6..7)
-.objectState                SKIP MAX_OBJECT_COUNT \ high nibble holds common render flags, bottom nibble holds object specific information
+.objectType                 SKIP MAX_OBJECT_COUNT \ object type (bits 0,1), animation (bits 2..4), enemy action (bits 5..7)
+.objectState                SKIP MAX_OBJECT_COUNT \ high nibble holds common flags, bottom nibble holds object specific information
 .objectXLo                  SKIP MAX_OBJECT_COUNT \ object's top left position
 .objectXHi                  SKIP MAX_OBJECT_COUNT
 .objectYLo                  SKIP MAX_OBJECT_COUNT
