@@ -1605,7 +1605,7 @@ INCBIN "data\level6.atl"       \ level atlas sprite data (enemies, elevators, do
 SAVE "level6", levelLoadAddr, levelEnd
 
 \
-\ Levels 6..9 can optionally be added here (LEVEL_COUNT will also need updating)
+\ Levels 7..9 can optionally be added here (LEVEL_COUNT will also need updating)
 \
 
 \ Report unused memory
