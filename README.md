@@ -80,7 +80,7 @@ To run the WAV converter from Visual Studio, select the **WAVConverter** project
 |---|---|
 | docs\development.docx | Provides details on the design and development of the game, which may be of interest |
 | docs\memory.xlsx | Used to determine the memory locations of sprite assets and other program data |
-| game\assets\music\music.sib | A Sibelius music score containing the Doctor Who music and arrangement by Ron Grainer & Delia Derbyshire |
+| game\assets\music\music.sib | A Sibelius music score containing the Doctor Who theme composed by Ron Grainer, with minor changes |
 | game\assets\music\music.midi | A type-0 MIDI file created using Sibelius |
 | game\programs.mmd | A multi-disc image that can be copied to a micro-sd card and used to play the game on a Beeb which has MMFS Turbo support. Note that building the solution does not update the mmd file |
 | game\data\titles.bin | Titles screen teletext file** |
