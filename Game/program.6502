@@ -1146,6 +1146,7 @@ ENDIF
     AND #7
     BNE rts_0
 
+    \ don't set the redraw flag for disabled elevators, teleports, and doors
     CPX enemyCount : BCC endif : BEQ endif 
         LDA objectState, X
         AND #OBJECT_STATE_FLAGS_DISABLED
@@ -1170,6 +1171,7 @@ ENDIF
     STA objectState, X
 
     LDA #0 \ return success
+
     \ fall through to RTS
 }
 
