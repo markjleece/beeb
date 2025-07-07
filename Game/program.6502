@@ -168,6 +168,10 @@ KEY_6 = 17
 KEY_7 = 18
 KEY_8 = 19
 KEY_9 = 20
+KEY_Z = 21
+KEY_X = 22
+KEY_COLON = 23
+KEY_DIVIDE = 24
 
 \ object types (objectType bits 0,1)
 OBJECT_TYPE_MASK = %00000011
@@ -199,9 +203,8 @@ FRAME_COUNT_K9_TURN = 4
 FRAME_COUNT_ENEMY_TURN = 8
 FRAME_COUNT_ENEMY_WAIT = 150
 
-\ laser frame counts
-LASER_ON_FRAME_COUNT = 2
-LASER_OFF_FRAME_COUNT = 1
+\ laser frame count
+LASER_FRAME_COUNT = 2
 
 \ directions
 DIRECTION_UP = -1
@@ -719,7 +722,7 @@ INCLUDE "utils.6502"
 
         \ reset laser frame count?
         LDA laserFrameCount : BNE skip_space
-        LDA #LASER_ON_FRAME_COUNT : STA laserFrameCount
+        LDA #LASER_FRAME_COUNT : STA laserFrameCount
         BNE skip_space
 
     .nopress_space       
@@ -733,28 +736,32 @@ INCLUDE "utils.6502"
         JSR silenceLaserSoundEffect
     .skip_space
 
-    \ 'W' key...
+    \ 'W' or ':' key...
     LDA keyTbl + KEY_W
+    ORA keyTbl + KEY_COLON
     BPL nopress_w
         LDA #LO(DIRECTION_UP)
         JSR k9MoveVertically
     .nopress_w
 
-    \ 'S' key...
+    \ 'S' or '/' key...
     LDA keyTbl + KEY_S
+    ORA keyTbl + KEY_DIVIDE
     BPL nopress_s
         LDA #LO(DIRECTION_DOWN)
         JSR k9MoveVertically
     .nopress_s
 
-    \ 'A' key...
+    \ 'A' or 'Z' key...
     LDA keyTbl + KEY_A
+    ORA keyTbl + KEY_Z
     BPL nopress_a
         JMP k9MoveLeft \ implicit RTS
     .nopress_a
 
-    \ 'D' key...
+    \ 'D' or 'X' key...
     LDA keyTbl + KEY_D
+    ORA keyTbl + KEY_X
     BPL nopress_d
         JMP k9MoveRight \ implicit RTS
     .nopress_d
@@ -878,18 +885,17 @@ ENDIF
 \
 .drawLaser
 {
-    \ draw K9's laser
-    LDA laserFrameCount
-    BEQ skip
-        DEC laserFrameCount
-        CMP #LASER_ON_FRAME_COUNT : BNE else
-            JMP drawLaserOn \ implicit RTS
-        .else
-        CMP #LASER_OFF_FRAME_COUNT : BNE skip
-            JMP drawLaserOff \ implicit RTS
-    .skip
+    \ if (laserFrameCount == 0) return
+    LDA laserFrameCount : BEQ rts_10
 
-    RTS
+    \ decrement laserFrameCount
+    DEC laserFrameCount
+
+    \ draw laser on or off
+    CMP #LASER_FRAME_COUNT : BNE else
+        JMP drawLaserOn \ implicit RTS
+    .else
+        JMP drawLaserOff \ implicit RTS
 }
 
 \
@@ -1389,8 +1395,7 @@ ASSERT (HI(P%) > &17) \ ensure selectDFS is assembled after page &17
 {
     LDX #LO(cmdDISK)
     LDY #HI(cmdDISK)
-    JSR oscli
-    RTS
+    JMP oscli \ implicit RTS
 
 .cmdDISK
     EQUS "DISK", 13
