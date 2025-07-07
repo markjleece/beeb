@@ -1097,7 +1097,7 @@
 
     \ does enemy have sufficient remaining health to pursue or use weapon?
     LDA temp \ <-- remaining health
-    CMP #(ENEMY_WEAPON_THRESHOLD+1) : BCC enemySetActionLook \ implicit RTS
+    CMP #ENEMY_WEAPON_THRESHOLD : BCC enemySetActionLook \ implicit RTS
     
     \ is enemy lasered from behind? (check if K9 and enemy are facing in same direction)
     JSR getObjectDirection

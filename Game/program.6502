@@ -31,13 +31,13 @@
 \   +---------------------------------+ &FFFF
 \   | Machine Operating System (MOS)  |
 \   +---------------------------------+ &C000
-\   | Paged ROMs                      |
+\   | Paged ROMs / Sideways RAM       |
 \   +---------------------------------+ &8000
 \   | Screen (256x256, 4 color mode)  |
 \   +---------------------------------+ &4000
 \   | Game data (portions reloaded)   |
 \   +---------------------------------+ &2C30
-\   | Game code (6928 bytes)          |
+\   | Game code (6960 bytes)          |
 \   +---------------------------------+ &1100
 \   | Game data (portions reloaded)   | 
 \   +---------------------------------+ &10E0
@@ -267,7 +267,7 @@ ENEMY_END_PURSUIT_COUNTER = 32 \ number of frames (x16) before enemies give up p
 
 \ K9 damage counters
 K9_DAMAGE_ON_COUNTER = 8 \ when to start inflicting damage on K9
-K9_DAMAGE_OFF_COUNTER = 4 \ when to end inflicting damage on K9
+K9_DAMAGE_OFF_COUNTER = 4 \ when to stop inflicting damage on K9, and pause
 
 \ lasered tile constants
 LASERED_TILE_STRENGTH = 20 \ strength of lasered tile (destructible wall or off-switch)
@@ -366,7 +366,7 @@ SOUND_EFFECTS_SIZE = 44             \ sound effects size
 SWITCH_PAIRINGS_SIZE = 48           \ switch pairings size
 DRAW_OBJECT_JUMP_TABLE_SIZE = 10    \ draw object jump tables size
 ENEMY_HEALTH_BAR_TABLE_SIZE = 12    \ health bar table size
-HEALTH_BAR_ATLAS_SIZE = 30          \ health bar atlas size
+ENEMY_HEALTH_BAR_ATLAS_SIZE = 30    \ health bar atlas size
 PCM_DATA_LOAD_BUFFER_SIZE = &C9A    \ PCM data load buffer size
 
 \ crop transition flags
@@ -429,8 +429,8 @@ levelLaserStrengthLoaded = &401F        \ level laser strength (relocated to las
 levelLaserHealthDrainLoaded = &4020     \ level laser health drain (relocated to laserHealthDrain)
 levelJewelHealthGainHiLoaded = &4021    \ level jewel health gain (relocated to jewelHealthGainHi)
 levelSampleSoundsEnabledLoaded = &4022  \ level sound samples enabled flag (used in setting primarySamplesEnabled and secondarySamplesEnabled)
-levelObjectsLoaded = &4023              \ 48 x 4 byte level objects descriptors (used to populate game objects)
-levelSwitchPairings = &40E3             \ 48 x 1 byte switch pairings
+levelObjectsLoaded = &4023              \ level object descriptors (used to populate game objects)
+levelSwitchPairingsLoaded = &40E3       \ level switch pairings
 
 \ drawObject head and tail jump offset tables
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
@@ -472,7 +472,7 @@ ORG 0
 .scrollCounter              SKIP 1  \ number of half-tiles to scroll, in the direction specified by scrollDirection
 .scrollDirection            SKIP 1  \ scroll direction (DIRECTION_UP..DIRECTION_RIGHT)
 .keyCount                   SKIP 1  \ current number of keys (0..9)
-.healthLo                   SKIP 1  \ k9's health (low/high bytes) value range: 0..0FFF
+.healthLo                   SKIP 1  \ k9's health (low/high bytes) value range: 0..MAX_HEALTH_HI:&FF
 .healthHi                   SKIP 1  
 .laserInhibited             SKIP 1  \ set if laser is inhibited (occurs when enemy is destroyed)
 .laserFrameCount            SKIP 1  \ 0..2 (2 = turn on, 1 = turn off, 0 = off)

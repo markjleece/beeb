@@ -468,8 +468,8 @@
     LDA #LO(healthBarAtlas) : STA dstAddr
     LDA #HI(healthBarAtlas) : STA dstAddr+1
 
-    LDA #LO(HEALTH_BAR_ATLAS_SIZE) : STA sizeLo
-    LDA #HI(HEALTH_BAR_ATLAS_SIZE) : STA sizeHi
+    LDA #LO(ENEMY_HEALTH_BAR_ATLAS_SIZE) : STA sizeLo
+    LDA #HI(ENEMY_HEALTH_BAR_ATLAS_SIZE) : STA sizeHi
 
     JMP memcpy \ implicit RTS
 
@@ -578,8 +578,8 @@
     \
     \ relocate switch pairings
     \
-    LDA #LO(levelSwitchPairings) : STA srcAddr
-    LDA #HI(levelSwitchPairings) : STA srcAddr+1
+    LDA #LO(levelSwitchPairingsLoaded) : STA srcAddr
+    LDA #HI(levelSwitchPairingsLoaded) : STA srcAddr+1
 
     LDA #LO(switchPairings) : STA dstAddr
     LDA #HI(switchPairings) : STA dstAddr+1
