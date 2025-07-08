@@ -31,7 +31,7 @@ Each level is really a puzzle, to figure out how to navigate K9 to the TARDIS.  
 
 Some levels contain switches which can be activated using K9’s laser to control elevators, teleports, and doors. Levels also feature weak, distinctively colored walls that K9’s laser can destroy.
 
-The game includes a ‘god mode’ — activated by quickly pressing ‘D’, ‘G’, and ‘O’ — that grants K9 unlimited health and keys. You can load any level by pressing keys '1' to '6', and use the arrow keys to scroll around a level.
+The game includes a ‘god mode’ — activated by pressing ‘D’, ‘O’, and ‘G’ keys together — that grants K9 unlimited health and keys. You can load any level by pressing keys '1' to '6', and use the arrow keys to scroll around a level.
 
 # Running the game
 The game can be run in [BeebEm](https://github.com/stardot/beebem-windows) using the disc image: **game/program.ssd**, or run on a BBC Micro model B (with MMFS Turbo support) by copying **game/program.mmd** to a micro-sd card.
