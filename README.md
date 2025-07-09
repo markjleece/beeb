@@ -2,7 +2,7 @@
 A Doctor Who fan platform game written for the BBC Micro Model B, titled '**An Adventure In Time**'. The game was developed out of curiosity... to learn 6502 assembly and learn more about the Beeb, a computer I spent countless hours programing in BASIC in my youth.
 
 <img width="300" alt="titles" src="https://github.com/user-attachments/assets/2d5c8a01-ad5c-495b-a8e4-86b7a18ca086" />
-<img width="300" alt="instructions" src="https://github.com/user-attachments/assets/2718c019-589c-47c1-b761-2c3d515840d9" />
+<img width="300" alt="instructions" src="https://github.com/user-attachments/assets/5dff1db3-5082-4c77-903f-211ac98db17b" />
 <img width="300" alt="level1" src="https://github.com/user-attachments/assets/aae50eb1-49fe-4717-8860-2717ac371b12" />
 <img width="300" alt="level2" src="https://github.com/user-attachments/assets/ee76ce82-2ce1-4beb-bdf0-f8d033634c08" />
 <img width="300" alt="level3" src="https://github.com/user-attachments/assets/ff179e81-ce36-45ad-ab3b-48c2cdbb7741" />
