@@ -32,19 +32,19 @@ namespace LevelEditor.ux
 
         private void EditCoefficients_Load(object sender, EventArgs e)
         {
-            enemyWeaponStrengthComboBox.Items.Add("512 (high)");
+            enemyWeaponStrengthComboBox.Items.Add("320 (high)");
             enemyWeaponStrengthComboBox.Items.Add("256 (normal)");
-            enemyWeaponStrengthComboBox.Items.Add("128 (low)");
+            enemyWeaponStrengthComboBox.Items.Add("192 (low)");
             SetSelectedValue(enemyWeaponStrengthComboBox, Settings.EnemyWeaponStrength);
 
-            laserStrengthComboBox.Items.Add("64 (high)");
+            laserStrengthComboBox.Items.Add("40 (high)");
             laserStrengthComboBox.Items.Add("32 (normal)");
-            laserStrengthComboBox.Items.Add("16 (low)");
+            laserStrengthComboBox.Items.Add("24 (low)");
             SetSelectedValue(laserStrengthComboBox, Settings.LaserStrength);
 
-            laserHealthDrainComboBox.Items.Add("16 (high)");
+            laserHealthDrainComboBox.Items.Add("10 (high)");
             laserHealthDrainComboBox.Items.Add("8 (normal)");
-            laserHealthDrainComboBox.Items.Add("4 (low)");
+            laserHealthDrainComboBox.Items.Add("6 (low)");
             SetSelectedValue(laserHealthDrainComboBox, Settings.LaserHealthDrain);
 
             jewelHealthGainComboBox.Items.Add("1024 (high)");

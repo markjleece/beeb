@@ -46,7 +46,7 @@ namespace LevelEditor
             EnemyWeaponStrength = fs.ReadByte() * 4; // serialized value is divided by four
             LaserStrength = fs.ReadByte();
             LaserHealthDrain = fs.ReadByte();
-            JewelHealthGain = fs.ReadByte() * 256;
+            JewelHealthGain = fs.ReadByte() * 256; // high-byte serialized
             SampleSoundsEnabled = fs.ReadByte();
         }
 
@@ -55,7 +55,7 @@ namespace LevelEditor
             fs.WriteByte((byte)(EnemyWeaponStrength / 4)); // serialized value is divided by four
             fs.WriteByte((byte)LaserStrength);
             fs.WriteByte((byte)LaserHealthDrain);
-            fs.WriteByte((byte)(JewelHealthGain / 256));
+            fs.WriteByte((byte)(JewelHealthGain / 256)); // high-byte serialized
             fs.WriteByte((byte)SampleSoundsEnabled);
         }
 

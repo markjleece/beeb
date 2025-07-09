@@ -1052,6 +1052,9 @@
     LDA objectState, X
     AND #ENEMY_STATE_HEALTH_MASK
     SBC #0
+    BCS skip0
+        LDA #0
+    .skip0
     STA temp \ --> remaining health
 
     \ update state
