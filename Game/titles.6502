@@ -37,11 +37,7 @@
     JSR playMusic
     JSR initializeSidewaysRAM
     JSR showTitleScreenPrompt
-    JSR waitForSpaceKeyPress
-
     JSR showInstructionsScreen
-    JSR waitForSpaceKeyPress
-    
     JSR stopMusic
     JSR initializeInGameInterrupts
     JSR initializeEnvelopes
@@ -159,7 +155,10 @@ ENDMACRO
     LDA #LO(40) : STA sizeLo
     LDA #HI(40) : STA sizeHi
 
-    JMP memcpy \ implicit RTS
+    JSR memcpy
+
+    \ wait for space key press
+    JMP waitForSpaceKeyPress \ implicit RTS
 
 .titles
 INCBIN "data\titles.bin"
@@ -170,6 +169,8 @@ INCBIN "data\titles.bin"
 \
 .showInstructionsScreen
 {
+    INTERNAL_KEY_SPACE = &62
+
     \ switch to mode 7
     JSR setMode7  
 
@@ -183,12 +184,74 @@ INCBIN "data\titles.bin"
     LDA #LO(1000) : STA sizeLo
     LDA #HI(1000) : STA sizeHi
 
-    JMP memcpy \ implicit RTS
+    JSR memcpy
+
+    \ wait for space key release
+    .loop1
+        LDA #INTERNAL_KEY_SPACE
+        JSR scanKey
+        BMI loop1
+
+    \ toggle key bindings every 1/2 second
+    .loop2
+        JSR waitForVSync
+        INC frameCount
+        JSR toggleControlKeys
+
+        \ loop until space key pressed
+        LDA #INTERNAL_KEY_SPACE
+        JSR scanKey
+        BPL loop2
+
+    \ reset frameCount        
+    LDA #0 : STA frameCount 
+
+    RTS
 
 .instructions
 INCBIN "data\instructions.bin"
 }
 
+\
+\ toggleControlKeys
+\
+.toggleControlKeys
+{
+    keyScreenAddr = &7C00 + (16*40) + 9
+
+    \ process every 32 frames
+    LDA frameCount
+    AND #&1F
+    BNE return
+
+    \ toggle displayed keys
+    LDA toggleKeys
+    EOR #1
+    STA toggleKeys
+    TAY
+    LDX #0
+    .loop
+        LDA keysTbl, Y
+        INY : INY
+
+        STA keyScreenAddr, X
+
+        \ X += 40
+        TXA
+        CLC
+        ADC #40
+        TAX
+
+        \ loop?
+        CPY #8
+        BCC loop
+
+    .return
+    RTS
+
+.toggleKeys EQUB 0
+.keysTbl EQUS "AZDXW:S/"
+}
 
 \
 \ initialize variables

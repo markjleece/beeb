@@ -320,8 +320,8 @@ AMPLITUDE_PHASE_RELEASE = 3
     STA &FE4E
     STA &FE6E
 
-    \ enable System-VIA Timer1 & Timer2
-    LDA #&E0
+    \ enable System-VIA Timer1, Timer2, and v-sync
+    LDA #&E2
     STA &FE4E
 
     \ set Timer1 to continous mode and Timer2 to one-shot mode
@@ -368,6 +368,14 @@ AMPLITUDE_PHASE_RELEASE = 3
         LDA &FE48 \ mark interrupt as handled
         JSR generateLowFrequencyTone
     .skip_timer2
+
+    \ Handle V-Sync interrupt
+    LDA &FE4D
+    AND #02
+    BEQ skip_vsync
+        STA &FE4D \ mark interrupt as handled
+        INC vsync \ signal v-sync
+    .skip_vsync
 
     \ restore state and return
     PLA : TAY : PLA : TAX

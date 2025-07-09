@@ -172,6 +172,7 @@ KEY_Z = 21
 KEY_X = 22
 KEY_COLON = 23
 KEY_DIVIDE = 24
+KEY_T = 25
 
 \ object types (objectType bits 0,1)
 OBJECT_TYPE_MASK = %00000011
@@ -772,6 +773,12 @@ INCLUDE "utils.6502"
         JMP loadLevel \ implicit RTS
     .nopress_r
 
+    \ 'T' key...
+    LDA keyTbl + KEY_T
+    BPL nopress_t
+        JMP moveSoundToggle \ implicit RTS
+    .nopress_t
+
     \ god mode?
     LDA godMode : BEQ rts_10
 
@@ -1298,7 +1305,7 @@ ENDIF
     JSR levelEndPreamble
 
     \ reload current level
-    JSR loadLevelFile
+    JSR loadCurrentLevelFile
 
     \ show 'battery flat' experience
     JMP showBatteryFlatScreen  \ implicit RTS
@@ -1314,12 +1321,12 @@ ENDIF
 
     \ game completed?
     LDA level
-    CMP #LEVEL_COUNT
+    EOR #LEVEL_COUNT
     BEQ gameComplete
 
     \ load next level
     INC level
-    JSR loadLevelFile
+    JSR loadCurrentLevelFile
 
     \ show level complete experience
     JMP showLevelCompletedScreen \ implicit RTS
@@ -1339,7 +1346,7 @@ ENDIF
     JSR levelEndPreamble
 
     \ load current level file
-    JSR loadLevelFile
+    JSR loadCurrentLevelFile
 
     \ initialize level
     JMP initializeLevel \ implicit RTS
@@ -1350,38 +1357,58 @@ ENDIF
 \
 .gameComplete
 {
-    \ load finale file
-    LDA #LO(cmdLoadFinale) : STA srcAddr
-    LDA #HI(cmdLoadFinale) : STA srcAddr+1
-    JSR dfsCommand
+    \ load finale experience (A = 0)
+    JSR loadLevelFile
 
-    \ invoke finale experience (with page &17 corrupted)
-    JMP finale \ implicit RTS
-
-.cmdLoadFinale
-    EQUS "LOAD finale", 13
+    \ invoke final experience
+    JMP finale \ implicit RTS    
 }
 
 \
-\ loadLevelFile()
+\ loadCurrentLevelFile()
 \
-\ Loads a level file
+\ Loads a the current level file
 \
-.loadLevelFile
+.loadCurrentLevelFile
 {
     \ update filename level number
     LDA level
+
+    \ fall through to loadLevelFile
+}
+
+\
+\ loadLevelFile(level)
+\
+\ params:
+\   accumalator     1..9, or 0 = finale experience
+\
+ASSERT (HI(P%) > &17) \ ensure dfsCommand is assembled after page &17
+
+.loadLevelFile
+{
     CLC
     ADC #'0'
     STA cmdLoadLevel+10
 
-    \ load level file
-    LDA #LO(cmdLoadLevel) : STA srcAddr
-    LDA #HI(cmdLoadLevel) : STA srcAddr+1
-    JMP dfsCommand \ implicit RTS
+    \ clear page &17 (after saving the code) as DFS uses it as a buffer
+    COPY_CLEAR_PAGE dfsCommandPageBackup, &1700
+
+    \ switch to DFS
+    JSR selectDFS
+
+    \ execute command
+    LDX #LO(cmdLoadLevel)
+    LDY #HI(cmdLoadLevel)
+    JSR oscli
+
+    \ restore code in page &17
+    COPY_PAGE &1700, dfsCommandPageBackup
+
+    RTS
 
 .cmdLoadLevel
-    EQUS "LOAD level1", 13
+    EQUS "LOAD levelX", 13
 }
 
 \
@@ -1399,33 +1426,6 @@ ASSERT (HI(P%) > &17) \ ensure selectDFS is assembled after page &17
 
 .cmdDISK
     EQUS "DISK", 13
-}
-
-\
-\ dfsCommand(A, Y)
-\
-\ params:
-\   srcAddr     Command string (low-byte)
-\
-ASSERT (HI(P%) > &17) \ ensure dfsCommand is assembled after page &17
-
-.dfsCommand
-{
-    \ clear page &17 (after saving the code) as DFS uses it as a buffer
-    COPY_CLEAR_PAGE dfsCommandPageBackup, &1700
-
-    \ switch to DFS
-    JSR selectDFS
-
-    \ execute command
-    LDX srcAddr
-    LDY srcAddr+1
-    JSR oscli
-
-    \ restore code in page &17
-    COPY_PAGE &1700, dfsCommandPageBackup
-
-    RTS
 }
 
 .lastCodeAddr \ last code address
@@ -1492,7 +1492,7 @@ ORG titles
 INCLUDE "finale.6502"   \ replace titles code with finale code
 \INCLUDE "music.6502"   \ packaged music code and data (INCLUDE statement unnecessary)
 
-SAVE "finale", modeSevenCode, end
+SAVE "level0", modeSevenCode, end
 
 \
 \ primary pcm data --> SSD 

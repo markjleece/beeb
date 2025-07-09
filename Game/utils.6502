@@ -130,7 +130,7 @@ ASSERT (HI(P%) > &17) \ ensure scanKey is assembled after &17FF
 .scanKeys
 {
     \ scan keys
-    LDX #24
+    LDX #25
     .loop
         \ read scan code, masking out top bit
         LDA keyTbl, X
@@ -151,7 +151,7 @@ ASSERT (HI(P%) > &17) \ ensure scanKey is assembled after &17FF
     EQUB &41, &32, &21, &51, &53, &36, &33
     EQUB &62, &39, &29, &19, &79, &30, &31
     EQUB &11, &12, &13, &34, &24, &15, &26
-    EQUB &61, &42, &48, &68
+    EQUB &61, &42, &48, &68, &23
 }
 
 \

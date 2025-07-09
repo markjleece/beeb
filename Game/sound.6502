@@ -278,4 +278,27 @@
         BNE soundEffect \ implicit RTS
 }
 
+\
+\ moveSoundToggle
+\
+.moveSoundToggle
+{
+    soundEffectVolumeAddr = soundEffects + SOUND_EFFECT_MOVE + 1
+    INTERNAL_KEY_T = &23
+
+    \ toggle move sound effect volume
+    LDA soundEffectVolumeAddr
+    EOR #&FE
+    STA soundEffectVolumeAddr
+
+    \ wait for T key release
+    .loop
+        LDA #INTERNAL_KEY_T
+        JSR scanKey
+        BMI loop
+
+    RTS
+}
+
+
 \ end file
