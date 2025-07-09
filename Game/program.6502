@@ -753,6 +753,18 @@ INCLUDE "utils.6502"
         JSR k9MoveVertically
     .nopress_s
 
+    \ 'T' key...
+    LDA keyTbl + KEY_T
+    BPL nopress_t
+        JSR moveSoundToggle
+         
+        \ wait for key release
+        .loop
+            LDA #&23
+            JSR scanKey
+            BMI loop
+    .nopress_t
+
     \ 'A' or 'Z' key...
     LDA keyTbl + KEY_A
     ORA keyTbl + KEY_Z
@@ -772,12 +784,6 @@ INCLUDE "utils.6502"
     BPL nopress_r
         JMP loadLevel \ implicit RTS
     .nopress_r
-
-    \ 'T' key...
-    LDA keyTbl + KEY_T
-    BPL nopress_t
-        JMP moveSoundToggle \ implicit RTS
-    .nopress_t
 
     \ god mode?
     LDA godMode : BEQ rts_10
