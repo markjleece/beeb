@@ -15,7 +15,24 @@ A Doctor Who fan platform game written for the BBC Micro Model B, titled '**An A
 - The game contains six levels, of increasing difficulty.
 - Dalek samples are played if 16K of sideways RAM is available. Additional samples are played if 32K of sideways RAM is available.
 - Level editor, which can be used to edit and add new levels (see below).
-  
+
+# Game tips
+Daleks are formidable foes armed with a strong but short-range weapon. They only attack if K9 is visible and they have limited vision, unable to see behind.
+
+The best approach to destroy a Dalek is to fire the laser continuously from a far distance (hold the space key down).  The laser will automatically stop when the Dalek is destroyed.  Don’t let a Dalek get close enough to use its weapon, which is formidable.
+
+Daleks slow down when their health is low, and lose the ability to move or use their weapon when it drops further.
+
+Using the laser uses up health, so make sure K9 has sufficient health before attacking a Dalek.   Collecting jewels restores K9’s health.
+
+K9 will need a key to unlock and use a door, after which the door will remain unlocked until a Dalek uses it.  Alternately, K9 can sneakily follow Daleks through doors.
+
+Each level is really a puzzle, to figure out how to navigate K9 to the TARDIS.  The ‘R’ key can be used to restart a level, if one becomes stuck or makes a mistake.
+
+Some levels contain switches which can be activated using K9’s laser to control elevators, teleports, and doors. Levels also feature weak, distinctively colored walls that K9’s laser can destroy.
+
+The game includes a ‘god mode’ — activated by pressing the ‘G’, ‘O’, and ‘D’ keys together — that grants K9 unlimited health and keys. You can load any level by pressing keys '1' to '6', and use the arrow keys to scroll around a level.
+
 # Running the game
 The game can be run in [BeebEm](https://github.com/stardot/beebem-windows) using the disc image: **game/program.ssd**, or run on a BBC Micro model B (with MMFS Turbo support) by copying **game/program.mmd** to a micro-sd card.
 
