@@ -34,7 +34,7 @@ Some levels contain switches which can be activated using K9’s laser to contro
 The game includes a ‘god mode’ — activated by pressing the ‘G’, ‘O’, and ‘D’ keys together — that grants K9 unlimited health and keys. You can load any level by pressing keys '1' to '6', and use the arrow keys to scroll around a level.
 
 # Running the game
-The game can be run in [BeebEm](https://github.com/stardot/beebem-windows) using the disc image: **game/program.ssd**, or run on a BBC Micro model B (with MMFS Turbo support) by copying **game/program.mmd** to a micro-sd card.
+The game can be run in [BeebEm](https://github.com/stardot/beebem-windows) using the disc image: **game/program.ssd**, or run on a BBC Micro model B (with MMFS Turbo support) by copying **game/BEEB.MMB** to a micro-sd card.
 
 The game targets a BBC Model B with a floppy disc drive (or MMFS Turbo support). The game's sound effects are enhanced if 16K or 32K of sideways RAM is installed.
 
