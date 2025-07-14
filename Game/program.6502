@@ -440,8 +440,8 @@ levelSwitchPairingsLoaded = &40E3       \ level switch pairings
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
 drawObject_tailJumpTbl = &10F6          \ 10 byte tail jump offset table (repurposes DFS &10E0-&10FF workspace)
 
-\ dfs command page backup (see dfsCommand)
-dfsCommandPageBackup = &7B00
+\ dfs page backup (used to store page &17 that DFS modifies)
+dfsPageBackup = &7B00
 
 \ PCM data load address (located below page backup)
 pcmDataLoadBuffer = &7B00 - PCM_DATA_LOAD_BUFFER_SIZE
@@ -1003,14 +1003,11 @@ ENDIF
 \
 .refreshObjectDrawOrder
 {
-    \ update every 32 frames, offset by 8
+    \ update every 32 frames, offset by 8, but not if a sample is being played
     LDA frameCount
     AND #&1F
-    CMP #8
-    BNE rts_10
-
-    \ don't sort if sample is being played
-    LDA playingSample
+    EOR #8
+    ORA playingSample
     BNE rts_10
 
     \ fall through to sortObjectDrawOrder
@@ -1131,6 +1128,8 @@ ENDIF
     LDA healthHi
     SBC enemyWeaponStrengthHi
     STA healthHi
+
+    \ if (health <= 0) invoke level incomplete experience
     BEQ levelIncomplete \ implicit RTS
     BCC levelIncomplete \ implicit RTS
 
@@ -1398,7 +1397,7 @@ ASSERT (HI(P%) > &17) \ ensure dfsCommand is assembled after page &17
     STA cmdLoadLevel+10
 
     \ clear page &17 (after saving the code) as DFS uses it as a buffer
-    COPY_CLEAR_PAGE dfsCommandPageBackup, &1700
+    COPY_CLEAR_PAGE dfsPageBackup, &1700
 
     \ switch to DFS
     JSR selectDFS
@@ -1409,7 +1408,7 @@ ASSERT (HI(P%) > &17) \ ensure dfsCommand is assembled after page &17
     JSR oscli
 
     \ restore code in page &17
-    COPY_PAGE &1700, dfsCommandPageBackup
+    COPY_PAGE &1700, dfsPageBackup
 
     RTS
 

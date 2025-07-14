@@ -31,7 +31,6 @@
 \
 .titles
 {
-    JSR resetOSVectors
     JSR showTitleScreen
     JSR initializeVariables
     JSR playMusic
@@ -274,57 +273,6 @@ INCBIN "data\instructions.bin"
 }
 
 \
-\ resetOSVectors()
-\
-.resetOSVectors
-{
-    \ get OS version, in X (1 denotes version 1.20)
-    LDA #0
-    LDX #1
-    JSR osbyte
-
-    SEI \ disable interrupts
-
-    LDY #0
-    CPX #1
-    BEQ os120
-     
-    .os100
-        .loop1
-            \ copy vector
-            LDA &D941,Y
-            STA &0200,Y
-            INY
-
-            \ copied 27 vectors?
-            CPY #54
-            BNE loop1
-
-        BEQ endif
-
-    .os120
-        \ srcAddr = &FFB7/&FFB8
-        LDA &FFB7
-        STA srcAddr
-        LDA &FFB8
-        STA srcAddr+1
-
-        .loop2
-            \ copy vector
-            LDA (srcAddr),Y
-            STA &0200,Y
-            INY                
-
-            \ copied all vectors?
-            CPY &FFB6
-            BNE loop2
-    .endif
-
-    CLI \ re-enable interrupts
-    RTS
-}
-
-\
 \ initialize in game interrupts
 \
 .initializeInGameInterrupts
@@ -470,7 +418,7 @@ ASSERT (HI(P%) > &17) \ ensure populateSidewaysRAM is assembled after page &17
     STX cmdLoadPCMData+8
 
     \ clear page &17 (after saving the code) as DFS uses it as a buffer
-    COPY_CLEAR_PAGE dfsCommandPageBackup, &1700 
+    COPY_CLEAR_PAGE dfsPageBackup, &1700 
 
     \ switch to DFS
     JSR selectDFS
@@ -516,7 +464,7 @@ ASSERT (HI(P%) > &17) \ ensure populateSidewaysRAM is assembled after page &17
         BNE loop
 
     \ restore code in page &17
-    COPY_PAGE &1700, dfsCommandPageBackup
+    COPY_PAGE &1700, dfsPageBackup
 
     RTS
 

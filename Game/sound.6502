@@ -130,9 +130,10 @@
     LDA healthHi
     CMP #LASER_HEALTH_THRESHOLD_HI : BCS endif2
 
-        \ sound heart beat blip every 64 frames
+        \ sound heart beat every 64 frames, but not if the laser sound effect is playing
         LDA frameCount
         AND #&3F
+        ORA laserSoundEffectOn
         BNE endif2
 
         LDA #SOUND_EFFECT_HEART_BEAT

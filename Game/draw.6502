@@ -817,20 +817,15 @@ ENDIF
 \
 .drawLaserOn
 {
-    \ if (health <= LASER_HEALTH_THRESHOLD_HI) stop laser
-    LDA healthHi
-    CMP #(LASER_HEALTH_THRESHOLD_HI + 1)
-    BCS skip1
-        .unableToLaser
-        LDA #0 : STA laserFrameCount
-        INC laserInhibited
-        RTS
-    .skip1
-
     \ laserDirection = -1 (left), 0 (none), 1 (right)
     LDX #0 
     JSR getObjectDirection \ Y = 0 (ANIMATE_LOOK_LEFT) .. 5 (ANIMATE_TURN_RIGHT_TO_LEFT)
-    BEQ unableToLaser
+    BNE skip1
+        \ stop laser if K9 is turning
+        STA laserFrameCount
+        INC laserInhibited
+        RTS
+    .skip1
     STA laserDirection
 
     \ calculate K9's muzzle screen position (leftLo, topLo)
@@ -884,9 +879,13 @@ ENDIF
     SEC
     SBC laserHealthDrain
     STA healthLo
-    BCS noborrow
-        DEC healthHi
-    .noborrow
+    LDA healthHi
+    SBC #0
+    STA healthHi
+
+    \ if (health <= 0) invoke level incomplete experience
+    BEQ levelIncomplete_local
+    BCC levelIncomplete_local
 
     \ laser sound effect
     JSR laserSoundEffect
@@ -937,6 +936,9 @@ ENDIF
 
     DEC laserLength
     RTS
+
+.levelIncomplete_local
+    JMP levelIncomplete \ implicit RTS
 
 .drawEnd
     EOR #&FF
