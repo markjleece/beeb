@@ -25,36 +25,6 @@
 \
 
 \
-\ Copy and clear a page of memory
-\
-MACRO COPY_CLEAR_PAGE toAddr, fromAddr 
-{
-    LDX #0
-    .loop
-        LDA fromAddr, X
-        STA toAddr, X
-        LDA #0
-        STA fromAddr, X
-        INX
-        BNE loop
-}
-ENDMACRO
-
-\
-\ Copy a page of memory
-\
-MACRO COPY_PAGE toAddr, fromAddr 
-{
-    LDX #0
-    .loop
-        LDA fromAddr, X
-        STA toAddr, X
-        INX
-        BNE loop
-}
-ENDMACRO
-
-\
 \ setBlackPalette()
 \
 .setBlackPalette

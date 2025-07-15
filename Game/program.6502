@@ -1075,21 +1075,6 @@ ENDIF
 }
 
 \
-\ refresh game bar
-\
-.refreshGameBar
-{
-    \ update gamebar every 8 frames, offset by 2
-    LDA frameCount
-    AND #7
-    CMP #2
-    BNE rts_0
-
-    \ draw the game bar
-    JMP drawGameBar \ implicit RTS
-}
-
-\
 \ inflictK9Damage()
 \
 \ inflict damange on K9
@@ -1388,16 +1373,14 @@ ENDIF
 \ params:
 \   accumalator     1..9, or 0 = finale experience
 \
-ASSERT (HI(P%) > &17) \ ensure dfsCommand is assembled after page &17
+ASSERT (HI(P%) > &1C) \ ensure loadLevelFile is assembled after page &17 and &1C
 
 .loadLevelFile
 {
+    \ patch level number in file name
     CLC
     ADC #'0'
     STA cmdLoadLevel+10
-
-    \ clear page &17 (after saving the code) as DFS uses it as a buffer
-    COPY_CLEAR_PAGE dfsPageBackup, &1700
 
     \ switch to DFS
     JSR selectDFS
@@ -1407,10 +1390,8 @@ ASSERT (HI(P%) > &17) \ ensure dfsCommand is assembled after page &17
     LDY #HI(cmdLoadLevel)
     JSR oscli
 
-    \ restore code in page &17
-    COPY_PAGE &1700, dfsPageBackup
-
-    RTS
+    \ release DFS
+    JMP releaseDFS
 
 .cmdLoadLevel
     EQUS "LOAD levelX", 13
@@ -1419,18 +1400,51 @@ ASSERT (HI(P%) > &17) \ ensure dfsCommand is assembled after page &17
 \
 \ selectDFS
 \
-\ select DFS
+\ select DFS file-system
 \
-ASSERT (HI(P%) > &17) \ ensure selectDFS is assembled after page &17
+ASSERT (HI(P%) > &1C) \ ensure selectDFS is assembled after page &17 and &1C
 
 .selectDFS
 {
+    \ backup and clear page &17 or &1C, which DFS uses
+    LDX #0
+    .loop
+        .^selectDFS_lda_inst
+        LDA &FF00, X \ address patched in initializeDFSRoutines routine (titles.6502)
+        STA dfsPageBackup, X
+        LDA #0
+        .^selectDFS_sta_inst
+        STA &FF00, X \ address patched in initializeDFSRoutines routine (titles.6502)
+        INX
+        BNE loop
+
+    \ select DFS file system
     LDX #LO(cmdDISK)
     LDY #HI(cmdDISK)
     JMP oscli \ implicit RTS
 
 .cmdDISK
     EQUS "DISK", 13
+}
+
+\
+\ releaseDFS
+\
+\ release DFS file-system
+\
+ASSERT (HI(P%) > &1C) \ ensure selectDFS is assembled after page &17 and &1C
+
+.releaseDFS
+{
+    \ restore page &17 or &1C, which DFS uses
+    LDX #0
+    .loop
+        LDA dfsPageBackup, X
+        .^releaseDFS_sta_inst
+        STA &FF00, X \ address patched in initializeDFSRoutines routine (titles.6502)
+        INX
+        BNE loop
+    RTS
 }
 
 .lastCodeAddr \ last code address

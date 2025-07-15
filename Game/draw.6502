@@ -94,6 +94,91 @@ IF DEBUG_TILE_GRID_FLAGS != 0
 ENDIF
 
 \
+\ drawTileBackground()
+\
+\ draw tile background (reusing scrolling code)
+\
+.drawTileBackground
+{
+    .loop
+
+        \ scrnLeft -= 8, scrnAddr -= 16 
+        JSR scrollLeftUpdateVariables
+
+        \ draw vertical tile strip
+        LDA #LO(DIRECTION_LEFT) : STA scrollDirection
+        JSR drawVertTileScrollStrip
+        
+        LDA scrnLeftLo
+        BNE loop
+
+    \ update hardware
+    JSR waitForVSync
+    JMP updateScreenPosition \ implicit RTS
+}
+
+\
+\ getTileSrcAddr(tileGridAddr, offset)
+\
+\ get tile source address
+\
+\ returns:
+\   srcAddr         Tile data source address
+\   Accumulator     Zero if blank tile rendered, otherwise non-zero
+\
+\ params:
+\   tileGridAddr    Tile grid address
+\   offset          Source offset
+\
+.getTileSrcAddr
+{
+    \ 'tileIndex' = *tileGridAddr & TILE_GRID_INDEX_MASK
+    LDY #0
+    LDA (tileGridAddr), Y
+    AND #TILE_GRID_INDEX_MASK
+    BEQ blankTile
+        \ srcAddr = tiles - 64 + (64 * 'tileIndex') + offset
+        TAY
+        LDA tileAddrTblLo, Y
+        CLC
+        ADC offset
+        STA srcAddr
+
+        LDA tileAddrTblHi, Y
+        BNE skip
+    .blankTile
+        \ srcAddr = zeroMemory32
+        ASSERT(LO(zeroMemory32) == 0 AND HI(zeroMemory32) == 0)
+        STA srcAddr
+    .skip
+    STA srcAddr+1
+
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_14
+{
+    RTS
+}
+
+\
+\ refreshGameBar()
+\
+.refreshGameBar
+{
+    \ update gamebar every 8 frames, offset by 2
+    LDA frameCount
+    AND #7
+    CMP #2
+    BNE rts_14
+
+    \ fall through to drawGameBar
+}
+
+\
 \ drawGameBar()
 \
 .drawGameBar    
@@ -269,69 +354,6 @@ ELSE
 .lineTbl EQUB %11111111, %01110111, %00110011, %00010001
 
 ENDIF
-}
-
-\
-\ drawTileBackground()
-\
-\ draw tile background (reusing scrolling code)
-\
-.drawTileBackground
-{
-    .loop
-
-        \ scrnLeft -= 8, scrnAddr -= 16 
-        JSR scrollLeftUpdateVariables
-
-        \ draw vertical tile strip
-        LDA #LO(DIRECTION_LEFT) : STA scrollDirection
-        JSR drawVertTileScrollStrip
-        
-        LDA scrnLeftLo
-        BNE loop
-
-    \ update hardware
-    JSR waitForVSync
-    JMP updateScreenPosition \ implicit RTS
-}
-
-\
-\ getTileSrcAddr(tileGridAddr, offset)
-\
-\ get tile source address
-\
-\ returns:
-\   srcAddr         Tile data source address
-\   Accumulator     Zero if blank tile rendered, otherwise non-zero
-\
-\ params:
-\   tileGridAddr    Tile grid address
-\   offset          Source offset
-\
-.getTileSrcAddr
-{
-    \ 'tileIndex' = *tileGridAddr & TILE_GRID_INDEX_MASK
-    LDY #0
-    LDA (tileGridAddr), Y
-    AND #TILE_GRID_INDEX_MASK
-    BEQ blankTile
-        \ srcAddr = tiles - 64 + (64 * 'tileIndex') + offset
-        TAY
-        LDA tileAddrTblLo, Y
-        CLC
-        ADC offset
-        STA srcAddr
-
-        LDA tileAddrTblHi, Y
-        BNE skip
-    .blankTile
-        \ srcAddr = zeroMemory32
-        ASSERT(LO(zeroMemory32) == 0 AND HI(zeroMemory32) == 0)
-        STA srcAddr
-    .skip
-    STA srcAddr+1
-
-    RTS
 }
 
 \
@@ -1225,7 +1247,7 @@ ENDIF
     LDA objectXLo, X : AND #&FC : STA leftLo
     LDA objectXHi, X : STA leftHi
 
-    \ topLo/Hi = objectYLo/Hi[0]
+    \ topLo/Hi = objectYLo/Hi[X]
     LDA objectYLo, X : STA topLo
     LDA objectYHi, X : STA topHi
 

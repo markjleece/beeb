@@ -34,6 +34,7 @@
     JSR showTitleScreen
     JSR initializeVariables
     JSR playMusic
+    JSR initializeDFSRoutines
     JSR initializeSidewaysRAM
     JSR showTitleScreenPrompt
     JSR showInstructionsScreen
@@ -273,6 +274,34 @@ INCBIN "data\instructions.bin"
 }
 
 \
+\ initializeDFSRoutines
+\
+\ the game repurposes DFS private workspace for code, so this has to be
+\ saved and restored when DFS operations are performed. The selectDFS
+\ and releaseDFS routines do this. On the Model B and Master, page &17
+\ is saved and restored. On the Model B+, page &1C is saved and restored
+\
+.initializeDFSRoutines
+{
+    \ get OS version, result in X
+    LDA #0
+    LDX #1
+    JSR osbyte
+
+    \ patch addresses in selectDFS and restoreDFS
+    LDA #&17
+    CPX #2 \ is Model B+?
+    BNE skip
+        LDA #&1C
+    .skip
+    STA selectDFS_lda_inst+2
+    STA selectDFS_sta_inst+2
+    STA releaseDFS_sta_inst+2
+
+    RTS
+}
+
+\
 \ initialize in game interrupts
 \
 .initializeInGameInterrupts
@@ -406,8 +435,7 @@ ENDIF
 \   Accumulator ROM selector
 \   X register  File qualifier: 'P' for primary, 'S' for secondary
 \
-
-ASSERT (HI(P%) > &17) \ ensure populateSidewaysRAM is assembled after page &17
+ASSERT (HI(P%) > &1C) \ ensure populateSidewaysRAM is assembled after page &17 and &1C
 
 .populateSidewaysRAM
 {
@@ -416,9 +444,6 @@ ASSERT (HI(P%) > &17) \ ensure populateSidewaysRAM is assembled after page &17
 
     \ set file qualifier
     STX cmdLoadPCMData+8
-
-    \ clear page &17 (after saving the code) as DFS uses it as a buffer
-    COPY_CLEAR_PAGE dfsPageBackup, &1700 
 
     \ switch to DFS
     JSR selectDFS
@@ -463,10 +488,8 @@ ASSERT (HI(P%) > &17) \ ensure populateSidewaysRAM is assembled after page &17
         CMP #'6'
         BNE loop
 
-    \ restore code in page &17
-    COPY_PAGE &1700, dfsPageBackup
-
-    RTS
+    \ release DFS
+    JMP releaseDFS
 
 .cmdLoadPCMData
     EQUS "LOAD pcmTN", 13
