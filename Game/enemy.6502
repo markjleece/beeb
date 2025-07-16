@@ -68,7 +68,7 @@
     \ if (endPursuitCounter == 0) return
     LDA endPursuitCounter : BEQ rts_15
 
-    \ if (--endPursuitCounter == 0) return
+    \ if (--endPursuitCounter != 0) return
     DEC endPursuitCounter : BNE rts_15
 
     \ end all enemy pursuit

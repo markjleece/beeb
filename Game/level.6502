@@ -140,15 +140,23 @@
         CPY #TILE_COUNT
         BNE loop
 
+    \ set weepingAngels flag
+    LDA levelFlagsLoaded
+    AND #LEVEL_FLAGS_WEEPING_ANGELS
+    LSR A \ shift flag to bit-0
+    STA weepingAngels
+
     \ set primarySamplesEnabled flag
     LDA primarySamplesROMSEL : BEQ skip1
-        LDA levelSampleSoundsEnabledLoaded
+        LDA levelFlagsLoaded
+        AND #LEVEL_FLAGS_SAMPLE_SOUNDS
     .skip1
     STA primarySamplesEnabled
 
     \ set secondarySamplesEnabled flag
     LDA secondarySamplesROMSEL : BEQ skip2
-        LDA levelSampleSoundsEnabledLoaded
+        LDA levelFlagsLoaded
+        AND #LEVEL_FLAGS_SAMPLE_SOUNDS
     .skip2
     STA secondarySamplesEnabled
 

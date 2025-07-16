@@ -36,7 +36,8 @@ namespace LevelEditor
                 JewelHealthGain = JewelHealthGain,
                 LaserHealthDrain = LaserHealthDrain,
                 LaserStrength = LaserStrength,
-                SampleSoundsEnabled = SampleSoundsEnabled
+                SampleSoundsEnabled = SampleSoundsEnabled,
+                WeepingAngels = WeepingAngels,
             };
             return clone;
         }
@@ -47,7 +48,9 @@ namespace LevelEditor
             LaserStrength = fs.ReadByte();
             LaserHealthDrain = fs.ReadByte();
             JewelHealthGain = fs.ReadByte() * 256; // high-byte serialized
-            SampleSoundsEnabled = fs.ReadByte();
+            int flags = fs.ReadByte();
+            SampleSoundsEnabled = (flags & SAMPLE_SOUNDS_FLAG) != 0;
+            WeepingAngels = (flags & WEEPING_ANGELS_FLAG) != 0;
         }
 
         internal void Write(FileStream fs)
@@ -56,13 +59,20 @@ namespace LevelEditor
             fs.WriteByte((byte)LaserStrength);
             fs.WriteByte((byte)LaserHealthDrain);
             fs.WriteByte((byte)(JewelHealthGain / 256)); // high-byte serialized
-            fs.WriteByte((byte)SampleSoundsEnabled);
+            int flags = 0;
+            flags |= SampleSoundsEnabled ? SAMPLE_SOUNDS_FLAG : 0;
+            flags |= WeepingAngels ? WEEPING_ANGELS_FLAG : 0;
+            fs.WriteByte((byte)flags);
         }
 
         internal int EnemyWeaponStrength = 256;
         internal int JewelHealthGain = 512;
         internal int LaserHealthDrain = 8;
         internal int LaserStrength = 32;
-        internal int SampleSoundsEnabled = 1/*true*/;
+        internal bool SampleSoundsEnabled = true;
+        internal bool WeepingAngels = false;
+
+        private const int SAMPLE_SOUNDS_FLAG = 0x01;
+        private const int WEEPING_ANGELS_FLAG = 0x02;
     }
 }

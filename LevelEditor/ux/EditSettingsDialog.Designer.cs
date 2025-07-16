@@ -62,6 +62,7 @@ namespace LevelEditor.ux
             cancelButton = new Button();
             sampleSoundsCheckbox = new CheckBox();
             label5 = new Label();
+            weepingAngelsCheckbox = new CheckBox();
             SuspendLayout();
             // 
             // label1
@@ -139,7 +140,7 @@ namespace LevelEditor.ux
             // okButton
             // 
             okButton.DialogResult = DialogResult.OK;
-            okButton.Location = new Point(416, 219);
+            okButton.Location = new Point(416, 256);
             okButton.Name = "okButton";
             okButton.Size = new Size(112, 34);
             okButton.TabIndex = 5;
@@ -150,7 +151,7 @@ namespace LevelEditor.ux
             // cancelButton
             // 
             cancelButton.DialogResult = DialogResult.Cancel;
-            cancelButton.Location = new Point(298, 219);
+            cancelButton.Location = new Point(298, 256);
             cancelButton.Name = "cancelButton";
             cancelButton.Size = new Size(112, 34);
             cancelButton.TabIndex = 6;
@@ -175,14 +176,25 @@ namespace LevelEditor.ux
             label5.Size = new Size(0, 25);
             label5.TabIndex = 8;
             // 
+            // weepingAngelsCheckbox
+            // 
+            weepingAngelsCheckbox.AutoSize = true;
+            weepingAngelsCheckbox.Location = new Point(15, 211);
+            weepingAngelsCheckbox.Name = "weepingAngelsCheckbox";
+            weepingAngelsCheckbox.Size = new Size(291, 29);
+            weepingAngelsCheckbox.TabIndex = 7;
+            weepingAngelsCheckbox.Text = "Weeping Angel enemy behavior";
+            weepingAngelsCheckbox.UseVisualStyleBackColor = true;
+            // 
             // EditSettingsDialog
             // 
             AcceptButton = okButton;
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = cancelButton;
-            ClientSize = new Size(542, 265);
+            ClientSize = new Size(542, 302);
             Controls.Add(label5);
+            Controls.Add(weepingAngelsCheckbox);
             Controls.Add(sampleSoundsCheckbox);
             Controls.Add(cancelButton);
             Controls.Add(okButton);
@@ -215,5 +227,6 @@ namespace LevelEditor.ux
         private Button cancelButton;
         private CheckBox sampleSoundsCheckbox;
         private Label label5;
+        private CheckBox weepingAngelsCheckbox;
     }
 }

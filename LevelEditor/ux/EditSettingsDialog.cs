@@ -52,7 +52,8 @@ namespace LevelEditor.ux
             jewelHealthGainComboBox.Items.Add("256 (low)");
             SetSelectedValue(jewelHealthGainComboBox, Settings.JewelHealthGain);
 
-            sampleSoundsCheckbox.Checked = (Settings.SampleSoundsEnabled != 0);
+            sampleSoundsCheckbox.Checked = Settings.SampleSoundsEnabled;
+            weepingAngelsCheckbox.Checked = Settings.WeepingAngels;
         }
 
         private void OkButton_Click(object sender, EventArgs e)
@@ -61,7 +62,8 @@ namespace LevelEditor.ux
             Settings.LaserStrength = ToInteger(laserStrengthComboBox.SelectedItem);
             Settings.LaserHealthDrain = ToInteger(laserHealthDrainComboBox.SelectedItem);
             Settings.JewelHealthGain = ToInteger(jewelHealthGainComboBox.SelectedItem);
-            Settings.SampleSoundsEnabled = sampleSoundsCheckbox.Checked ? 1 : 0;
+            Settings.SampleSoundsEnabled = sampleSoundsCheckbox.Checked;
+            Settings.WeepingAngels = weepingAngelsCheckbox.Checked;
         }
 
         private static void SetSelectedValue(ComboBox comboBox, int value)
