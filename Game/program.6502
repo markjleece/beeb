@@ -539,8 +539,6 @@ ORG 0
 .bottomHi                   SKIP 1
 .offsetX                    SKIP 1
 .offsetY                    SKIP 1
-.sizeLo                     SKIP 1
-.sizeHi                     SKIP 1
 .index                      SKIP 1
 .outerIndex                 SKIP 1
 .stride                     SKIP 1

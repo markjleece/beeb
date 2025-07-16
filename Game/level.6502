@@ -290,8 +290,8 @@
     LDA #LO(tileAddrTblLo) : STA dstAddr
     LDA #HI(tileAddrTblLo) : STA dstAddr+1
 
-    LDA #LO(TILE_COUNT) : STA sizeLo
-    LDA #HI(TILE_COUNT) : STA sizeHi
+    LDX #LO(TILE_COUNT)
+    LDY #HI(TILE_COUNT)
 
     JSR memcpy
 
@@ -300,6 +300,9 @@
 
     LDA #LO(tileAddrTblHi) : STA dstAddr
     LDA #HI(tileAddrTblHi) : STA dstAddr+1
+
+    LDX #LO(TILE_COUNT)
+    LDY #HI(TILE_COUNT)
 
     JMP memcpy \ implicit RTS
 
@@ -325,8 +328,8 @@
     LDA #LO(spriteAddrTblLo) : STA dstAddr
     LDA #HI(spriteAddrTblLo) : STA dstAddr+1
 
-    LDA #LO(SPRITE_COUNT) : STA sizeLo
-    LDA #HI(SPRITE_COUNT) : STA sizeHi
+    LDX #LO(SPRITE_COUNT)
+    LDY #HI(SPRITE_COUNT)
 
     JSR memcpy
 
@@ -335,6 +338,9 @@
 
     LDA #LO(spriteAddrTblHi) : STA dstAddr
     LDA #HI(spriteAddrTblHi) : STA dstAddr+1
+
+    LDX #LO(SPRITE_COUNT)
+    LDY #HI(SPRITE_COUNT)
 
     JSR memcpy
 
@@ -456,8 +462,8 @@
     LDA #LO(spriteHealthBarTbl) : STA dstAddr
     LDA #HI(spriteHealthBarTbl) : STA dstAddr+1
 
-    LDA #LO(ENEMY_HEALTH_BAR_TABLE_SIZE) : STA sizeLo
-    LDA #HI(ENEMY_HEALTH_BAR_TABLE_SIZE) : STA sizeHi
+    LDX #LO(ENEMY_HEALTH_BAR_TABLE_SIZE)
+    LDY #HI(ENEMY_HEALTH_BAR_TABLE_SIZE)
 
     JSR memcpy
 
@@ -468,8 +474,8 @@
     LDA #LO(healthBarAtlas) : STA dstAddr
     LDA #HI(healthBarAtlas) : STA dstAddr+1
 
-    LDA #LO(ENEMY_HEALTH_BAR_ATLAS_SIZE) : STA sizeLo
-    LDA #HI(ENEMY_HEALTH_BAR_ATLAS_SIZE) : STA sizeHi
+    LDX #LO(ENEMY_HEALTH_BAR_ATLAS_SIZE)
+    LDY #HI(ENEMY_HEALTH_BAR_ATLAS_SIZE)
 
     JMP memcpy \ implicit RTS
 
@@ -498,8 +504,8 @@
     LDA #LO(drawObject_headJumpTbl) : STA dstAddr
     LDA #HI(drawObject_headJumpTbl) : STA dstAddr+1
 
-    LDA #LO(DRAW_OBJECT_JUMP_TABLE_SIZE) : STA sizeLo
-    LDA #HI(DRAW_OBJECT_JUMP_TABLE_SIZE) : STA sizeHi
+    LDX #LO(DRAW_OBJECT_JUMP_TABLE_SIZE)
+    LDY #HI(DRAW_OBJECT_JUMP_TABLE_SIZE)
 
     JSR memcpy
 
@@ -509,6 +515,9 @@
 
     LDA #LO(drawObject_tailJumpTbl) : STA dstAddr
     LDA #HI(drawObject_tailJumpTbl) : STA dstAddr+1
+
+    LDX #LO(DRAW_OBJECT_JUMP_TABLE_SIZE)
+    LDY #HI(DRAW_OBJECT_JUMP_TABLE_SIZE)
 
     JMP memcpy \ implicit RTS
 
@@ -533,8 +542,8 @@
     LDA #LO(soundEffects) : STA dstAddr
     LDA #HI(soundEffects) : STA dstAddr+1
 
-    LDA #LO(SOUND_EFFECTS_SIZE) : STA sizeLo
-    LDA #HI(SOUND_EFFECTS_SIZE) : STA sizeHi
+    LDX #LO(SOUND_EFFECTS_SIZE)
+    LDY #HI(SOUND_EFFECTS_SIZE)
 
     JMP memcpy \ implicit RTS
 
@@ -570,8 +579,8 @@
     LDA #LO(levelTileTypes) : STA dstAddr
     LDA #HI(levelTileTypes) : STA dstAddr+1
 
-    LDA #LO(TILE_COUNT) : STA sizeLo
-    LDA #HI(TILE_COUNT) : STA sizeHi
+    LDX #LO(TILE_COUNT)
+    LDY #HI(TILE_COUNT)
 
     JSR memcpy
 
@@ -584,8 +593,8 @@
     LDA #LO(switchPairings) : STA dstAddr
     LDA #HI(switchPairings) : STA dstAddr+1
 
-    LDA #LO(SWITCH_PAIRINGS_SIZE) : STA sizeLo
-    LDA #HI(SWITCH_PAIRINGS_SIZE) : STA sizeHi
+    LDX #LO(SWITCH_PAIRINGS_SIZE)
+    LDY #HI(SWITCH_PAIRINGS_SIZE)
 
     JSR memcpy
 
@@ -600,8 +609,8 @@
     LDA #LO(enemyAtlas1) : STA dstAddr
     LDA #HI(enemyAtlas1) : STA dstAddr+1
 
-    LDA #LO(ENEMY_SPRITE_SIZE) : STA sizeLo
-    LDA #HI(ENEMY_SPRITE_SIZE) : STA sizeHi
+    LDX #LO(ENEMY_SPRITE_SIZE)
+    LDY #HI(ENEMY_SPRITE_SIZE)
 
     JSR memcpy
 
@@ -614,6 +623,9 @@
     LDA #LO(enemyAtlas2) : STA dstAddr
     LDA #HI(enemyAtlas2) : STA dstAddr+1
 
+    LDX #LO(ENEMY_SPRITE_SIZE)
+    LDY #HI(ENEMY_SPRITE_SIZE)
+
     JSR memcpy
 
     \ next two enemy sprite at enemyAtlas3
@@ -625,8 +637,8 @@
     LDA #LO(enemyAtlas3) : STA dstAddr
     LDA #HI(enemyAtlas3) : STA dstAddr+1
 
-    LDA #LO(ENEMY_SPRITE_SIZE * 2) : STA sizeLo
-    LDA #HI(ENEMY_SPRITE_SIZE * 2) : STA sizeHi
+    LDX #LO(ENEMY_SPRITE_SIZE * 2)
+    LDY #HI(ENEMY_SPRITE_SIZE * 2)
 
     JSR memcpy
 
@@ -639,8 +651,8 @@
     LDA #LO(enemyAtlas4) : STA dstAddr
     LDA #HI(enemyAtlas4) : STA dstAddr+1
 
-    LDA #LO(ENEMY_SPRITE_SIZE * 5) : STA sizeLo
-    LDA #HI(ENEMY_SPRITE_SIZE * 5) : STA sizeHi
+    LDX #LO(ENEMY_SPRITE_SIZE * 5)
+    LDY #HI(ENEMY_SPRITE_SIZE * 5)
 
     JSR memcpy
 
@@ -653,8 +665,8 @@
     LDA #LO(enemyAtlas5) : STA dstAddr
     LDA #HI(enemyAtlas5) : STA dstAddr+1
 
-    LDA #LO(ENEMY_SPRITE_SIZE * 2) : STA sizeLo
-    LDA #HI(ENEMY_SPRITE_SIZE * 2) : STA sizeHi
+    LDX #LO(ENEMY_SPRITE_SIZE * 2)
+    LDY #HI(ENEMY_SPRITE_SIZE * 2)
 
     JSR memcpy
 
@@ -667,8 +679,8 @@
     LDA #LO(doorAtlas1) : STA dstAddr
     LDA #HI(doorAtlas1) : STA dstAddr+1
 
-    LDA #LO(DOOR_SPRITE_SIZE) : STA sizeLo
-    LDA #HI(DOOR_SPRITE_SIZE) : STA sizeHi
+    LDX #LO(DOOR_SPRITE_SIZE)
+    LDY #HI(DOOR_SPRITE_SIZE)
 
     JSR memcpy
 
@@ -681,8 +693,8 @@
     LDA #LO(doorAtlas2) : STA dstAddr
     LDA #HI(doorAtlas2) : STA dstAddr+1
 
-    LDA #LO(DOOR_SPRITE_SIZE * 2) : STA sizeLo
-    LDA #HI(DOOR_SPRITE_SIZE * 2) : STA sizeHi
+    LDX #LO(DOOR_SPRITE_SIZE * 2)
+    LDY #HI(DOOR_SPRITE_SIZE * 2)
 
     JSR memcpy
 
@@ -695,8 +707,8 @@
     LDA #LO(doorAtlas3) : STA dstAddr
     LDA #HI(doorAtlas3) : STA dstAddr+1
 
-    LDA #LO(DOOR_SPRITE_SIZE) : STA sizeLo
-    LDA #HI(DOOR_SPRITE_SIZE) : STA sizeHi
+    LDX #LO(DOOR_SPRITE_SIZE)
+    LDY #HI(DOOR_SPRITE_SIZE)
 
     JSR memcpy
 
@@ -709,8 +721,8 @@
     LDA #LO(elevatorAtlas) : STA dstAddr
     LDA #HI(elevatorAtlas) : STA dstAddr+1
 
-    LDA #LO(ELEVATOR_SPRITE_SIZE * 4) : STA sizeLo
-    LDA #HI(ELEVATOR_SPRITE_SIZE * 4) : STA sizeHi
+    LDX #LO(ELEVATOR_SPRITE_SIZE * 4)
+    LDY #HI(ELEVATOR_SPRITE_SIZE * 4)
 
     JSR memcpy
 
@@ -723,6 +735,9 @@
     LDA #LO(teleportAtlas) : STA dstAddr
     LDA #HI(teleportAtlas) : STA dstAddr+1
 
+    LDX #LO(ELEVATOR_SPRITE_SIZE * 4)
+    LDY #HI(ELEVATOR_SPRITE_SIZE * 4)
+
     JSR memcpy
 
     \ first k9 sprite at k9Atlas1
@@ -734,8 +749,8 @@
     LDA #LO(k9Atlas1) : STA dstAddr
     LDA #HI(k9Atlas1) : STA dstAddr+1
 
-    LDA #LO(K9_SPRITE_SIZE) : STA sizeLo
-    LDA #HI(K9_SPRITE_SIZE) : STA sizeHi
+    LDX #LO(K9_SPRITE_SIZE)
+    LDY #HI(K9_SPRITE_SIZE)
 
     JSR memcpy
 
@@ -748,6 +763,9 @@
     LDA #LO(k9Atlas2) : STA dstAddr
     LDA #HI(k9Atlas2) : STA dstAddr+1
 
+    LDX #LO(K9_SPRITE_SIZE)
+    LDY #HI(K9_SPRITE_SIZE)
+
     JSR memcpy
 
     \ remaining nine k9 sprite at k9Atlas3
@@ -759,8 +777,8 @@
     LDA #LO(k9Atlas3) : STA dstAddr
     LDA #HI(k9Atlas3) : STA dstAddr+1
 
-    LDA #LO(K9_SPRITE_SIZE * 9) : STA sizeLo
-    LDA #HI(K9_SPRITE_SIZE * 9) : STA sizeHi
+    LDX #LO(K9_SPRITE_SIZE * 9)
+    LDY #HI(K9_SPRITE_SIZE * 9)
 
     JSR memcpy
 
@@ -799,11 +817,11 @@
         \ fall through to copyGamebarAsset
 
 .copyGamebarAsset
-    LDA #LO(GAMEBAR_SPRITE_SIZE) : STA sizeLo
-    LDA #HI(GAMEBAR_SPRITE_SIZE) : STA sizeHi
-
     LDA #LO(srcAddr13) : STA srcAddr
     LDA #HI(srcAddr13) : STA srcAddr+1
+
+    LDX #LO(GAMEBAR_SPRITE_SIZE)
+    LDY #HI(GAMEBAR_SPRITE_SIZE)
 
     JMP memcpy \ implicit RTS
 }
@@ -1036,20 +1054,23 @@
 }
 
 \
-\ memcpy(dstAddr, srcAddr, sizeLo/Hi)
+\ memcpy(dstAddr, srcAddr, X/Y registers)
 \
 \ params:
-\   dstAddr     Destination address
-\   srcAddr     Source address
-\   sizeLo/Hi   Number of bytes to copy
+\   dstAddr         Destination address
+\   srcAddr         Source address
+\   X/Y registers   Size, number of bytes to copy (X = low-byte, Y = high-byte)
 \
 \ Modifies:
-\   dstAddr, srcAddr
+\   dstAddr += size
+\   srcAddr += size
 \
 .memcpy
 {
+    STX sizeLo
+
     \ copy page(s)
-    LDX sizeHi
+    TYA : TAX
     BEQ skip1
     .pageLoop
         LDY #0
@@ -1098,6 +1119,8 @@
     .skip2
 
     RTS
+
+.sizeLo SKIP 1
 }
 
 \
