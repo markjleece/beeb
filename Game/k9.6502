@@ -446,4 +446,17 @@
     JMP drawTile \ implicit RTS
 }
 
+\
+\ getK9Direction()
+\
+\ returns:
+\  accumulator   -1 (left), 0 (none), 1 (right)
+\  Y register    0 (ANIMATE_LOOK_LEFT) .. 5 (ANIMATE_TURN_RIGHT_TO_LEFT)
+\
+.getK9Direction
+{
+    LDA objectType
+    JMP getObjectDirectionInternal \ implicit RTS
+}    
+
 \ end file

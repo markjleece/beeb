@@ -840,15 +840,15 @@ ENDIF
 .drawLaserOn
 {
     \ laserDirection = -1 (left), 0 (none), 1 (right)
-    LDX #0 
-    JSR getObjectDirection \ Y = 0 (ANIMATE_LOOK_LEFT) .. 5 (ANIMATE_TURN_RIGHT_TO_LEFT)
+    JSR getK9Direction \ Y = 0 (ANIMATE_LOOK_LEFT) .. 5 (ANIMATE_TURN_RIGHT_TO_LEFT)
+    STA laserDirection
+
+    \ stop laser if K9 is turning
     BNE skip1
-        \ stop laser if K9 is turning
         STA laserFrameCount
         INC laserInhibited
         RTS
     .skip1
-    STA laserDirection
 
     \ calculate K9's muzzle screen position (leftLo, topLo)
     LDA objectYLo

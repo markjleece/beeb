@@ -260,7 +260,7 @@ ELEVATOR_STATE_PASSENGER_MASK = &0F \ used to get index of passenger
 
 \ enemy state flags and mask (objectState low nibble)
 ENEMY_STATE_HEALTH_MASK = &07   \ enemy health (bits 0..2)
-ENEMY_STATE_FLAGS_FIRING = &08  \ set if enemy if firing weapon (bit 3)
+ENEMY_STATE_FLAGS_IMMOBILE = &08  \ set if enemy is firing weapon or a weeping angel is frozen (bit 3)
 
 \ enemy constants
 ENEMY_LOOK_RANGE = 12 \ range enemies can see (in tiles) 
@@ -499,6 +499,7 @@ ORG 0
 .laserStrength              SKIP 1  \ laser strength
 .laserHealthDrain           SKIP 1  \ laser health drain
 .jewelHealthGainHi          SKIP 1  \ jewel health gain (high byte)
+.weepingAngels              SKIP 1  \ weeping angels flag (if set, enemies are immobilized when face-to-face with K9)
 .playingSample              SKIP 1  \ playing sample flag (set when a sample is being played)
 .primarySamplesEnabled      SKIP 1  \ primary samples enabled flag
 .primarySamplesROMSEL       SKIP 1  \ primary samples ROM selector (zero denotes no sideways RAM)
@@ -947,6 +948,8 @@ ENDIF
 .getObjectDirection
 {
     LDA objectType, X
+
+.^getObjectDirectionInternal \ invoked from getK9Direction (k9.6502)
     AND #ANIMATE_MASK
     LSR A : LSR A
     TAY
