@@ -267,8 +267,8 @@ ENEMY_STATE_HEALTH_MASK = &07   \ enemy health (bits 0..2)
 ENEMY_STATE_FLAGS_IMMOBILE = &08  \ set if enemy is firing weapon or a weeping angel is frozen (bit 3)
 
 \ enemy constants
-ENEMY_LOOK_RANGE = 12 \ range enemies can see (in tiles) 
-ENEMY_WEAPON_RANGE = 3 \ range of enemy weapons (in tiles)
+ENEMY_LOOK_RANGE = 12 \ range enemies can see (in tiles)
+ENEMY_WEAPON_RANGE = 2 \ range of enemy weapons (in tiles)
 ENEMY_WEAPON_THRESHOLD = 2 \ enemy health required to use weapon
 ENEMY_SPRINT_THRESHOLD = 4 \ enemy health required to move quickly
 ENEMY_END_PURSUIT_COUNTER = 32 \ number of frames (x16) before enemies give up pursuit (10 seconds)
@@ -500,6 +500,7 @@ ORG 0
 .doorScrollRedrawCount      SKIP 1  \ used to redraw all doors after scrolling
 .enemyWeaponStrengthLo      SKIP 1  \ enemy weapon strength
 .enemyWeaponStrengthHi      SKIP 1
+.enemyWeaponRangePlusOne    SKIP 1  \ enemy weapon range, plus one, in tiles
 .laserStrength              SKIP 1  \ laser strength
 .laserHealthDrain           SKIP 1  \ laser health drain
 .jewelHealthGainHi          SKIP 1  \ jewel health gain (high byte)

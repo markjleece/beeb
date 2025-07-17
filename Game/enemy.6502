@@ -142,7 +142,7 @@
 
     STA direction
     JSR queryK9InSight
-    BEQ clearImmobileFlag \ implicit RTS (not in sight)
+    BMI clearImmobileFlag \ implicit RTS (not in sight)
 
     \
     \ K9 is in sight!
@@ -191,7 +191,7 @@
 
     \ k9 within weapon range?
     LDA temp \ <-- distance
-    CMP #(ENEMY_WEAPON_RANGE+1)
+    CMP enemyWeaponRangePlusOne
     BCS clearImmobileFlag \ implicit RTS
 
     \ set K9 damage counter (processed in inflictK9Damage)
@@ -243,7 +243,7 @@
 
     STA direction
     JSR queryK9InSight
-    BEQ skip1
+    BMI skip1
         \ K9 is seen, pursue k9
         JSR setPursueLeftOrRight
 
@@ -260,7 +260,7 @@
     STA direction
 
     JSR queryK9InSight
-    BEQ skip3
+    BMI skip3
         \ K9 is seen, turn and pursue k9
         JSR setPursueLeftOrRight
 
@@ -301,7 +301,7 @@
 \
 \ queryK9InSight(X register, direction)
 \
-\ Returns zero if k9 is not seen, otherwise the number of tiles to K9
+\ Returns -1 if k9 is not seen, otherwise the number of tiles to K9
 \
 \ params:
 \   X register   Enemy index
@@ -354,13 +354,13 @@
         BNE lookRightLoop
 
 .seeNothing
-    LDA #0
+    LDA #LO(-1)
     RTS
     
 .seeSomething
     AND #TILE_GRID_FLAGS_K9 \ see K9?
     BEQ seeNothing
-    LDA #(ENEMY_LOOK_RANGE + 1)
+    LDA #ENEMY_LOOK_RANGE
     SEC
     SBC count
     RTS

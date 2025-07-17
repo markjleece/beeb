@@ -131,11 +131,11 @@
     .loop
         LDA levelTileTypesLoaded, Y
         CMP #TILE_TYPE_SWITCH_ON
-        BNE skip
+        BNE skip1
             TYA
             ORA #TILE_GRID_FLAGS_OPAQUE
             STA switchOnTileGridValue
-        .skip
+        .skip1
         INY
         CPY #TILE_COUNT
         BNE loop
@@ -146,18 +146,26 @@
     LSR A \ shift flag to bit-0
     STA weepingAngels
 
+    \ set enemyWeaponRangePlusOne variable
+    LSR A \ shift flag to carry
+    LDA #(ENEMY_WEAPON_RANGE + 1)
+    BCC skip2
+        LDA #1 \ Weeping Angel use their teeth!
+    .skip2
+    STA enemyWeaponRangePlusOne
+
     \ set primarySamplesEnabled flag
-    LDA primarySamplesROMSEL : BEQ skip1
+    LDA primarySamplesROMSEL : BEQ skip3
         LDA levelFlagsLoaded
         AND #LEVEL_FLAGS_SAMPLE_SOUNDS
-    .skip1
+    .skip3
     STA primarySamplesEnabled
 
     \ set secondarySamplesEnabled flag
-    LDA secondarySamplesROMSEL : BEQ skip2
+    LDA secondarySamplesROMSEL : BEQ skip4
         LDA levelFlagsLoaded
         AND #LEVEL_FLAGS_SAMPLE_SOUNDS
-    .skip2
+    .skip4
     STA secondarySamplesEnabled
 
     \ patch BCC instuction in getObjectTileGridAddr (tilegrid.6502)
