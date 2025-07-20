@@ -51,7 +51,7 @@
 \   - If enemy sees k9 take an elevator up or down, action mode is changed to PURSUE_UP or PURSUE_DOWN.
 \   - If enemy elevator stops, enemy looks for k9 and turns if not seen.  If K9 still not seen, will try to descend/ascend again.
 \   - If k9 is not seen by any enemy for 10 seconds, all ACTION_PURSUE_... actions are demoted to ACTION_PACE.
-\   - Weeping angels are immobilized if face-to-face with K9
+\   - Weeping angels are immobilized if face-to-face with K9, unless they are lasered.
 \
 
 \
@@ -181,33 +181,37 @@
     AND #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING)
     BNE clearImmobileFlag \ implicit RTS
 
-    \ k9 outside weapon range?
+    \ use weapon if K9 is in weapons range?
     LDA temp \ <-- distance
     CMP enemyWeaponRangePlusOne
-    BCC skip4
-        \ K9 outside range so immobilize enemy if it's a Weeping Angel that
-        \ is face-to-face with K9, and the laser is not being used
-        LDA weepingAngels : BEQ clearImmobileFlag \ implicit RTS (not a Weeping Angel)
-
-        JSR getK9Direction
-        EOR direction
-        EOR #LO(-1 EOR 1) \ left xor right
-        ORA laserFrameCount \ is laser used?
-        BEQ setImmobileFlag \ implicit RTS (face-to-face and laser not used)
-        BNE clearImmobileFlag \ implicit RTS (not face-to-face or laser used)
-    .skip4
+    BCC useWeapon \ implcit RTS (in weapons range)
 
     \
-    \ K9 within weapon range
-    \ 
+    \ immobolize Weeping Angels if they are face-to-face with K9, and not being lasered
+    \
 
+    \ is a Weeping Angle?
+    LDA weepingAngels : BEQ clearImmobileFlag \ implicit RTS
+
+    \ face-to-face?  A = zero if face-to-face 
+    JSR getK9Direction
+    EOR direction
+    EOR #LO(-1 EOR 1) \ left xor right
+
+    \ and lasered?
+    ORA laserFrameCount
+
+    BNE clearImmobileFlag \ implicit RTS (not face-to-face or laser used)
+    BEQ setImmobileFlag \ implicit RTS (face-to-face and laser not used)
+
+.useWeapon
     \ set K9 damage counter (processed in inflictK9Damage)
     LDA k9DamageCounter : BNE skip5
         LDA #K9_DAMAGE_ON_COUNTER
         STA k9DamageCounter
     .skip5
 
-    \ fall through to setImmobileFlag as enemies can't move when firing their weapon
+    \ fall through to setImmobileFlag as enemies can't move when using their weapon
 
 .setImmobileFlag
     \ set 'immobile' flag

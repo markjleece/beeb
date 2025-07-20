@@ -217,7 +217,7 @@
 \
 \ elevatorMoveObject(X register, direction)
 \
-\ move object up helper
+\ move object up or down helper
 \
 \ params:
 \   X register      Object index
@@ -254,9 +254,8 @@
 \
 .elevatorFrameCallback_Ascend
 {
-    \ move elevator up
     LDA #LO(DIRECTION_UP)
-    JMP elevatorFrameCallback_Move
+    BNE elevatorFrameCallback_Move
 }
 
 \
@@ -269,16 +268,14 @@
 \
 .elevatorFrameCallback_Descend
 {
-    \ move elevator up
     LDA #DIRECTION_DOWN
-
     \ fall through to elevatorFrameCallback_Move
 }
 
 \
 \ elevatorFrameCallback_Move(X register)
 \
-\ frame callback for an ascending elevator
+\ frame callback helper for an ascending or descending elevator
 \
 \ params:
 \   X register   Elevator index
