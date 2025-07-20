@@ -215,21 +215,30 @@
 }
 
 \
-\ elevatorMoveObjectUp(X register)
+\ elevatorMoveObject(X register, direction)
 \
 \ move object up helper
 \
 \ params:
 \   X register      Object index
+\   direction       DIRECTION_UP or DIRECTION_DOWN
 \
-.elevatorMoveObjectUp
+.elevatorMoveObject
 {
-    \ move object up
-    LDA objectYLo, X
-    BNE skip1
-        DEC objectYHi, X
-    .skip1
-    DEC objectYLo, X
+    BIT direction : BMI else
+        \ move object down
+        INC objectYLo, X
+        BNE endif
+        INC objectYHi, X
+        BNE endif \ always branch
+    .else
+        \ move object up
+        LDA objectYLo, X
+        BNE skip
+            DEC objectYHi, X
+        .skip
+        DEC objectYLo, X
+    .endif
 
     \ set elevator redraw flag
     JMP setRedrawFlag \ implicit RTS
@@ -245,58 +254,9 @@
 \
 .elevatorFrameCallback_Ascend
 {
-    \ update keyframe every eight frames
-    LDA frameCount : AND #7 : BNE dontUpdateKeyframe
-        JSR elevatorNextKeyframe
-    .dontUpdateKeyframe
-
     \ move elevator up
-    JSR elevatorMoveObjectUp
-
-    STX temp \ --> elevator index
-
-    \ X <-- passenger index
-    LDA objectState, X
-    AND #ELEVATOR_STATE_PASSENGER_MASK
-    TAX
-
-    \ if K9 is the passenger, play sound effect every four frames
-    BNE skip
-        LDA frameCount : AND #3 : BNE skip
-        JSR moveSoundEffect
-    .skip
-
-    \ move passenger up
-    JSR elevatorMoveObjectUp
-
-    \ auto scroll screen (if passenger is K9)?
-    LDA #LO(DIRECTION_UP) : STA direction
-    JSR autoScrollVertically
-    
-    LDX temp \ <-- elevator index
-
-    \ have we reached the next floor?
-    JMP queryStopElevator \ implicit RTS
-}
-
-\
-\ elevatorMoveObjectDown(X register)
-\
-\ move object down helper
-\
-\ params:
-\   X register   Elevator index
-\
-.elevatorMoveObjectDown
-{
-    \ move object down
-    INC objectYLo, X
-    BNE skip1
-        INC objectYHi, X
-    .skip1
-
-    \ set elevator redraw flag
-    JMP setRedrawFlag \ implicit RTS
+    LDA #LO(DIRECTION_UP)
+    JMP elevatorFrameCallback_Move
 }
 
 \
@@ -309,13 +269,33 @@
 \
 .elevatorFrameCallback_Descend
 {
+    \ move elevator up
+    LDA #DIRECTION_DOWN
+
+    \ fall through to elevatorFrameCallback_Move
+}
+
+\
+\ elevatorFrameCallback_Move(X register)
+\
+\ frame callback for an ascending elevator
+\
+\ params:
+\   X register   Elevator index
+\   Accumulator  DIRECTION_UP or DIRECTION_DOWN
+\
+.elevatorFrameCallback_Move
+{
+    \ set direction
+    STA direction
+
     \ update keyframe every eight frames
     LDA frameCount : AND #7 : BNE dontUpdateKeyframe
         JSR elevatorNextKeyframe
     .dontUpdateKeyframe
 
-    \ move elevator down
-    JSR elevatorMoveObjectDown
+    \ move elevator
+    JSR elevatorMoveObject
 
     STX temp \ --> elevator index
 
@@ -330,13 +310,12 @@
         JSR moveSoundEffect
     .skip
 
-    \ move passenger down
-    JSR elevatorMoveObjectDown
+    \ move passenger
+    JSR elevatorMoveObject
 
     \ auto scroll screen (if passenger is K9)?
-    LDA #DIRECTION_DOWN : STA direction
     JSR autoScrollVertically
-
+    
     LDX temp \ <-- elevator index
 
     \ have we reached the next floor?

@@ -398,7 +398,7 @@
     STA healthHi
 
     \ clear tile
-    JMP k9ClearTile \ implicit RTS
+    BNE k9ClearTile \ implicit RTS
 }
 
 \

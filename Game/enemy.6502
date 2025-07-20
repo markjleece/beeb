@@ -181,24 +181,31 @@
     AND #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING)
     BNE clearImmobileFlag \ implicit RTS
 
-    \ immobilize enemy if it's a Weeping Angel that's face-to-face with K9
-    LDA weepingAngels : BEQ skip3
-        JSR getK9Direction
-        EOR direction
-        CMP #LO(-1 EOR 1) \ left xor right
-        BEQ setImmobileFlag \ implicit RTS
-    .skip3
-
-    \ k9 within weapon range?
+    \ k9 outside weapon range?
     LDA temp \ <-- distance
     CMP enemyWeaponRangePlusOne
-    BCS clearImmobileFlag \ implicit RTS
+    BCC skip4
+        \ K9 outside range so immobilize enemy if it's a Weeping Angel that
+        \ is face-to-face with K9, and the laser is not being used
+        LDA weepingAngels : BEQ clearImmobileFlag \ implicit RTS (not a Weeping Angel)
+
+        JSR getK9Direction
+        EOR direction
+        EOR #LO(-1 EOR 1) \ left xor right
+        ORA laserFrameCount \ is laser used?
+        BEQ setImmobileFlag \ implicit RTS (face-to-face and laser not used)
+        BNE clearImmobileFlag \ implicit RTS (not face-to-face or laser used)
+    .skip4
+
+    \
+    \ K9 within weapon range
+    \ 
 
     \ set K9 damage counter (processed in inflictK9Damage)
-    LDA k9DamageCounter : BNE skip4
+    LDA k9DamageCounter : BNE skip5
         LDA #K9_DAMAGE_ON_COUNTER
         STA k9DamageCounter
-    .skip4
+    .skip5
 
     \ fall through to setImmobileFlag as enemies can't move when firing their weapon
 
