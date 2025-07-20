@@ -243,9 +243,10 @@ TILE_TYPE_SWITCH_OFF = (TILE_TYPE_FLAG_OPAQUE + 8)
 TILE_TYPE_SWITCH_ON = (TILE_TYPE_FLAG_OPAQUE + 9)
 TILE_TYPE_EXIT = (TILE_TYPE_FLAG_OPAQUE + 10)
 
-\ level flags (copied from level editor)
-LEVEL_FLAGS_SAMPLE_SOUNDS = &01
-LEVEL_FLAGS_WEEPING_ANGELS = &02
+\ enemy types (copied from level editor)
+ENEMY_TYPE_GENERIC = 0
+ENEMY_TYPE_DALEK = 1
+ENEMY_TYPE_WEEPING_ANGEL = 2
 
 \ common object state flags (objectState high nibble)
 OBJECT_STATE_FLAGS_MASK = &F0
@@ -436,7 +437,7 @@ levelEnemyWeaponStrengthLoaded = &401E  \ level enemy weapon strength (relocated
 levelLaserStrengthLoaded = &401F        \ level laser strength (relocated to laserStrength)
 levelLaserHealthDrainLoaded = &4020     \ level laser health drain (relocated to laserHealthDrain)
 levelJewelHealthGainHiLoaded = &4021    \ level jewel health gain (relocated to jewelHealthGainHi)
-levelFlagsLoaded = &4022                \ level flags (used in setting weepingAngles, primarySamplesEnabled, and secondarySamplesEnabled)
+levelEnemyTypeLoaded = &4022            \ level enemy type (used in setting weepingAngles, primarySamplesEnabled, and secondarySamplesEnabled)
 levelObjectsLoaded = &4023              \ level object descriptors (used to populate game objects)
 levelSwitchPairingsLoaded = &40E3       \ level switch pairings
 
@@ -500,11 +501,10 @@ ORG 0
 .doorScrollRedrawCount      SKIP 1  \ used to redraw all doors after scrolling
 .enemyWeaponStrengthLo      SKIP 1  \ enemy weapon strength
 .enemyWeaponStrengthHi      SKIP 1
-.enemyWeaponRangePlusOne    SKIP 1  \ enemy weapon range, plus one, in tiles
 .laserStrength              SKIP 1  \ laser strength
 .laserHealthDrain           SKIP 1  \ laser health drain
 .jewelHealthGainHi          SKIP 1  \ jewel health gain (high byte)
-.weepingAngels              SKIP 1  \ weeping angels flag (if set, enemies are immobilized when face-to-face with K9)
+.enemyType                  SKIP 1  \ enemy type (ENEMY_TYPE_GENERIC, ENEMY_TYPE_DALEK, or ENEMY_TYPE_WEEPING_ANGEL)
 .playingSample              SKIP 1  \ playing sample flag (set when a sample is being played)
 .primarySamplesEnabled      SKIP 1  \ primary samples enabled flag
 .primarySamplesROMSEL       SKIP 1  \ primary samples ROM selector (zero denotes no sideways RAM)

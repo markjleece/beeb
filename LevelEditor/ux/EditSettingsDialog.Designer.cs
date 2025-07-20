@@ -50,6 +50,8 @@ namespace LevelEditor.ux
         /// </summary>
         private void InitializeComponent()
         {
+            enemyTypeComboBox = new ComboBox();
+            enemyTypeLabel = new Label();
             enemyWeaponStrengthLabel = new Label();
             enemyWeaponStrengthComboBox = new ComboBox();
             laserStrengthLabel = new Label();
@@ -60,14 +62,30 @@ namespace LevelEditor.ux
             jewelHealthGainComboBox = new ComboBox();
             okButton = new Button();
             cancelButton = new Button();
-            sampleSoundsCheckbox = new CheckBox();
-            weepingAngelsCheckbox = new CheckBox();
             SuspendLayout();
+            // 
+            // enemyTypeComboBox
+            // 
+            enemyTypeComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
+            enemyTypeComboBox.FormattingEnabled = true;
+            enemyTypeComboBox.Location = new Point(242, 13);
+            enemyTypeComboBox.Name = "enemyTypeComboBox";
+            enemyTypeComboBox.Size = new Size(232, 33);
+            enemyTypeComboBox.TabIndex = 0;
+            // 
+            // enemyTypeLabel
+            // 
+            enemyTypeLabel.AutoSize = true;
+            enemyTypeLabel.Location = new Point(14, 16);
+            enemyTypeLabel.Name = "enemyTypeLabel";
+            enemyTypeLabel.Size = new Size(208, 25);
+            enemyTypeLabel.TabIndex = 0;
+            enemyTypeLabel.Text = "Enemy Weapon Strength";
             // 
             // enemyWeaponStrengthLabel
             // 
             enemyWeaponStrengthLabel.AutoSize = true;
-            enemyWeaponStrengthLabel.Location = new Point(12, 15);
+            enemyWeaponStrengthLabel.Location = new Point(12, 55);
             enemyWeaponStrengthLabel.Name = "enemyWeaponStrengthLabel";
             enemyWeaponStrengthLabel.Size = new Size(208, 25);
             enemyWeaponStrengthLabel.TabIndex = 0;
@@ -77,15 +95,15 @@ namespace LevelEditor.ux
             // 
             enemyWeaponStrengthComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             enemyWeaponStrengthComboBox.FormattingEnabled = true;
-            enemyWeaponStrengthComboBox.Location = new Point(302, 12);
+            enemyWeaponStrengthComboBox.Location = new Point(242, 52);
             enemyWeaponStrengthComboBox.Name = "enemyWeaponStrengthComboBox";
-            enemyWeaponStrengthComboBox.Size = new Size(226, 33);
+            enemyWeaponStrengthComboBox.Size = new Size(232, 33);
             enemyWeaponStrengthComboBox.TabIndex = 0;
             // 
             // laserStrengthLabel
             // 
             laserStrengthLabel.AutoSize = true;
-            laserStrengthLabel.Location = new Point(12, 54);
+            laserStrengthLabel.Location = new Point(12, 94);
             laserStrengthLabel.Name = "laserStrengthLabel";
             laserStrengthLabel.Size = new Size(124, 25);
             laserStrengthLabel.TabIndex = 0;
@@ -95,15 +113,15 @@ namespace LevelEditor.ux
             // 
             laserStrengthComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             laserStrengthComboBox.FormattingEnabled = true;
-            laserStrengthComboBox.Location = new Point(302, 51);
+            laserStrengthComboBox.Location = new Point(242, 91);
             laserStrengthComboBox.Name = "laserStrengthComboBox";
-            laserStrengthComboBox.Size = new Size(226, 33);
+            laserStrengthComboBox.Size = new Size(232, 33);
             laserStrengthComboBox.TabIndex = 0;
             // 
             // laserHealthDrainLabel
             // 
             laserHealthDrainLabel.AutoSize = true;
-            laserHealthDrainLabel.Location = new Point(12, 93);
+            laserHealthDrainLabel.Location = new Point(12, 133);
             laserHealthDrainLabel.Name = "laserHealthDrainLabel";
             laserHealthDrainLabel.Size = new Size(155, 25);
             laserHealthDrainLabel.TabIndex = 0;
@@ -113,15 +131,15 @@ namespace LevelEditor.ux
             // 
             laserHealthDrainComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             laserHealthDrainComboBox.FormattingEnabled = true;
-            laserHealthDrainComboBox.Location = new Point(302, 90);
+            laserHealthDrainComboBox.Location = new Point(242, 130);
             laserHealthDrainComboBox.Name = "laserHealthDrainComboBox";
-            laserHealthDrainComboBox.Size = new Size(226, 33);
+            laserHealthDrainComboBox.Size = new Size(232, 33);
             laserHealthDrainComboBox.TabIndex = 0;
             // 
             // jewelHealthGainLabel
             // 
             jewelHealthGainLabel.AutoSize = true;
-            jewelHealthGainLabel.Location = new Point(12, 132);
+            jewelHealthGainLabel.Location = new Point(12, 172);
             jewelHealthGainLabel.Name = "jewelHealthGainLabel";
             jewelHealthGainLabel.Size = new Size(149, 25);
             jewelHealthGainLabel.TabIndex = 0;
@@ -131,15 +149,15 @@ namespace LevelEditor.ux
             // 
             jewelHealthGainComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             jewelHealthGainComboBox.FormattingEnabled = true;
-            jewelHealthGainComboBox.Location = new Point(302, 129);
+            jewelHealthGainComboBox.Location = new Point(242, 169);
             jewelHealthGainComboBox.Name = "jewelHealthGainComboBox";
-            jewelHealthGainComboBox.Size = new Size(226, 33);
+            jewelHealthGainComboBox.Size = new Size(232, 33);
             jewelHealthGainComboBox.TabIndex = 0;
             // 
             // okButton
             // 
             okButton.DialogResult = DialogResult.OK;
-            okButton.Location = new Point(416, 256);
+            okButton.Location = new Point(362, 208);
             okButton.Name = "okButton";
             okButton.Size = new Size(112, 34);
             okButton.TabIndex = 0;
@@ -150,32 +168,12 @@ namespace LevelEditor.ux
             // cancelButton
             // 
             cancelButton.DialogResult = DialogResult.Cancel;
-            cancelButton.Location = new Point(298, 256);
+            cancelButton.Location = new Point(244, 208);
             cancelButton.Name = "cancelButton";
             cancelButton.Size = new Size(112, 34);
             cancelButton.TabIndex = 0;
             cancelButton.Text = "Cancel";
             cancelButton.UseVisualStyleBackColor = true;
-            // 
-            // sampleSoundsCheckbox
-            // 
-            sampleSoundsCheckbox.AutoSize = true;
-            sampleSoundsCheckbox.Location = new Point(15, 176);
-            sampleSoundsCheckbox.Name = "sampleSoundsCheckbox";
-            sampleSoundsCheckbox.Size = new Size(530, 29);
-            sampleSoundsCheckbox.TabIndex = 0;
-            sampleSoundsCheckbox.Text = "Enable sample based sounds (uses 16K or 32K sideways RAM)";
-            sampleSoundsCheckbox.UseVisualStyleBackColor = true;
-            // 
-            // weepingAngelsCheckbox
-            // 
-            weepingAngelsCheckbox.AutoSize = true;
-            weepingAngelsCheckbox.Location = new Point(15, 211);
-            weepingAngelsCheckbox.Name = "weepingAngelsCheckbox";
-            weepingAngelsCheckbox.Size = new Size(291, 29);
-            weepingAngelsCheckbox.TabIndex = 0;
-            weepingAngelsCheckbox.Text = "Weeping Angel enemy behavior";
-            weepingAngelsCheckbox.UseVisualStyleBackColor = true;
             // 
             // EditSettingsDialog
             // 
@@ -183,7 +181,9 @@ namespace LevelEditor.ux
             AutoScaleDimensions = new SizeF(10F, 25F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = cancelButton;
-            ClientSize = new Size(542, 303);
+            ClientSize = new Size(486, 254);
+            Controls.Add(enemyTypeLabel);
+            Controls.Add(enemyTypeComboBox);
             Controls.Add(enemyWeaponStrengthLabel);
             Controls.Add(enemyWeaponStrengthComboBox);
             Controls.Add(laserStrengthLabel);
@@ -192,8 +192,6 @@ namespace LevelEditor.ux
             Controls.Add(laserHealthDrainComboBox);
             Controls.Add(jewelHealthGainLabel);
             Controls.Add(jewelHealthGainComboBox);
-            Controls.Add(sampleSoundsCheckbox);
-            Controls.Add(weepingAngelsCheckbox);
             Controls.Add(okButton);
             Controls.Add(cancelButton);
             Name = "EditSettingsDialog";
@@ -215,7 +213,7 @@ namespace LevelEditor.ux
         private ComboBox jewelHealthGainComboBox;
         private Button okButton;
         private Button cancelButton;
-        private CheckBox sampleSoundsCheckbox;
-        private CheckBox weepingAngelsCheckbox;
+        private ComboBox enemyTypeComboBox;
+        private Label enemyTypeLabel;
     }
 }

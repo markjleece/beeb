@@ -120,6 +120,7 @@
     LDA levelLaserStrengthLoaded : STA laserStrength
     LDA levelLaserHealthDrainLoaded : STA laserHealthDrain
     LDA levelJewelHealthGainHiLoaded : STA jewelHealthGainHi
+    LDA levelEnemyTypeLoaded : STA enemyType
 
     \ enemyWeaponStrength *= 4 (serialized value is divided by four)
     ASL enemyWeaponStrengthLo : ROL enemyWeaponStrengthHi
@@ -140,51 +141,54 @@
         CPY #TILE_COUNT
         BNE loop
 
-    \ set weepingAngels flag
-    LDA levelFlagsLoaded
-    AND #LEVEL_FLAGS_WEEPING_ANGELS
-    LSR A \ shift flag to bit-0
-    STA weepingAngels
-
-    \ set enemyWeaponRangePlusOne variable
-    LSR A \ shift flag to carry
-    LDA #(ENEMY_WEAPON_RANGE + 1)
-    BCC skip2
-        LDA #1 \ Weeping Angel use their teeth!
+    \ patch CMP operand in enemyAI (enemy.6502)
+    LDX #(ENEMY_WEAPON_RANGE + 1)
+    LDA enemyType
+    CMP #ENEMY_TYPE_WEEPING_ANGEL : BNE skip2
+        LDX #1 \ Weeping Angel use their teeth!
     .skip2
-    STA enemyWeaponRangePlusOne
+    STX cmp_inst+1 
 
-    \ set primarySamplesEnabled flag
-    LDA primarySamplesROMSEL : BEQ skip3
-        LDA levelFlagsLoaded
-        AND #LEVEL_FLAGS_SAMPLE_SOUNDS
-    .skip3
-    STA primarySamplesEnabled
+    \ set primarySamplesEnabled and secondarySamplesEnabled flags
+    LDA enemyType
+    CMP #ENEMY_TYPE_DALEK : BNE else
+        \ enabled samples
+        LDA primarySamplesROMSEL : BEQ skip3
+            LDA #1 \ enable
+        .skip3
+        STA primarySamplesEnabled
 
-    \ set secondarySamplesEnabled flag
-    LDA secondarySamplesROMSEL : BEQ skip4
-        LDA levelFlagsLoaded
-        AND #LEVEL_FLAGS_SAMPLE_SOUNDS
-    .skip4
-    STA secondarySamplesEnabled
+        \ set secondarySamplesEnabled flag
+        LDA secondarySamplesROMSEL : BEQ skip4
+            LDA #1 \ enable
+        .skip4
+        STA secondarySamplesEnabled
+
+        JMP endif
+    .else
+        \ disable samples
+        LDA #0
+        STA primarySamplesEnabled
+        STA secondarySamplesEnabled
+    .endif
 
     \ patch BCC instuction in getObjectTileGridAddr (tilegrid.6502)
     LDA levelHorzTileCountLoaded
     CMP #128 : BNE else1
         LDA #0
-        BEQ endif
+        BEQ endif4
     .else1
     CMP #64 : BNE else2
         LDA #3
-        BNE endif
+        BNE endif4
     .else2
     CMP #32 : BNE else3
         LDA #6
-        BNE endif
+        BNE endif4
     .else3
     CMP #16 : BNE endif
         LDA #9
-    .endif
+    .endif4
     STA bcc_inst+1
 
     \ patch ADC and SBC operands in tileGridAddr_add_horzTileCount and tileGridAddr_sub_horzTileCount (tilegrid.6502)

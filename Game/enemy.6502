@@ -183,17 +183,20 @@
 
     \ use weapon if K9 is in weapons range?
     LDA temp \ <-- distance
-    CMP enemyWeaponRangePlusOne
+    .^cmp_inst
+    CMP #&FF \ operand patched in initializeLevelVariables (level.6502)
     BCC useWeapon \ implcit RTS (in weapons range)
 
     \
     \ immobolize Weeping Angels if they are face-to-face with K9, and not being lasered
     \
 
-    \ is a Weeping Angle?
-    LDA weepingAngels : BEQ clearImmobileFlag \ implicit RTS
+    \ is a Weeping Angel?
+    LDA enemyType
+    CMP #ENEMY_TYPE_WEEPING_ANGEL
+    BNE clearImmobileFlag \ implicit RTS
 
-    \ face-to-face?  A = zero if face-to-face 
+    \ k9 and Weeping Angel face-to-face?  A = zero if face-to-face 
     JSR getK9Direction
     EOR direction
     EOR #LO(-1 EOR 1) \ left xor right
@@ -201,8 +204,8 @@
     \ and lasered?
     ORA laserFrameCount
 
-    BNE clearImmobileFlag \ implicit RTS (not face-to-face or laser used)
-    BEQ setImmobileFlag \ implicit RTS (face-to-face and laser not used)
+    BNE clearImmobileFlag \ implicit RTS (not face-to-face or lasered)
+    BEQ setImmobileFlag \ implicit RTS (face-to-face and not lasered)
 
 .useWeapon
     \ set K9 damage counter (processed in inflictK9Damage)
