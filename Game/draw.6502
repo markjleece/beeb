@@ -89,7 +89,7 @@ IF DEBUG_TILE_GRID_FLAGS != 0
 
     RTS
 
-    SKIP 141 \ report same number of unsued code/data bytes
+    SKIP 137 \ report same number of unsued code/data bytes
 }
 ENDIF
 
@@ -203,8 +203,7 @@ ELSE
     STA inst_LDA+2 \ set LDA instruction operand (high-byte) in drawDigit
 
     \ draw level icon
-    LDA #16
-    JSR copyBytes
+    JSR copyBytesToScreen_16
 
     \
     \ draw level number
@@ -213,11 +212,10 @@ ELSE
     JSR drawDigit
 
     \ draw heart icon
-    LDA #16
-    JSR copyBytes
+    JSR copyBytesToScreen_16
 
     LDA #8
-    JSR copyBytes
+    JSR copyBytesToScreen
 
     \
     \ draw health bar
@@ -305,10 +303,9 @@ ELSE
 
     \ draw key icon
     LDA #8
-    JSR copyBytes
+    JSR copyBytesToScreen
 
-    LDA #16
-    JSR copyBytes
+    JSR copyBytesToScreen_16
 
     \ draw key count
     LDA keyCount
@@ -329,7 +326,11 @@ ELSE
     LDA #16    
     JMP dstAddr_add \ implicit RTS
 
-.copyBytes
+
+.copyBytesToScreen_16
+    LDA #16
+
+.copyBytesToScreen
     TAX : TAY
 
     \ copy bytes
@@ -948,7 +949,7 @@ ENDIF
             JMP laserHitTest \ implicit RTS
         .skip
 
-        \ draw 4 red pixels
+        \ draw 4 laser pixels
         LDA #&0F
         STA (dstAddr), Y
 
@@ -1283,7 +1284,7 @@ ENDIF
     \
     
     JSR convertToScreenSpace
-    BNE rts_5
+    BNE rts_5 \ fully clipped
 
     \
     \ at this point we know we are going to render something
@@ -1773,6 +1774,10 @@ ENDIF
 \
 .drawEnemyHealthBar
 {
+    \ use srcAddr to store the left and right pixel quads
+    leftPixelQuad = srcAddr
+    rightPixelQuad = srcAddr+1
+
     \ check if health is not full or empty
     LDA objectState, X
     AND #ENEMY_STATE_HEALTH_MASK : BEQ rts_6
@@ -1814,7 +1819,7 @@ ENDIF
     JSR convertToScreenSpace
     BNE rts_6
 
-    \ lookup left and right pixels, which we store in srcAddr and srcAddr+1
+    \ lookup left and right pixels, which we store in leftPixelQuad and rightPixelQuad
     LDA temp \ <-- health
     SEC
     SBC #1
@@ -1827,19 +1832,19 @@ ENDIF
     ADC temp
     TAY
     LDA healthBarAtlas, Y
-    STA srcAddr \ --> left pixels
+    STA leftPixelQuad
     LDA healthBarAtlas+1, Y
-    STA srcAddr+1 \ --> right pixels
+    STA rightPixelQuad
 
     \ clip right edge
     LDY #&FF
     LDA rightHi : BEQ endif_6
-        STY srcAddr+1 \ mark right pixels clipped
+        STY rightPixelQuad \ mark right pixels clipped
     .endif_6
 
     \ clip left edge
     LDA leftHi : BPL endif_7
-        STY srcAddr \ mark left pixels clipped
+        STY leftPixelQuad \ mark left pixels clipped
         INY
         STY leftLo \ left = 0
     .endif_7
@@ -1859,19 +1864,19 @@ ENDIF
 
     \ write left pixels, if not clipped
     LDY #0
-    LDA srcAddr \ <-- left pixels
+    LDA leftPixelQuad
     CMP #&FF : BEQ skip2
         STA (dstAddr), Y
     .skip2
 
     \ dstAddr += 8, if neither left or right pixels are clipped
-    ORA srcAddr+1 \ <-- right pixels
+    ORA rightPixelQuad
     CMP #&FF : BEQ skip3
         JSR dstAddr_add_8
     .skip3
 
     \ write right pixels, if not clipped
-    LDA srcAddr+1 \ <-- right pixels
+    LDA rightPixelQuad
     CMP #&FF : BEQ skip5
         STA (dstAddr), Y
     .skip5

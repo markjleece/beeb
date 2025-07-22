@@ -96,6 +96,9 @@
 \
 .soundEffect_beginPursuit
 {
+    \ ignore if a sample is playing
+    LDA playingSample : BNE rts_3
+
     LDA #SOUND_EFFECT_PURSUIT_ON
     BNE soundEffect \ implicit RTS
 }
@@ -291,23 +294,12 @@
 \
 \ silencePursuitSoundEffect
 \
-\ silence the pursuit sound effect, first checking that no enemies are in pursuit
+\ silence the pursuit sound effect (once)
 \
 .silencePursuitSoundEffect
 {
-    \ do nothing if any enemy is in pursuit
-    LDX enemyCount
-    BEQ loopEnd
-    .loop
-        LDA objectType, X : BMI rts_3
-        DEX
-        BNE loop
-    .loopEnd
-
-    \ silence sound effect (once)
     LDA pursuitSoundEffectCounter : BEQ rts_3
-        STX endPursuitCounter \ reset counter
-        STX pursuitSoundEffectCounter \ reset counter
+        LDA #0 : STA pursuitSoundEffectCounter
         JMP (primarySoundVector_endPursuit) \ implicit RTS
 }
 
@@ -376,10 +368,10 @@
     CLI \ re-enable interrupts
 
     \
-    \ pause pursuit MOS sound effect, if its playing (on tone generator 3)
+    \ pause MOS pursuit sound effect, if its playing
     \
-    LDA endPursuitCounter : BEQ rts_3
     LDA primarySamplesEnabled : BNE rts_3
+    LDA pursuitSoundEffectCounter : BEQ rts_3
     JMP soundEffect_endPursuit \ implicit RTS
 }
 
@@ -407,11 +399,13 @@
     CLI \ re-enable interrupts
 
     \
-    \ resume pursuit MOS sound effect, if it should be playing (on tone generator 3)
+    \ resume MOS pursuit sound effect, if it should be playing
     \
-    LDA endPursuitCounter : BEQ rts_3
-    LDA primarySamplesEnabled : BNE rts_3
-    JMP soundEffect_beginPursuit \ implicit RTS
+    LDA primarySamplesEnabled : BNE else
+    LDA pursuitSoundEffectCounter : BEQ else
+        JMP soundEffect_beginPursuit \ implicit RTS
+    .else
+        JMP soundEffect_endPursuit \ implicit RTS
 }
 
 \

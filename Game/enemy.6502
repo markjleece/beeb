@@ -83,7 +83,36 @@
         DEX
         BNE loop
 
-    \ silence sound effect
+    \ silence the sound effect
+    JMP silencePursuitSoundEffect \ implicit RTS
+}
+
+\
+\ enemyEndPursuit(X)
+\
+\ end pursuit
+\
+\ params:
+\   X register  Enemy index
+\
+.enemyEndPursuit
+{
+    \ action = ACTION_LOOK
+    JSR enemySetActionLook
+
+    \ check if any other enemies are pursuing K9, returning is so
+    LDY enemyCount
+    BEQ loopEnd
+    .loop
+        LDA objectType, Y : BMI rts_15
+        DEY
+        BNE loop
+    .loopEnd
+
+    \ end all pursuit
+    STY endPursuitCounter \ = 0
+
+    \ silence the pursuit sound effect
     JMP silencePursuitSoundEffect \ implicit RTS
 }
 
@@ -123,11 +152,7 @@
 
     \ does enemy have enough health to pursue K9?
     CMP #(ENEMY_WEAPON_THRESHOLD + 1) : BCS skip1
-        \ action = ACTION_LOOK
-        JSR enemySetActionLook
-
-        \ silence pursuit
-        JSR silencePursuitSoundEffect
+        JSR enemyEndPursuit
         JMP clearImmobileFlag \ implicit RTS
     .skip1
     
@@ -136,19 +161,19 @@
     AND #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING)
     BNE clearImmobileFlag \ implicit RTS
 
-    \ determine if K9 is in sight
+    \ get enemy direction
     JSR getObjectDirection \ A = -1 (left), 0 (none), 1 (right)
     BEQ clearImmobileFlag \ implicit RTS (enemy turning)
-
     STA direction
+
+    \ determine if K9 is in sight
     JSR queryK9InSight
     BMI clearImmobileFlag \ implicit RTS (not in sight)
+    STA temp \ --> distance
 
     \
     \ K9 is in sight!
     \
-
-    STA temp \ --> distance
 
     \ set action to ACTION_PURSUE_...
     LDA objectState \ <-- K9 state
@@ -179,7 +204,7 @@
     \ don't use weapon if K9 is on an elevator
     LDA objectState \ <-- K9 state
     AND #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING)
-    BNE clearImmobileFlag \ implicit RTS
+    BNE clearImmobileFlag \ implicit RTS (on elevator)
 
     \ use weapon if K9 is in weapons range?
     LDA temp \ <-- distance
@@ -193,7 +218,7 @@
     \ is a Weeping Angel?
     LDA enemyType
     CMP #ENEMY_TYPE_WEEPING_ANGEL
-    BNE clearImmobileFlag \ implicit RTS
+    BNE clearImmobileFlag \ implicit RTS (not a Weeping Angel)
 
     \ k9 and Weeping Angel face-to-face?  A = zero if face-to-face 
     JSR getK9Direction
@@ -207,7 +232,7 @@
     BEQ setImmobileFlag \ implicit RTS (face-to-face and not lasered)
 
 .useWeapon
-    \ set K9 damage counter (processed in inflictK9Damage)
+    \ set K9 damage counter, if not set (processed in inflictK9Damage)
     LDA k9DamageCounter : BNE skip5
         LDA #K9_DAMAGE_ON_COUNTER
         STA k9DamageCounter
@@ -1116,11 +1141,11 @@
     LDA temp \ <-- remaining health
     BNE skip1
 
+        \ end pursuit
+        JSR enemyEndPursuit
+
         \ erase sprite
         LDA #&FF : STA objectSpriteIndex, X
-
-        \ action = ACTION_LOOK
-        JSR enemySetActionLook
 
         \ stop laser
         INC laserInhibited
@@ -1135,9 +1160,6 @@
         \ clear inside tile flags
         JSR clearObjectInsideTileFlags 
 
-        \ end pursuit sound effect?
-        JSR silencePursuitSoundEffect 
-        
         \ invoke enemy destroyed sound effect
         JMP (secondarySoundVector_enemyDestroyed) \ implicit RTS
     .skip1

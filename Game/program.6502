@@ -21,7 +21,7 @@
 \ --------------------------------------------------------------
 
 \
-\ God mode - activated by pressing and holding 'G' 'O' 'D' in quick succession
+\ God mode - activated by pressing the 'G' 'O' 'D' keys together
 \  - gives K9 unlimited health and keys
 \  - enables scrolling using the arror keys
 \  - enables a specific level to be loaded using the number keys: 1..LEVEL_COUNT
@@ -736,7 +736,7 @@ INCLUDE "utils.6502"
         \ cache extents
         JSR cacheObjectExtents
 
-        \ JSR (frameCallbacks[objectFrameCallback[X]])
+        \ JSR (frameCallbackTbl[objectFrameCallback[X]])
         LDY objectFrameCallback, X
         LDA frameCallbackTbl+0, Y : STA jsr_inst+1
         LDA frameCallbackTbl+1, Y : STA jsr_inst+2
@@ -1346,11 +1346,15 @@ ENDIF
     \ common preamble
     JSR levelEndPreamble
 
+    \ sound effect
+    LDA #SOUND_EFFECT_DIED
+    JSR soundEffect
+
     \ reload current level
     JSR loadCurrentLevelFile
 
     \ show 'battery flat' experience
-    JMP showBatteryFlatScreen  \ implicit RTS
+    JMP showBatteryFlatScreen \ implicit RTS
 }
 
 \

@@ -124,7 +124,7 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ stopSampling help
+\ stopSampling()
 \
 .stopSampling
 {
