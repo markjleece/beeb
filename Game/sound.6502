@@ -415,42 +415,38 @@
 }
 
 \
-\ sendSoundData(A, Y)
+\ sendSoundData(A)
 \
-\ send sound data to 76489 sound chip
+\ send sound data to SN76489 sound chip
 \
 \ params: 
-\   A (accumulator)    Sound data
-\
-\ modifies:
-\   temp
+\   A (accumulator)     Sound data
 \
 .sendSoundData
 {
-    STY temp \ save Y
+    PHA \ --> sound data
 
     \ set data direction register A (write &FF to &FE43)
-    LDY #&FF
-    STY &FE43
+    LDA #&FF
+    STA &FE43
 
     \ output register A (write sound data to &FE4F)
+    PLA \ <-- sound data
     STA &FE4F
 
     \ output register B, prepping write by setting chip write pin low (write 0 to &FE40)
-    INY
-    STY &FE40
+    LDA #0
+    STA &FE40
 
     \ keep the write enable line low for at least 8 us, 16 cycles
-    LDY #2
+    LDA #&44     \ 2 cycles
     .loop
-        DEY
-        BNE loop
+        LSR A    \ 6 cycles
+        BCC loop \ 8 cycles
                                                         
     \ write data by setting chip write pin high (write 8 to &FE40)
-    LDY #8
-    STY &FE40
+    STA &FE40
      
-    LDY temp \ restore Y
     RTS                                                 
 }
 
