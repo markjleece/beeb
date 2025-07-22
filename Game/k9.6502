@@ -290,8 +290,7 @@
     LDA spriteIndexTbl, Y : STA objectSpriteIndex
 
     \ set frame callback
-    LDA frameCallbackLoTbl, Y : STA objectFrameCallbackLo
-    LDA frameCallbackHiTbl, Y : STA objectFrameCallbackHi
+    LDA frameCallbackTbl, Y : STA objectFrameCallback
 
     \ additional properties
     LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
@@ -372,15 +371,11 @@
     EQUB SPRITE_INDEX_K9_LEFT, SPRITE_INDEX_K9_RIGHT    \ move
     EQUB SPRITE_INDEX_K9_TURN + 2, SPRITE_INDEX_K9_TURN \ turn
         
-.frameCallbackLoTbl
-    EQUB LO(frameCallback_IntermittentRedraw), LO(frameCallback_IntermittentRedraw) \ look
-    EQUB LO(k9FrameCallback_MoveLeft), LO(k9FrameCallback_MoveRight)                \ move
-    EQUB LO(k9FrameCallback_TurnLeftToRight), LO(k9FrameCallback_TurnRightToLeft)   \ turn
+.frameCallbackTbl
+    EQUB FRAME_CALLBACK_INTERMITTENT_REDRAW, FRAME_CALLBACK_INTERMITTENT_REDRAW     \ look
+    EQUB FRAME_CALLBACK_K9_MOVE_LEFT, FRAME_CALLBACK_K9_MOVE_RIGHT                  \ move
+    EQUB FRAME_CALLBACK_K9_TURN_LEFT_TO_RIGHT, FRAME_CALLBACK_K9_TURN_RIGHT_TO_LEFT \ turn
 
-.frameCallbackHiTbl
-    EQUB HI(frameCallback_IntermittentRedraw), HI(frameCallback_IntermittentRedraw) \ look
-    EQUB HI(k9FrameCallback_MoveLeft), HI(k9FrameCallback_MoveRight)                \ move
-    EQUB HI(k9FrameCallback_TurnLeftToRight), HI(k9FrameCallback_TurnRightToLeft)   \ turn
 }
 
 \

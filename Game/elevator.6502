@@ -79,17 +79,11 @@
     JSR setObjectVerticalFlags
 
     \ set elevator callback
-    LDA #LO(elevatorFrameCallback_Ascend)
+    LDA #FRAME_CALLBACK_ELEVATOR_ASCEND
     BIT direction : BMI skip2
-        LDA #LO(elevatorFrameCallback_Descend)
+        LDA #FRAME_CALLBACK_ELEVATOR_DESCEND
     .skip2
-    STA objectFrameCallbackLo, X
-
-    LDA #HI(elevatorFrameCallback_Ascend)
-    BIT direction : BMI skip3
-        LDA #HI(elevatorFrameCallback_Descend)
-    .skip3
-    STA objectFrameCallbackHi, X
+    STA objectFrameCallback, X
 
     LDX temp \ <-- k9/enemy index
 
@@ -341,8 +335,7 @@
     CMP #TILE_TYPE_ELEVATOR : BNE notEnd
 
     \ yeah, we've reached the end!
-    LDA #HI(elevatorStopFrameCallback) : STA objectFrameCallbackHi, X
-    LDA #LO(elevatorStopFrameCallback) : STA objectFrameCallbackLo, X
+    LDA #FRAME_CALLBACK_ELEVATOR_STOP : STA objectFrameCallback, X
 
     .notEnd
     RTS
@@ -546,14 +539,14 @@
 }
 
 \
-\ elevatorStopFrameCallback(X register)
+\ elevatorFrameCallback_Stop(X register)
 \
 \ elevator frame callback, called when elevator stops moving
 \
 \ params:
 \   X register   Elevator index
 \
-.elevatorStopFrameCallback
+.elevatorFrameCallback_Stop
 {
     \ get elevator passenger index, pushing this on stack
     LDA objectState, X
@@ -581,8 +574,7 @@
     JSR clearObjectTileFlagsAbove
 
     \ restore callback
-    LDA #HI(elevatorFrameCallback) : STA objectFrameCallbackHi, X
-    LDA #LO(elevatorFrameCallback) : STA objectFrameCallbackLo, X
+    LDA #FRAME_CALLBACK_ELEVATOR : STA objectFrameCallback, X
 
     \ set passenger tile flags
     PLA \ <-- passenger index

@@ -183,8 +183,7 @@
 
     \ use weapon if K9 is in weapons range?
     LDA temp \ <-- distance
-    .^cmp_inst
-    CMP #&FF \ operand patched in initializeLevelVariables (level.6502)
+    CMP enemyWeaponRangePlusOne
     BCC useWeapon \ implcit RTS (in weapons range)
 
     \
@@ -404,12 +403,11 @@
         CMP objectYLo, X
         LDA objectYHi
         SBC objectYHi, X
-        BCS else
-            LDA #ACTION_PURSUE_UP
-            BNE updateAction
-        .else
+        LDA #ACTION_PURSUE_UP
+        BCC skip
             LDA #ACTION_PURSUE_DOWN
-            \ fall through...
+        .skip
+        \ fall through...
 
 .updateAction
     STA temp
@@ -931,8 +929,7 @@
     TAY
     LDA spriteIndexTbl, Y : STA objectSpriteIndex, X
     LDA frameCountTbl, Y : STA objectFrameCounter, X
-    LDA frameCallbackLoTbl, Y : STA objectFrameCallbackLo, X
-    LDA frameCallbackHiTbl, Y : STA objectFrameCallbackHi, X
+    LDA frameCallbackTbl, Y : STA objectFrameCallback, X
 
     \ update objectType animation
     LDA objectType, X
@@ -960,15 +957,10 @@
     EQUB 0, 0                                                      \ move
     EQUB FRAME_COUNT_ENEMY_TURN, FRAME_COUNT_ENEMY_TURN            \ turn
          
-.frameCallbackLoTbl
-    EQUB LO(enemyFrameCallback_LookLeft), LO(enemyFrameCallback_LookRight)              \ look
-    EQUB LO(enemyFrameCallback_MoveLeft), LO(enemyFrameCallback_MoveRight)              \ move
-    EQUB LO(enemyFrameCallback_TurnLeftToRight), LO(enemyFrameCallback_TurnRightToLeft) \ turn
-
-.frameCallbackHiTbl
-    EQUB HI(enemyFrameCallback_LookLeft), HI(enemyFrameCallback_LookRight)              \ look
-    EQUB HI(enemyFrameCallback_MoveLeft), HI(enemyFrameCallback_MoveRight)              \ move
-    EQUB HI(enemyFrameCallback_TurnLeftToRight), HI(enemyFrameCallback_TurnRightToLeft) \ turn
+.frameCallbackTbl
+    EQUB FRAME_CALLBACK_ENEMY_LOOK_LEFT, FRAME_CALLBACK_ENEMY_LOOK_RIGHT                  \ look
+    EQUB FRAME_CALLBACK_ENEMY_MOVE_LEFT, FRAME_CALLBACK_ENEMY_MOVE_RIGHT                  \ move
+    EQUB FRAME_CALLBACK_ENEMY_TURN_LEFT_TO_RIGHT, FRAME_CALLBACK_ENEMY_TURN_RIGHT_TO_LEFT \ turn
 }
 
 \
@@ -1134,8 +1126,7 @@
         INC laserInhibited
 
         \ set frame callback so it just returns
-        LDA #LO(rts_0) : STA objectFrameCallbackLo, X
-        LDA #HI(rts_0) : STA objectFrameCallbackHi, X
+        LDA #FRAME_CALLBACK_VOID : STA objectFrameCallback, X
 
         \ if we were at the start of a move animation which set the
         \ left or right tile flags, we need to clear these flags

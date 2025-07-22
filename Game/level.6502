@@ -96,6 +96,7 @@
     STA laserFrameCount
     STA k9DamageCounter
     STA endPursuitCounter
+    STA primarySamplesEnabled
     STA laserSoundEffectOn 
     STA pursuitSoundEffectCounter
     STA blockedSoundEffectOn
@@ -108,6 +109,7 @@
     STA laseredTileStrength
     STA laseredTileRedraw
     STA enemyWeaponStrengthHi
+    STA playingSample
 
     LDA #12 : STA healthHi
     LDA #&FF : STA healthLo : STA enemyHealthLo
@@ -141,36 +143,30 @@
         CPY #TILE_COUNT
         BNE loop
 
-    \ patch CMP operand in enemyAI (enemy.6502)
+    \ set enemyWeaponRangePlusOne
     LDX #(ENEMY_WEAPON_RANGE + 1)
     LDA enemyType
     CMP #ENEMY_TYPE_WEEPING_ANGEL : BNE skip2
         LDX #1 \ Weeping Angel use their teeth!
     .skip2
-    STX cmp_inst+1 
+    STX enemyWeaponRangePlusOne 
 
-    \ set primarySamplesEnabled and secondarySamplesEnabled flags
+    \ set primarySamplesEnabled
     LDA enemyType
     CMP #ENEMY_TYPE_DALEK : BNE else
-        \ enabled samples
-        LDA primarySamplesROMSEL : BEQ skip3
+        LDA primarySamplesROMSEL : BEQ endif
             LDA #1 \ enable
-        .skip3
-        STA primarySamplesEnabled
-
-        \ set secondarySamplesEnabled flag
-        LDA secondarySamplesROMSEL : BEQ skip4
-            LDA #1 \ enable
-        .skip4
-        STA secondarySamplesEnabled
-
-        JMP endif
+            BNE endif \ always branch
     .else
-        \ disable samples
-        LDA #0
-        STA primarySamplesEnabled
-        STA secondarySamplesEnabled
+        LDA #0 \ disable
     .endif
+    STA primarySamplesEnabled
+
+    \ set secondarySamplesEnabled flag
+    LDA secondarySamplesROMSEL : BEQ skip3
+        LDA #1 \ enable
+    .skip3
+    STA secondarySamplesEnabled
 
     \ patch BCC instuction in getObjectTileGridAddr (tilegrid.6502)
     LDA levelHorzTileCountLoaded
@@ -410,10 +406,13 @@
     NEXT
 
     \ 11 k9 sprites
-    EQUB LO(k9Atlas1)
+    FOR addr, k9Atlas1, k9Atlas1 + K9_SPRITE_SIZE, K9_SPRITE_SIZE
+        EQUB LO(addr)
+    NEXT
+
     EQUB LO(k9Atlas2)
 
-    FOR addr, k9Atlas3, k9Atlas3 + (8 * K9_SPRITE_SIZE), K9_SPRITE_SIZE
+    FOR addr, k9Atlas3, k9Atlas3 + (7 * K9_SPRITE_SIZE), K9_SPRITE_SIZE
         EQUB LO(addr)
     NEXT
 
@@ -457,10 +456,13 @@
     NEXT
 
     \ 11 k9 sprites
-    EQUB HI(k9Atlas1)
+    FOR addr, k9Atlas1, k9Atlas1 + K9_SPRITE_SIZE, K9_SPRITE_SIZE
+        EQUB HI(addr)
+    NEXT
+
     EQUB HI(k9Atlas2)
 
-    FOR addr, k9Atlas3, k9Atlas3 + (8 * K9_SPRITE_SIZE), K9_SPRITE_SIZE
+    FOR addr, k9Atlas3, k9Atlas3 + (7 * K9_SPRITE_SIZE), K9_SPRITE_SIZE
         EQUB HI(addr)
     NEXT
 
@@ -760,7 +762,7 @@
 
     JSR memcpy
 
-    \ first k9 sprite at k9Atlas1
+    \ first two k9 sprites at k9Atlas1
     srcAddr10 = srcAddr9 + (ELEVATOR_SPRITE_SIZE * 4)
 
     LDA #LO(srcAddr10) : STA srcAddr
@@ -769,13 +771,13 @@
     LDA #LO(k9Atlas1) : STA dstAddr
     LDA #HI(k9Atlas1) : STA dstAddr+1
 
-    LDX #LO(K9_SPRITE_SIZE)
-    LDY #HI(K9_SPRITE_SIZE)
+    LDX #LO(K9_SPRITE_SIZE * 2)
+    LDY #HI(K9_SPRITE_SIZE * 2)
 
     JSR memcpy
 
     \ next k9 sprite at k9Atlas2
-    srcAddr11 = srcAddr10 + K9_SPRITE_SIZE
+    srcAddr11 = srcAddr10 + (K9_SPRITE_SIZE * 2)
 
     LDA #LO(srcAddr11) : STA srcAddr
     LDA #HI(srcAddr11) : STA srcAddr+1
@@ -788,7 +790,7 @@
 
     JSR memcpy
 
-    \ remaining nine k9 sprite at k9Atlas3
+    \ remaining eight k9 sprites at k9Atlas3
     srcAddr12 = srcAddr11 + K9_SPRITE_SIZE
 
     LDA #LO(srcAddr12) : STA srcAddr
@@ -797,13 +799,13 @@
     LDA #LO(k9Atlas3) : STA dstAddr
     LDA #HI(k9Atlas3) : STA dstAddr+1
 
-    LDX #LO(K9_SPRITE_SIZE * 9)
-    LDY #HI(K9_SPRITE_SIZE * 9)
+    LDX #LO(K9_SPRITE_SIZE * 8)
+    LDY #HI(K9_SPRITE_SIZE * 8)
 
     JSR memcpy
 
     \ copy gamebar altas...
-    srcAddr13 = srcAddr12 + (K9_SPRITE_SIZE * 9)
+    srcAddr13 = srcAddr12 + (K9_SPRITE_SIZE * 8)
 
     LDA primarySamplesROMSEL
     ORA secondarySamplesROMSEL
@@ -930,8 +932,7 @@
                 STA objectSpriteIndex, X
 
                 \ elevator callback
-                LDA #HI(elevatorFrameCallback) : STA objectFrameCallbackHi, X
-                LDA #LO(elevatorFrameCallback) : STA objectFrameCallbackLo, X
+                LDA #FRAME_CALLBACK_ELEVATOR : STA objectFrameCallback, X
 
                 JMP endif1
             .else1
@@ -947,8 +948,7 @@
                 STA objectSpriteIndex, X
 
                 \ teleport callback
-                LDA #HI(teleportFrameCallback) : STA objectFrameCallbackHi, X
-                LDA #LO(teleportFrameCallback) : STA objectFrameCallbackLo, X
+                LDA #FRAME_CALLBACK_TELEPORT : STA objectFrameCallback, X
             .endif1
 
             \ set tile flags
@@ -1024,8 +1024,7 @@
             STA objectSpriteIndex, X
 
             \ callback
-            LDA #HI(doorFrameCallback) : STA objectFrameCallbackHi, X
-            LDA #LO(doorFrameCallback) : STA objectFrameCallbackLo, X
+            LDA #FRAME_CALLBACK_DOOR : STA objectFrameCallback, X
 
             \ set tile flags
             LDA #TILE_GRID_FLAGS_OPAQUE : STA flags
@@ -1170,95 +1169,34 @@
         DEX
         BPL loop2
 
-    \
-    \ set tone generator 3 frequency and volume
-    \
-    SEI \ disable interupts
-
-    \ set zero volume
-    LDA #&9F
-    JSR sendSoundData
-
-    \ set frequency
-    LDA primarySamplesEnabled
-    ORA secondarySamplesEnabled
-    BEQ else
-
-        \ set highest frequency low bits
-        LDA #&81
-        JSR sendSoundData
-        
-        \ set highest frequency high bits
-        LDA #0
-        JSR sendSoundData
-
-        JMP endif
-    .else
-        \ set lowest frequency low bits
-        LDA #&8F
-        JSR sendSoundData
-         
-        \ set lowest frequency high bits
-        LDA #&3F
-        JSR sendSoundData
-    .endif
-
-    CLI \ reenable interrupts
-
-    RTS
+    \ ensure tone generator 3 is initialized correctly
+    JMP releaseToneGenerator3 \ implicit RTS
 
 \ primary sound vectors
 .primarySoundVectors_Regular
-    EQUW rts_0                          \ updatePursuit
-    EQUW soundEffect_pursuitOn          \ beginPursuit 
-    EQUW soundEffect_pursuitOff         \ endPursuit   
-    EQUW rts_0                          \ enemyLasered 
-    EQUW soundEffect_pain               \ weaponFired  
+    EQUW soundEffect_updatePursuit      \ updatePursuit
+    EQUW soundEffect_beginPursuit       \ beginPursuit 
+    EQUW soundEffect_endPursuit         \ endPursuit   
+    EQUW soundEffect_enemyLasered       \ enemyLasered 
+    EQUW soundEffect_weaponFired        \ weaponFired  
                                         
 .primarySoundVectors_SampleBased
     EQUW sample_updatePursuit           \ updatePursuit
-    EQUW sample_soundExterminate        \ beginPursuit 
-    EQUW sample_stop                    \ endPursuit   
-    EQUW sample_soundDalekGroan         \ enemyLasered 
-    EQUW sample_soundDalekWeapon        \ weaponFired  
+    EQUW sample_beginPursuit            \ beginPursuit 
+    EQUW sample_endPursuit              \ endPursuit   
+    EQUW sample_enemyLasered            \ enemyLasered 
+    EQUW sample_weaponFired             \ weaponFired  
 
 \ secondary sound vectors
 .secondarySoundVectors_Regular
-    EQUW rts_0                          \ enemyDestroyed
-    EQUW rts_0                          \ startLevel    
-    EQUW soundEffect_levelComplete      \ completeLevel 
+    EQUW soundEffect_enemyDestroyed     \ enemyDestroyed
+    EQUW soundEffect_levelStart         \ levelStart
+    EQUW soundEffect_levelComplete      \ levelComplete
 
 .secondarySoundVectors_SampleBased 
-    EQUW sample_soundK9Affirmative      \ enemyDestroyed
-    EQUW sample_soundK9InsufficientData \ startLevel    
-    EQUW sample_soundTardisDoor         \ completeLevel 
-
-.sendSoundData
-    STY temp \ save Y
-
-    \ set data direction register A (write &FF to &FE43)
-    LDY #&FF
-    STY &FE43
-
-    \ output register A (write sound data to &FE4F)
-    STA &FE4F
-
-    \ output register B, prepping write by setting chip write pin low (write 0 to &FE40)
-    INY
-    STY &FE40
-
-    \ keep the write enable line low for at least 8 us, 16 cycles
-    LDY #2
-    .innerLoop
-        DEY
-        BNE innerLoop
-                                                        
-    \ write data by setting chip write pin high (write 8 to &FE40)
-    LDY #8
-    STY &FE40
-     
-    LDY temp \ restore Y
-    RTS                                                 
+    EQUW sample_enemyDestroyed          \ enemyDestroyed
+    EQUW sample_levelStart              \ levelStart
+    EQUW sample_levelComplete           \ levelComplete 
 }
 
 \
