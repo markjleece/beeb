@@ -172,10 +172,10 @@
 \
 .updateSoundEffects
 {
-    \ has sample stopped?
+    \ release tone generator 3?
     LDA playingSample : BPL skip \ CMP #SAMPLE_PLAYBACK_STOPPED : BNE skip
-
-        \ reset playingSamples
+        
+        \ playingSample = SAMPLE_PLAYBACK_NONE
         LDA #SAMPLE_PLAYBACK_NONE : STA playingSample
 
         \ release tone generator 3
@@ -401,7 +401,7 @@
     \
     \ resume MOS pursuit sound effect, if it should be playing
     \
-    LDA primarySamplesEnabled : BNE else
+    LDA primarySamplesEnabled : BNE rts_3
     LDA pursuitSoundEffectCounter : BEQ else
         JMP soundEffect_beginPursuit \ implicit RTS
     .else
