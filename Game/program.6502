@@ -21,7 +21,7 @@
 \ --------------------------------------------------------------
 
 \
-\ God mode - activated by pressing and holding 'G' 'O' 'D' in quick succession
+\ God mode - activated by pressing the 'G' 'O' 'D' keys together
 \  - gives K9 unlimited health and keys
 \  - enables scrolling using the arror keys
 \  - enables a specific level to be loaded using the number keys: 1..LEVEL_COUNT
@@ -36,8 +36,8 @@
 \   | Screen (256x256, 4 color mode)  |
 \   +---------------------------------+ &4000
 \   | Game data (portions reloaded)   |
-\   +---------------------------------+ &2C30
-\   | Game code (6960 bytes)          |
+\   +---------------------------------+ &2C90
+\   | Game code (7056 bytes)          |
 \   +---------------------------------+ &1100
 \   | Game data (portions reloaded)   | 
 \   +---------------------------------+ &10E0
@@ -82,10 +82,9 @@
 \   &0300    192   1 enemy sprite*
 \   &03C0    32    1 door sprite*
 \   &03E0    32    Tile types* (repurposed MOS keyboard buffer)
-\   &0400    480   10 game objects array*
-\   &05E0    48    Game object order array*
-\   &0610    384   2 enemy sprites*
-\   &0790    96    1 K9 sprite*
+\   &0400    432   9 game objects array*
+\   &05B0    384   2 enemy sprites*
+\   &0730    192   2 K9 sprites*
 \   &07F0    16    Black palette*
 \   &0800    128   MOS workspace
 \   &0880    64    Tile and sprite address tables (low-bytes)* (repurposed MOS printer buffer)
@@ -103,8 +102,8 @@
 \   &10C0    32    DFS workspace
 \   &10E0    12    Sprite health bar table* (repurposed transient DFS memory)
 \   &10EC    20    Draw object jump tables* (repurposed transient DFS memory)
-\   &1100    6960  Program code
-\   &2C30    864   9 K9 sprites*
+\   &1100    7056  Program code
+\   &2C90    768   8 K9 sprites*
 \   &2F90    96    4 elevator sprites*
 \   &2FF0    96    4 teleport sprites*
 \   &3050    224   Gamebar sprites* (or sample.6502 if 16K+ of sideways RAM exists)
@@ -199,6 +198,26 @@ ACTION_PURSUE_RIGHT = &A0   \ negative
 ACTION_PURSUE_UP = &C0      \ negative
 ACTION_PURSUE_DOWN = &E0    \ negative
 
+\ frame callbacks
+FRAME_CALLBACK_VOID = 0
+FRAME_CALLBACK_INTERMITTENT_REDRAW = 2
+FRAME_CALLBACK_K9_MOVE_LEFT = 4
+FRAME_CALLBACK_K9_MOVE_RIGHT = 6
+FRAME_CALLBACK_K9_TURN_LEFT_TO_RIGHT = 8
+FRAME_CALLBACK_K9_TURN_RIGHT_TO_LEFT = 10
+FRAME_CALLBACK_ENEMY_LOOK_LEFT = 12
+FRAME_CALLBACK_ENEMY_LOOK_RIGHT = 14
+FRAME_CALLBACK_ENEMY_MOVE_LEFT = 16
+FRAME_CALLBACK_ENEMY_MOVE_RIGHT = 18
+FRAME_CALLBACK_ENEMY_TURN_LEFT_TO_RIGHT = 20
+FRAME_CALLBACK_ENEMY_TURN_RIGHT_TO_LEFT = 22
+FRAME_CALLBACK_ELEVATOR = 24
+FRAME_CALLBACK_ELEVATOR_ASCEND = 26
+FRAME_CALLBACK_ELEVATOR_DESCEND = 28
+FRAME_CALLBACK_ELEVATOR_STOP = 30
+FRAME_CALLBACK_TELEPORT = 32
+FRAME_CALLBACK_DOOR = 34
+
 \ animation counters
 FRAME_COUNT_K9_TURN = 4
 FRAME_COUNT_ENEMY_TURN = 8
@@ -243,6 +262,11 @@ TILE_TYPE_SWITCH_OFF = (TILE_TYPE_FLAG_OPAQUE + 8)
 TILE_TYPE_SWITCH_ON = (TILE_TYPE_FLAG_OPAQUE + 9)
 TILE_TYPE_EXIT = (TILE_TYPE_FLAG_OPAQUE + 10)
 
+\ enemy types (copied from level editor)
+ENEMY_TYPE_GENERIC = 0
+ENEMY_TYPE_DALEK = 1
+ENEMY_TYPE_WEEPING_ANGEL = 2
+
 \ common object state flags (objectState high nibble)
 OBJECT_STATE_FLAGS_MASK = &F0
 OBJECT_STATE_FLAGS_REDRAW = &80 \ negative
@@ -260,11 +284,11 @@ ELEVATOR_STATE_PASSENGER_MASK = &0F \ used to get index of passenger
 
 \ enemy state flags and mask (objectState low nibble)
 ENEMY_STATE_HEALTH_MASK = &07   \ enemy health (bits 0..2)
-ENEMY_STATE_FLAGS_FIRING = &08  \ set if enemy if firing weapon (bit 3)
+ENEMY_STATE_FLAGS_IMMOBILE = &08  \ set if enemy is firing weapon or a weeping angel is frozen (bit 3)
 
 \ enemy constants
-ENEMY_LOOK_RANGE = 12 \ range enemies can see (in tiles) 
-ENEMY_WEAPON_RANGE = 3 \ range of enemy weapons (in tiles)
+ENEMY_LOOK_RANGE = 12 \ range enemies can see (in tiles)
+ENEMY_WEAPON_RANGE = 2 \ range of enemy weapons (in tiles)
 ENEMY_WEAPON_THRESHOLD = 2 \ enemy health required to use weapon
 ENEMY_SPRINT_THRESHOLD = 4 \ enemy health required to move quickly
 ENEMY_END_PURSUIT_COUNTER = 32 \ number of frames (x16) before enemies give up pursuit (10 seconds)
@@ -378,6 +402,11 @@ TRANSITION_VOID = 0
 TRANSITION_RUNNING = 1
 TRANSITION_COMPLETE = -1
 
+\ sample playback flags
+SAMPLE_PLAYBACK_NONE = 0
+SAMPLE_PLAYBACK_PLAYING = 1
+SAMPLE_PLAYBACK_STOPPED = -1
+
 \ MOS routines
 osbyte = &FFF4
 oswrch = &FFEE
@@ -389,7 +418,7 @@ osfile = &FFDD
 \ sprite atlas locations
 enemyAtlas1 = &100
 enemyAtlas2 = &300
-enemyAtlas3 = &610
+enemyAtlas3 = &5B0
 enemyAtlas4 = &900
 enemyAtlas5 = &E00
 doorAtlas1 = &3C0
@@ -397,9 +426,9 @@ doorAtlas2 = &CC0
 doorAtlas3 = &F80
 elevatorAtlas = &2F90
 teleportAtlas = &2FF0
-k9Atlas1 = &790
+k9Atlas1 = &730
 k9Atlas2 = &FA0
-k9Atlas3 = &2C30
+k9Atlas3 = &2C90
 gamebarAtlas = &3050
 gamebarAtlas_sidewaysRAM = &BF20        \ location when 16K sideways RAM is detected
 healthBarAtlas = &0D02                  \ 30 byte atlas (repurposes NMI workspace)
@@ -432,7 +461,7 @@ levelEnemyWeaponStrengthLoaded = &401E  \ level enemy weapon strength (relocated
 levelLaserStrengthLoaded = &401F        \ level laser strength (relocated to laserStrength)
 levelLaserHealthDrainLoaded = &4020     \ level laser health drain (relocated to laserHealthDrain)
 levelJewelHealthGainHiLoaded = &4021    \ level jewel health gain (relocated to jewelHealthGainHi)
-levelSampleSoundsEnabledLoaded = &4022  \ level sound samples enabled flag (used in setting primarySamplesEnabled and secondarySamplesEnabled)
+levelEnemyTypeLoaded = &4022            \ level enemy type (used in setting weepingAngles, primarySamplesEnabled, and secondarySamplesEnabled)
 levelObjectsLoaded = &4023              \ level object descriptors (used to populate game objects)
 levelSwitchPairingsLoaded = &40E3       \ level switch pairings
 
@@ -490,16 +519,18 @@ ORG 0
 .pursuitSoundEffectCounter  SKIP 1  \ sound effect counter. Used to ignore duplicate requests and repeat sample
 .laserSoundEffectOn         SKIP 1  \ sound effect flag. Used to ignore duplicate requests
 .blockedSoundEffectOn       SKIP 1  \ sound effect flag. Used to ignore duplicate requests
-.inhibitMoveSoundEffect     SKIP 1  \ sound effect flag. Used to inhibit move sound effects.
-.groanInhibited             SKIP 1  \ sound effect flag. Used to inhibit groan sample.
+.inhibitMoveSoundEffect     SKIP 1  \ sound effect flag. Used to inhibit move sound effects
+.groanInhibited             SKIP 1  \ sound effect flag. Used to inhibit groan sample
 .enemyHitTestLastFound      SKIP 1  \ cached hit test result (hit-test optimization)
 .doorScrollRedrawCount      SKIP 1  \ used to redraw all doors after scrolling
 .enemyWeaponStrengthLo      SKIP 1  \ enemy weapon strength
 .enemyWeaponStrengthHi      SKIP 1
+.enemyWeaponRangePlusOne    SKIP 1  \ enemy weapon range, plus one, in tiles
 .laserStrength              SKIP 1  \ laser strength
 .laserHealthDrain           SKIP 1  \ laser health drain
 .jewelHealthGainHi          SKIP 1  \ jewel health gain (high byte)
-.playingSample              SKIP 1  \ playing sample flag (set when a sample is being played)
+.enemyType                  SKIP 1  \ enemy type (ENEMY_TYPE_GENERIC, ENEMY_TYPE_DALEK, or ENEMY_TYPE_WEEPING_ANGEL)
+.playingSample              SKIP 1  \ playing sample (SAMPLE_PLAYBACK_VOID, SAMPLE_PLAYBACK_PLAYING, SAMPLE_PLAYBACK_STOPPED)
 .primarySamplesEnabled      SKIP 1  \ primary samples enabled flag
 .primarySamplesROMSEL       SKIP 1  \ primary samples ROM selector (zero denotes no sideways RAM)
 .secondarySamplesEnabled    SKIP 1  \ secondary samples enabled flag
@@ -539,8 +570,6 @@ ORG 0
 .bottomHi                   SKIP 1
 .offsetX                    SKIP 1
 .offsetY                    SKIP 1
-.sizeLo                     SKIP 1
-.sizeHi                     SKIP 1
 .index                      SKIP 1
 .outerIndex                 SKIP 1
 .stride                     SKIP 1
@@ -569,19 +598,15 @@ NEXT
 \ game objects (properties are held across correlated arrays)
 \
 ORG &400
-.objectType                 SKIP MAX_OBJECT_COUNT \ object type (bits 0,1), animation (bits 2..4), enemy action (bits 5..7)
-.objectState                SKIP MAX_OBJECT_COUNT \ high nibble holds common flags, bottom nibble holds object specific information
-.objectXLo                  SKIP MAX_OBJECT_COUNT \ object's top left position
-.objectXHi                  SKIP MAX_OBJECT_COUNT
-.objectYLo                  SKIP MAX_OBJECT_COUNT
-.objectYHi                  SKIP MAX_OBJECT_COUNT
-.objectSpriteIndex          SKIP MAX_OBJECT_COUNT \ sprite index, or -1 (draw blank)
-.objectFrameCounter         SKIP MAX_OBJECT_COUNT \ frame counter used to time animation durations
-.objectFrameCallbackLo      SKIP MAX_OBJECT_COUNT \ frame callback, called every frame
-.objectFrameCallbackHi      SKIP MAX_OBJECT_COUNT 
-
-\ array holding object indices, in draw order (top to bottom)
-.objectDrawOrder            SKIP MAX_OBJECT_COUNT   
+.objectType             SKIP MAX_OBJECT_COUNT \ object type (bits 0,1), animation (bits 2..4), enemy action (bits 5..7)
+.objectState            SKIP MAX_OBJECT_COUNT \ high nibble holds common flags, bottom nibble holds object specific information
+.objectXLo              SKIP MAX_OBJECT_COUNT \ object's top left position
+.objectXHi              SKIP MAX_OBJECT_COUNT
+.objectYLo              SKIP MAX_OBJECT_COUNT
+.objectYHi              SKIP MAX_OBJECT_COUNT
+.objectSpriteIndex      SKIP MAX_OBJECT_COUNT \ sprite index, or -1 (draw blank)
+.objectFrameCounter     SKIP MAX_OBJECT_COUNT \ frame counter used to time animation durations
+.objectFrameCallback    SKIP MAX_OBJECT_COUNT \ frame callbacks, called every frame
 
 \
 \ entry point
@@ -696,7 +721,54 @@ INCLUDE "utils.6502"
     JSR setLevelPalette
 
     \ invoke sound effect
-    JMP (secondarySoundVector_startLevel) \ implicit RTS
+    JMP (secondarySoundVector_beginLevel) \ implicit RTS
+}
+
+\
+\ update game objects
+\
+.updateObjects
+{
+    LDA #0 : STA outerIndex
+    .loop
+        LDX outerIndex
+
+        \ cache extents
+        JSR cacheObjectExtents
+
+        \ JSR (frameCallbackTbl[objectFrameCallback[X]])
+        LDY objectFrameCallback, X
+        LDA frameCallbackTbl+0, Y : STA jsr_inst+1
+        LDA frameCallbackTbl+1, Y : STA jsr_inst+2
+        .jsr_inst JSR &0000
+
+        INC outerIndex
+        LDA outerIndex
+        CMP objectCount
+        BNE loop
+
+    .return
+    RTS
+
+.frameCallbackTbl
+    EQUW return                                 \ FRAME_CALLBACK_VOID
+    EQUW frameCallback_IntermittentRedraw       \ FRAME_CALLBACK_INTERMITTENT_REDRAW
+    EQUW k9FrameCallback_MoveLeft               \ FRAME_CALLBACK_K9_MOVE_LEFT
+    EQUW k9FrameCallback_MoveRight              \ FRAME_CALLBACK_K9_MOVE_RIGHT
+    EQUW k9FrameCallback_TurnLeftToRight        \ FRAME_CALLBACK_K9_TURN_LEFT_TO_RIGHT
+    EQUW k9FrameCallback_TurnRightToLeft        \ FRAME_CALLBACK_K9_TURN_RIGHT_TO_LEFT
+    EQUW enemyFrameCallback_LookLeft            \ FRAME_CALLBACK_ENEMY_LOOK_LEFT
+    EQUW enemyFrameCallback_LookRight           \ FRAME_CALLBACK_ENEMY_LOOK_RIGHT
+    EQUW enemyFrameCallback_MoveLeft            \ FRAME_CALLBACK_ENEMY_MOVE_LEFT
+    EQUW enemyFrameCallback_MoveRight           \ FRAME_CALLBACK_ENEMY_MOVE_RIGHT
+    EQUW enemyFrameCallback_TurnLeftToRight     \ FRAME_CALLBACK_ENEMY_TURN_LEFT_TO_RIGHT
+    EQUW enemyFrameCallback_TurnRightToLeft     \ FRAME_CALLBACK_ENEMY_TURN_RIGHT_TO_LEFT
+    EQUW elevatorFrameCallback                  \ FRAME_CALLBACK_ELEVATOR
+    EQUW elevatorFrameCallback_Ascend           \ FRAME_CALLBACK_ELEVATOR_ASCEND
+    EQUW elevatorFrameCallback_Descend          \ FRAME_CALLBACK_ELEVATOR_DESCEND
+    EQUW elevatorFrameCallback_Stop             \ FRAME_CALLBACK_ELEVATOR_STOP
+    EQUW teleportFrameCallback                  \ FRAME_CALLBACK_TELEPORT
+    EQUW doorFrameCallback                      \ FRAME_CALLBACK_DOOR
 }
 
 \
@@ -912,31 +984,6 @@ ENDIF
 }
 
 \
-\ update game objects
-\
-.updateObjects
-{
-    LDA #0 : STA outerIndex
-    .loop
-        LDX outerIndex
-
-        \ cache extents
-        JSR cacheObjectExtents
-
-        \ JSR (objectFrameCallback, X)
-        LDA objectFrameCallbackLo, X : STA jsr_inst+1
-        LDA objectFrameCallbackHi, X : STA jsr_inst+2
-        .jsr_inst JSR &0000
-
-        INC outerIndex
-        LDA outerIndex
-        CMP objectCount
-        BNE loop
-
-    RTS
-}
-
-\
 \ getObjectDirection(X register)
 \
 \ params:
@@ -949,6 +996,8 @@ ENDIF
 .getObjectDirection
 {
     LDA objectType, X
+
+.^getObjectDirectionInternal \ invoked from getK9Direction (k9.6502)
     AND #ANIMATE_MASK
     LSR A : LSR A
     TAY
@@ -1072,6 +1121,9 @@ ENDIF
         BNE outerLoop
 
     RTS
+
+\ array holding object indices, in draw order (top to bottom)
+.^objectDrawOrder SKIP MAX_OBJECT_COUNT   
 }
 
 \
@@ -1294,11 +1346,15 @@ ENDIF
     \ common preamble
     JSR levelEndPreamble
 
+    \ sound effect
+    LDA #SOUND_EFFECT_DIED
+    JSR soundEffect
+
     \ reload current level
     JSR loadCurrentLevelFile
 
     \ show 'battery flat' experience
-    JMP showBatteryFlatScreen  \ implicit RTS
+    JMP showBatteryFlatScreen \ implicit RTS
 }
 
 \

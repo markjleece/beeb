@@ -32,6 +32,11 @@ namespace LevelEditor.ux
 
         private void EditCoefficients_Load(object sender, EventArgs e)
         {
+            enemyTypeComboBox.Items.Add("Generic");
+            enemyTypeComboBox.Items.Add("Dalek");
+            enemyTypeComboBox.Items.Add("Weeping Angle");
+            enemyTypeComboBox.SelectedIndex = (int)Settings.EnemyType;
+
             enemyWeaponStrengthComboBox.Items.Add("320 (high)");
             enemyWeaponStrengthComboBox.Items.Add("256 (normal)");
             enemyWeaponStrengthComboBox.Items.Add("192 (low)");
@@ -51,8 +56,6 @@ namespace LevelEditor.ux
             jewelHealthGainComboBox.Items.Add("512 (normal)");
             jewelHealthGainComboBox.Items.Add("256 (low)");
             SetSelectedValue(jewelHealthGainComboBox, Settings.JewelHealthGain);
-
-            sampleSoundsCheckbox.Checked = (Settings.SampleSoundsEnabled != 0);
         }
 
         private void OkButton_Click(object sender, EventArgs e)
@@ -61,7 +64,7 @@ namespace LevelEditor.ux
             Settings.LaserStrength = ToInteger(laserStrengthComboBox.SelectedItem);
             Settings.LaserHealthDrain = ToInteger(laserHealthDrainComboBox.SelectedItem);
             Settings.JewelHealthGain = ToInteger(jewelHealthGainComboBox.SelectedItem);
-            Settings.SampleSoundsEnabled = sampleSoundsCheckbox.Checked ? 1 : 0;
+            Settings.EnemyType = (Settings.EnemyTypeEnum)enemyTypeComboBox.SelectedIndex;
         }
 
         private static void SetSelectedValue(ComboBox comboBox, int value)

@@ -20,6 +20,8 @@
 // Boston, MA  02110-1301, USA.
 // --------------------------------------------------------------
 
+using static System.Runtime.InteropServices.JavaScript.JSType;
+
 namespace LevelEditor
 {
     class Settings
@@ -36,7 +38,7 @@ namespace LevelEditor
                 JewelHealthGain = JewelHealthGain,
                 LaserHealthDrain = LaserHealthDrain,
                 LaserStrength = LaserStrength,
-                SampleSoundsEnabled = SampleSoundsEnabled
+                EnemyType = EnemyType,
             };
             return clone;
         }
@@ -47,7 +49,7 @@ namespace LevelEditor
             LaserStrength = fs.ReadByte();
             LaserHealthDrain = fs.ReadByte();
             JewelHealthGain = fs.ReadByte() * 256; // high-byte serialized
-            SampleSoundsEnabled = fs.ReadByte();
+            EnemyType = (EnemyTypeEnum)fs.ReadByte();
         }
 
         internal void Write(FileStream fs)
@@ -56,13 +58,20 @@ namespace LevelEditor
             fs.WriteByte((byte)LaserStrength);
             fs.WriteByte((byte)LaserHealthDrain);
             fs.WriteByte((byte)(JewelHealthGain / 256)); // high-byte serialized
-            fs.WriteByte((byte)SampleSoundsEnabled);
+            fs.WriteByte((byte)EnemyType);
         }
+
+        internal enum EnemyTypeEnum
+        {
+            Generic = 0,
+            Dalek = 1,
+            WeepingAngel = 2
+        };
 
         internal int EnemyWeaponStrength = 256;
         internal int JewelHealthGain = 512;
         internal int LaserHealthDrain = 8;
         internal int LaserStrength = 32;
-        internal int SampleSoundsEnabled = 1/*true*/;
+        internal EnemyTypeEnum EnemyType = EnemyTypeEnum.Dalek;
     }
 }

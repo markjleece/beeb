@@ -101,12 +101,8 @@ AND_OPCODE = &29 \ AND immediate
 
             BNE endif \ always branch
         .else
-            \ at end of second half, so disable User-VIA Timer1
-            LDA #&40
-            STA &FE6E
-            
-            \ playingSample = false
-            STY playingSample
+            \ at end of second half, so stop sampling
+            JSR stopSampling
         .endif
     .skip
 
@@ -125,6 +121,22 @@ AND_OPCODE = &29 \ AND immediate
 
 .try_vsync
     JMP irq_try_vsync \ invoke regular IRQ
+}
+
+\
+\ stopSampling()
+\
+.stopSampling
+{
+    \ disable User-VIA Timer1
+    LDA #&40
+    STA &FE6E
+
+    \ playingSample = SAMPLE_PLAYBACK_STOPPED
+    LDA #LO(SAMPLE_PLAYBACK_STOPPED)
+    STA playingSample
+
+    RTS
 }
 
 \
@@ -156,30 +168,26 @@ AND_OPCODE = &29 \ AND immediate
     LDA #&C0
     STA &FE6E
 
-    \ playingSample = true
-    INC playingSample
+    \ playingSample = SAMPLE_PLAYBACK_PLAYING
+    LDA #SAMPLE_PLAYBACK_PLAYING
+    STA playingSample
 
     CLI \ re-enable interrupts
 
-    RTS
+    \ acquire tone generator 3
+    JMP acquireToneGenerator3 \ implicit RTS
 }
 
 \
-\ sample_stop()
+\ sample_endPursuit()
 \
-\ stops sample playing
+\ invoked via primarySoundVector_endPursuit
 \
-.sample_stop
+.sample_endPursuit
 {
     SEI \ disable interupts
 
-    \ disable User-VIA Timer1
-    LDA #&40
-    STA &FE6E
-
-    \ playingSample = false
-    LDA #0 
-    STA playingSample
+    JSR stopSampling
 
     CLI \ re-enable interrupts
 
@@ -195,11 +203,11 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ sample_soundK9InsufficientData
+\ sample_levelStart()
 \
-\ invoked via primarySoundVector_startLevel
+\ invoked via secondarySoundVector_startLevel
 \
-.sample_soundK9InsufficientData
+.sample_levelStart
 {
     LDY #SAMPLE_K9_INSUFFICIENT_DATA
     LDA secondarySamplesROMSEL
@@ -207,9 +215,11 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ sample_soundK9Affirmative
+\ sample_enemyDestroyed()
 \
-.sample_soundK9Affirmative
+\ invoked via secondarySoundVector_enemyDestroyed
+\
+.sample_enemyDestroyed
 {
     LDY #SAMPLE_K9_AFFIRMATIVE
     LDA secondarySamplesROMSEL
@@ -217,11 +227,11 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ sample_sample_soundTardisDoor
+\ sample_levelComplete()
 \
-\ invoked via primarySoundVector_levelComplete
+\ invoked via secondarySoundVector_levelComplete
 \
-.sample_soundTardisDoor
+.sample_levelComplete
 {
     LDY #SAMPLE_TARDIS_DOOR
     LDA secondarySamplesROMSEL
@@ -229,11 +239,11 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ sample_soundDalekGroan()
+\ sample_enemyLasered()
 \
-\ invoked via primarySoundVector_enemyLasered by enemyLaserHit
+\ invoked via primarySoundVector_enemyLasered
 \
-.sample_soundDalekGroan
+.sample_enemyLasered
 {
     LDA groanInhibited : BNE rts_7
 
@@ -250,11 +260,11 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ sample_soundDalekWeapon()
+\ sample_weaponFired()
 \
-\ invoked via primarySoundVector_weaponFired by inflictK9Damage
+\ invoked via primarySoundVector_weaponFired
 \
-.sample_soundDalekWeapon
+.sample_weaponFired
 {
     LDY #SAMPLE_DALEK_WEAPON
     LDA primarySamplesROMSEL
@@ -264,7 +274,7 @@ AND_OPCODE = &29 \ AND immediate
 \
 \ sample_updatePursuit()
 \
-\ invoked via primarySoundVector_updatePursuit by updateSoundEffects
+\ invoked via primarySoundVector_updatePursuit
 \
 .sample_updatePursuit
 {
@@ -277,15 +287,15 @@ AND_OPCODE = &29 \ AND immediate
             \ reset frame counter and play sample
             LDA #SAMPLE_EXTERMINATE_FRAME_COUNT : STA pursuitSoundEffectCounter
 
-            \ fall through to sample_soundExterminate
+            \ fall through to sample_beginPursuit
 }
 
 \
-\ sample_soundExterminate()
+\ sample_beginPursuit()
 \
-\ invoked via primarySoundVector_beginPursuit by pursuitSoundEffect
+\ invoked via primarySoundVector_beginPursuit
 \
-.sample_soundExterminate
+.sample_beginPursuit
 {
     LDY #SAMPLE_DALEK_EXTERMINATE
     LDA primarySamplesROMSEL

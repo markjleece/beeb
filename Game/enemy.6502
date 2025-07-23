@@ -51,6 +51,7 @@
 \   - If enemy sees k9 take an elevator up or down, action mode is changed to PURSUE_UP or PURSUE_DOWN.
 \   - If enemy elevator stops, enemy looks for k9 and turns if not seen.  If K9 still not seen, will try to descend/ascend again.
 \   - If k9 is not seen by any enemy for 10 seconds, all ACTION_PURSUE_... actions are demoted to ACTION_PACE.
+\   - Weeping angels are immobilized if face-to-face with K9, unless they are lasered.
 \
 
 \
@@ -64,24 +65,62 @@
 \
 .enemyEndAllPursuit
 {
-    \ check whether enemies should end pursuit
-    LDA endPursuitCounter : BEQ skip1
-    DEC endPursuitCounter : BNE skip1
-        \ end all enemy pursuit
-        LDX enemyCount
-        .loop
-            LDA objectType, X : BPL skip2
-                AND #LO(NOT(ACTION_MASK))
-                ORA #ACTION_PACE
-                STA objectType, X 
-            .skip2
+    \ if (endPursuitCounter == 0) return
+    LDA endPursuitCounter : BEQ rts_15
 
-            DEX
-            BNE loop
+    \ if (--endPursuitCounter != 0) return
+    DEC endPursuitCounter : BNE rts_15
 
-        \ silence sound effect
-        JMP silencePursuitSoundEffect \ implicit RTS
-    .skip1
+    \ end all enemy pursuit
+    LDX enemyCount
+    .loop
+        LDA objectType, X : BPL skip2
+            AND #LO(NOT(ACTION_MASK))
+            ORA #ACTION_PACE
+            STA objectType, X 
+        .skip2
+
+        DEX
+        BNE loop
+
+    \ silence the sound effect
+    JMP silencePursuitSoundEffect \ implicit RTS
+}
+
+\
+\ enemyEndPursuit(X)
+\
+\ end pursuit
+\
+\ params:
+\   X register  Enemy index
+\
+.enemyEndPursuit
+{
+    \ action = ACTION_LOOK
+    JSR enemySetActionLook
+
+    \ check if any other enemies are pursuing K9, returning is so
+    LDY enemyCount
+    BEQ loopEnd
+    .loop
+        LDA objectType, Y : BMI rts_15
+        DEY
+        BNE loop
+    .loopEnd
+
+    \ end all pursuit
+    STY endPursuitCounter \ = 0
+
+    \ silence the pursuit sound effect
+    JMP silencePursuitSoundEffect \ implicit RTS
+}
+
+\
+\ common RTS
+\
+.rts_15
+{
     RTS
 }
 
@@ -89,6 +128,9 @@
 \ enemyAI
 \
 \ performs enemy AI logic
+\
+\ modifies:
+\   temp, direction
 \
 .enemyAI
 {
@@ -100,42 +142,38 @@
     \ evaluate what action an individual enemy should take every sixteen frames
     CMP enemyCount
     BEQ then
-    BCS return
+    BCS rts_15
     .then
     TAX \ -> enemy index
 
     \ is the enemy destroyed?
     LDA objectState, X
-    AND #ENEMY_STATE_HEALTH_MASK : BEQ return
+    AND #ENEMY_STATE_HEALTH_MASK : BEQ rts_15
 
     \ does enemy have enough health to pursue K9?
-    CMP #ENEMY_WEAPON_THRESHOLD : BCS skip1
-        \ action = ACTION_LOOK
-        JSR enemySetActionLook
-
-        \ silence pursuit
-        JSR silencePursuitSoundEffect
-        JMP stopFiring
+    CMP #(ENEMY_WEAPON_THRESHOLD + 1) : BCS skip1
+        JSR enemyEndPursuit
+        JMP clearImmobileFlag \ implicit RTS
     .skip1
     
     \ is enemy ascending or descending?
     LDA objectState, X
     AND #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING)
-    BNE stopFiring
+    BNE clearImmobileFlag \ implicit RTS
 
-    \ determine if K9 is in sight (distance returned in accumulator)
+    \ get enemy direction
     JSR getObjectDirection \ A = -1 (left), 0 (none), 1 (right)
-    BEQ stopFiring \ enemy turning
-
+    BEQ clearImmobileFlag \ implicit RTS (enemy turning)
     STA direction
+
+    \ determine if K9 is in sight
     JSR queryK9InSight
-    BEQ stopFiring \ not in sight
+    BMI clearImmobileFlag \ implicit RTS (not in sight)
+    STA temp \ --> distance
 
     \
     \ K9 is in sight!
     \
-
-    STA temp \ --> distance
 
     \ set action to ACTION_PURSUE_...
     LDA objectState \ <-- K9 state
@@ -149,18 +187,12 @@
         BCC skip2
             ORA #ACTION_PURSUE_DOWN
         .skip2
+        STA objectType, X
         BNE endif
     .else
         \ set enemy action to ACTION_PURSUE_LEFT or ACTION_PURSUE_RIGHT
-        ASSERT(ACTION_PURSUE_RIGHT = ACTION_PURSUE_LEFT OR ACTION_PURSUE_RIGHT)
-        LDA objectType, X
-        AND #LO(NOT(ACTION_MASK))
-        ORA #ACTION_PURSUE_LEFT
-        BIT direction : BPL skip3
-            ORA #ACTION_PURSUE_RIGHT
-        .skip3
+        JSR setPursueLeftOrRight
     .endif
-    STA objectType, X
 
     \ reset end pursuit counter (used to end all enemy pursuit of K9)
     LDA #ENEMY_END_PURSUIT_COUNTER
@@ -169,36 +201,67 @@
     \ sound effect
     JSR pursuitSoundEffect
     
-    \ k9 within weapon range?
-    LDA temp \ <-- distance
-    CMP #(ENEMY_WEAPON_RANGE+1)
-    BCS stopFiring
-
     \ don't use weapon if K9 is on an elevator
     LDA objectState \ <-- K9 state
     AND #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING)
-    BNE stopFiring
+    BNE clearImmobileFlag \ implicit RTS (on elevator)
 
-    \ set K9 damage counter (processed in inflictK9Damage)
-    LDA k9DamageCounter : BNE skip4
+    \ use weapon if K9 is in weapons range?
+    LDA temp \ <-- distance
+    CMP enemyWeaponRangePlusOne
+    BCC useWeapon \ implcit RTS (in weapons range)
+
+    \
+    \ immobolize Weeping Angels if they are face-to-face with K9, and not being lasered
+    \
+
+    \ is a Weeping Angel?
+    LDA enemyType
+    CMP #ENEMY_TYPE_WEEPING_ANGEL
+    BNE clearImmobileFlag \ implicit RTS (not a Weeping Angel)
+
+    \ k9 and Weeping Angel face-to-face?  A = zero if face-to-face 
+    JSR getK9Direction
+    EOR direction
+    EOR #LO(-1 EOR 1) \ left xor right
+
+    \ and lasered?
+    ORA laserFrameCount
+
+    BNE clearImmobileFlag \ implicit RTS (not face-to-face or lasered)
+    BEQ setImmobileFlag \ implicit RTS (face-to-face and not lasered)
+
+.useWeapon
+    \ set K9 damage counter, if not set (processed in inflictK9Damage)
+    LDA k9DamageCounter : BNE skip5
         LDA #K9_DAMAGE_ON_COUNTER
         STA k9DamageCounter
-    .skip4
+    .skip5
 
-    \ set enemy 'firing' flag
+    \ fall through to setImmobileFlag as enemies can't move when using their weapon
+
+.setImmobileFlag
+    \ set 'immobile' flag
     LDA objectState, X
-    ORA #ENEMY_STATE_FLAGS_FIRING
+    ORA #ENEMY_STATE_FLAGS_IMMOBILE
     BNE saveAndExit
 
-.stopFiring
-    \ clear firing flag
+.clearImmobileFlag
+    \ clear 'immobile' flag
     LDA objectState, X
-    AND #LO(NOT(ENEMY_STATE_FLAGS_FIRING))
+    AND #LO(NOT(ENEMY_STATE_FLAGS_IMMOBILE))
 
 .saveAndExit
     STA objectState, X
 
-.return
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_16
+{
     RTS
 }
 
@@ -214,11 +277,11 @@
 {
     \ look for K9
     JSR getObjectDirection
-    BEQ return \ enemy turning so just return
+    BEQ rts_16 \ enemy turning so just return
 
     STA direction
     JSR queryK9InSight
-    BEQ skip1
+    BMI skip1
         \ K9 is seen, pursue k9
         JSR setPursueLeftOrRight
 
@@ -235,7 +298,7 @@
     STA direction
 
     JSR queryK9InSight
-    BEQ skip3
+    BMI skip3
         \ K9 is seen, turn and pursue k9
         JSR setPursueLeftOrRight
 
@@ -248,24 +311,35 @@
 
     \ try to move vertically
     JMP enemyPursueUpOrDown \ implicit RTS
+}
 
+\
+\ setPursueLeftOrRight(X, direction)
+\
+\ Set pursue flag to ACTION_PURSUE_LEFT or ACTION_PURSUE_RIGHT
+\
+\ params:
+\   X register  Enemy index
+\   direction   The direction to set (minus = set ACTION_PURSUE_LEFT, positive = set ACTION_PURSUE_RIGHT)
+\
 .setPursueLeftOrRight
+{
+    ASSERT(ACTION_PURSUE_RIGHT = ACTION_PURSUE_LEFT OR ACTION_PURSUE_RIGHT)
+    
     LDA objectType, X
     AND #LO(NOT(ACTION_MASK))
     ORA #ACTION_PURSUE_LEFT
-    BIT direction : BMI skip5
+    BIT direction : BMI skip
         ORA #ACTION_PURSUE_RIGHT
-    .skip5
+    .skip
     STA objectType, X
-
-.return   
     RTS
 }
 
 \
 \ queryK9InSight(X register, direction)
 \
-\ Returns zero if k9 is not seen, otherwise the number of tiles to K9
+\ Returns -1 if k9 is not seen, otherwise the number of tiles to K9
 \
 \ params:
 \   X register   Enemy index
@@ -318,13 +392,13 @@
         BNE lookRightLoop
 
 .seeNothing
-    LDA #0
+    LDA #LO(-1)
     RTS
     
 .seeSomething
     AND #TILE_GRID_FLAGS_K9 \ see K9?
     BEQ seeNothing
-    LDA #(ENEMY_LOOK_RANGE + 1)
+    LDA #ENEMY_LOOK_RANGE
     SEC
     SBC count
     RTS
@@ -354,12 +428,11 @@
         CMP objectYLo, X
         LDA objectYHi
         SBC objectYHi, X
-        BCS else
-            LDA #ACTION_PURSUE_UP
-            BNE updateAction
-        .else
+        LDA #ACTION_PURSUE_UP
+        BCC skip
             LDA #ACTION_PURSUE_DOWN
-            \ fall through...
+        .skip
+        \ fall through...
 
 .updateAction
     STA temp
@@ -481,10 +554,13 @@
 \
 \ canEnemyMove helper
 \
+\ params:
+\   X = enemy index
+\
 .canEnemyMove
 {
     LDA objectState, X
-    AND #(ENEMY_STATE_FLAGS_FIRING OR OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING)
+    AND #(ENEMY_STATE_FLAGS_IMMOBILE OR OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING)
     RTS
 }
 
@@ -878,8 +954,7 @@
     TAY
     LDA spriteIndexTbl, Y : STA objectSpriteIndex, X
     LDA frameCountTbl, Y : STA objectFrameCounter, X
-    LDA frameCallbackLoTbl, Y : STA objectFrameCallbackLo, X
-    LDA frameCallbackHiTbl, Y : STA objectFrameCallbackHi, X
+    LDA frameCallbackTbl, Y : STA objectFrameCallback, X
 
     \ update objectType animation
     LDA objectType, X
@@ -907,15 +982,10 @@
     EQUB 0, 0                                                      \ move
     EQUB FRAME_COUNT_ENEMY_TURN, FRAME_COUNT_ENEMY_TURN            \ turn
          
-.frameCallbackLoTbl
-    EQUB LO(enemyFrameCallback_LookLeft), LO(enemyFrameCallback_LookRight)              \ look
-    EQUB LO(enemyFrameCallback_MoveLeft), LO(enemyFrameCallback_MoveRight)              \ move
-    EQUB LO(enemyFrameCallback_TurnLeftToRight), LO(enemyFrameCallback_TurnRightToLeft) \ turn
-
-.frameCallbackHiTbl
-    EQUB HI(enemyFrameCallback_LookLeft), HI(enemyFrameCallback_LookRight)              \ look
-    EQUB HI(enemyFrameCallback_MoveLeft), HI(enemyFrameCallback_MoveRight)              \ move
-    EQUB HI(enemyFrameCallback_TurnLeftToRight), HI(enemyFrameCallback_TurnRightToLeft) \ turn
+.frameCallbackTbl
+    EQUB FRAME_CALLBACK_ENEMY_LOOK_LEFT, FRAME_CALLBACK_ENEMY_LOOK_RIGHT                  \ look
+    EQUB FRAME_CALLBACK_ENEMY_MOVE_LEFT, FRAME_CALLBACK_ENEMY_MOVE_RIGHT                  \ move
+    EQUB FRAME_CALLBACK_ENEMY_TURN_LEFT_TO_RIGHT, FRAME_CALLBACK_ENEMY_TURN_RIGHT_TO_LEFT \ turn
 }
 
 \
@@ -1059,7 +1129,7 @@
 
     \ update state
     LDA objectState, X
-    AND #(OBJECT_STATE_FLAGS_MASK OR ENEMY_STATE_FLAGS_FIRING)
+    AND #(OBJECT_STATE_FLAGS_MASK OR ENEMY_STATE_FLAGS_IMMOBILE)
     ORA temp \ <-- remaining health
     ORA #(OBJECT_STATE_FLAGS_LASERED OR OBJECT_STATE_FLAGS_REDRAW)
     STA objectState, X
@@ -1071,18 +1141,17 @@
     LDA temp \ <-- remaining health
     BNE skip1
 
+        \ end pursuit
+        JSR enemyEndPursuit
+
         \ erase sprite
         LDA #&FF : STA objectSpriteIndex, X
-
-        \ action = ACTION_LOOK
-        JSR enemySetActionLook
 
         \ stop laser
         INC laserInhibited
 
         \ set frame callback so it just returns
-        LDA #LO(rts_0) : STA objectFrameCallbackLo, X
-        LDA #HI(rts_0) : STA objectFrameCallbackHi, X
+        LDA #FRAME_CALLBACK_VOID : STA objectFrameCallback, X
 
         \ if we were at the start of a move animation which set the
         \ left or right tile flags, we need to clear these flags
@@ -1091,26 +1160,19 @@
         \ clear inside tile flags
         JSR clearObjectInsideTileFlags 
 
-        \ end pursuit sound effect?
-        JSR silencePursuitSoundEffect 
-        
         \ invoke enemy destroyed sound effect
         JMP (secondarySoundVector_enemyDestroyed) \ implicit RTS
     .skip1
 
     \ does enemy have sufficient remaining health to pursue or use weapon?
     LDA temp \ <-- remaining health
-    CMP #ENEMY_WEAPON_THRESHOLD : BCC enemySetActionLook \ implicit RTS
+    CMP #(ENEMY_WEAPON_THRESHOLD + 1)
+    BCC enemySetActionLook \ implicit RTS
     
     \ is enemy lasered from behind? (check if K9 and enemy are facing in same direction)
     JSR getObjectDirection
     STA direction
-
-    STX temp \ X --> temp
-    LDX #0
-    JSR getObjectDirection
-    LDX temp \ X <-- temp
-
+    JSR getK9Direction
     CMP direction
     BNE skip3
         \ turn...

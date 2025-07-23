@@ -32,25 +32,22 @@
     \ if (scrnTop == 0) return
     LDA scrnTopLo
     ORA scrnTopHi
-    BNE skip1
-        RTS
-    .skip1
+    BEQ rts_17
 
     \ scrnTop -= 8
     LDA scrnTopLo
     SEC
     SBC #8
     STA scrnTopLo
-    BCS skip2
+    BCS skip
         DEC scrnTopHi
-    .skip2
+    .skip
          
     \ scrnAddr -= 512
     LDA scrnAddr+1
     SEC
     SBC #2
     STA scrnAddr+1
-    CLC
 
     \ update screen
     JMP scrollVertUpdateScreen \ implicit RTS
@@ -62,18 +59,16 @@
 .scrollDown
 {
     \ if (scrnTop >= scrnTopMax - 1) return
-    LDA scrnTopHi : CMP scrnTopHiMaxMinusOne : BCC skip1
-        RTS
-    .skip1
+    LDA scrnTopHi : CMP scrnTopHiMaxMinusOne : BCS rts_17
 
     \ scrnTop += 8
     LDA scrnTopLo
     CLC
     ADC #8
     STA scrnTopLo
-    BCC skip2
+    BCC skip
         INC scrnTopHi
-    .skip2
+    .skip
 
     \ scrnAddr += 512
     LDA scrnAddr+1
@@ -129,6 +124,15 @@
         BEQ scrollDown \ implicit RTS
 
     .noscroll
+
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_17
+{
     RTS
 }
 
@@ -142,18 +146,18 @@
     SEC
     SBC #8
     STA scrnLeftLo
-    BCS skip2
+    BCS skip1
         DEC scrnLeftHi
-    .skip2
+    .skip1
          
     \ scrnAddr -= 16
     LDA scrnAddr
     SEC
     SBC #16
     STA scrnAddr
-    BCS skip3
+    BCS skip2
         DEC scrnAddr+1
-    .skip3
+    .skip2
 
     RTS
 }
@@ -164,10 +168,9 @@
 .scrollLeft
 {
     \ if (scrnLeft == 0) return
-    LDA scrnLeftLo : BNE skip1
-    LDA scrnLeftHi : BNE skip1
-        RTS
-    .skip1
+    LDA scrnLeftLo
+    ORA scrnLeftHi
+    BEQ rts_17
 
     \ scrnLeft -= 8, scrnAddr -= 16
     JSR scrollLeftUpdateVariables
@@ -182,27 +185,25 @@
 .scrollRight
 {
     \ if (scrnLeft >= scrnLeftMax - 1) return
-    LDA scrnLeftHi : CMP scrnLeftHiMaxMinusOne : BCC skip1
-        RTS
-    .skip1
+    LDA scrnLeftHi : CMP scrnLeftHiMaxMinusOne : BCS rts_17
 
     \ scrnLeft += 8
     LDA scrnLeftLo
     CLC
     ADC #8
     STA scrnLeftLo
-    BCC skip2
+    BCC skip1
         INC scrnLeftHi
-    .skip2
+    .skip1
 
     \ scrnAddr += 16
     LDA scrnAddr
     CLC
     ADC #16
     STA scrnAddr
-    BCC skip3
+    BCC skip2
         INC scrnAddr+1
-    .skip3
+    .skip2
 
     \ draw tile character left of the gamebar
     JSR drawTileLeftOfGamebar

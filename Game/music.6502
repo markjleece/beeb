@@ -816,7 +816,7 @@ AMPLITUDE_PHASE_RELEASE = 3
 {
     AND #&0F
     ORA frequencyMaskTbl, X
-    BNE sendSoundData \ implicit RTS
+    JMP sendSoundData \ implicit RTS
 
 .frequencyMaskTbl EQUB %11000000, %10100000, %10000000
 }
@@ -833,47 +833,7 @@ AMPLITUDE_PHASE_RELEASE = 3
 .setSoundChipFrequencyHi
 {
     AND #&3F
-    \ fall through to sendSoundData
-}
-
-\
-\ sendSoundData(A)
-\
-\ send sound data to 76489 sound chip
-\
-\ params: 
-\    A (accumulator)    Sound data
-\
-\ modifies:
-\   temp
-\
-.sendSoundData
-{
-    STY temp \ save Y
-
-    \ set data direction register A (write &FF to &FE43)
-    LDY #&FF
-    STY &FE43
-
-    \ output register A (write sound data to &FE4F)
-    STA &FE4F
-
-    \ output register B, prepping write by setting chip write pin low (write 0 to &FE40)
-    INY
-    STY &FE40
-
-    \ keep the write enable line low for at least 8 us, 16 cycles
-    LDY #2
-    .loop
-        DEY
-        BNE loop
-                                                        
-    \ write data by setting chip write pin high (write 8 to &FE40)
-    LDY #8
-    STY &FE40
-     
-    LDY temp \ restore Y
-    RTS                                                 
+    JMP sendSoundData \ implicit RTS
 }
 
 \ end file

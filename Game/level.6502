@@ -96,6 +96,7 @@
     STA laserFrameCount
     STA k9DamageCounter
     STA endPursuitCounter
+    STA primarySamplesEnabled
     STA laserSoundEffectOn 
     STA pursuitSoundEffectCounter
     STA blockedSoundEffectOn
@@ -108,6 +109,7 @@
     STA laseredTileStrength
     STA laseredTileRedraw
     STA enemyWeaponStrengthHi
+    STA playingSample
 
     LDA #12 : STA healthHi
     LDA #&FF : STA healthLo : STA enemyHealthLo
@@ -120,6 +122,7 @@
     LDA levelLaserStrengthLoaded : STA laserStrength
     LDA levelLaserHealthDrainLoaded : STA laserHealthDrain
     LDA levelJewelHealthGainHiLoaded : STA jewelHealthGainHi
+    LDA levelEnemyTypeLoaded : STA enemyType
 
     \ enemyWeaponStrength *= 4 (serialized value is divided by four)
     ASL enemyWeaponStrengthLo : ROL enemyWeaponStrengthHi
@@ -131,44 +134,57 @@
     .loop
         LDA levelTileTypesLoaded, Y
         CMP #TILE_TYPE_SWITCH_ON
-        BNE skip
+        BNE skip1
             TYA
             ORA #TILE_GRID_FLAGS_OPAQUE
             STA switchOnTileGridValue
-        .skip
+        .skip1
         INY
         CPY #TILE_COUNT
         BNE loop
 
-    \ set primarySamplesEnabled flag
-    LDA primarySamplesROMSEL : BEQ skip1
-        LDA levelSampleSoundsEnabledLoaded
-    .skip1
+    \ set enemyWeaponRangePlusOne
+    LDX #(ENEMY_WEAPON_RANGE + 1)
+    LDA enemyType
+    CMP #ENEMY_TYPE_WEEPING_ANGEL : BNE skip2
+        LDX #1 \ Weeping Angel use their teeth!
+    .skip2
+    STX enemyWeaponRangePlusOne 
+
+    \ set primarySamplesEnabled
+    LDA enemyType
+    CMP #ENEMY_TYPE_DALEK : BNE else
+        LDA primarySamplesROMSEL : BEQ endif
+            LDA #1 \ enable
+            BNE endif \ always branch
+    .else
+        LDA #0 \ disable
+    .endif
     STA primarySamplesEnabled
 
     \ set secondarySamplesEnabled flag
-    LDA secondarySamplesROMSEL : BEQ skip2
-        LDA levelSampleSoundsEnabledLoaded
-    .skip2
+    LDA secondarySamplesROMSEL : BEQ skip3
+        LDA #1 \ enable
+    .skip3
     STA secondarySamplesEnabled
 
     \ patch BCC instuction in getObjectTileGridAddr (tilegrid.6502)
     LDA levelHorzTileCountLoaded
     CMP #128 : BNE else1
         LDA #0
-        BEQ endif
+        BEQ endif4
     .else1
     CMP #64 : BNE else2
         LDA #3
-        BNE endif
+        BNE endif4
     .else2
     CMP #32 : BNE else3
         LDA #6
-        BNE endif
+        BNE endif4
     .else3
     CMP #16 : BNE endif
         LDA #9
-    .endif
+    .endif4
     STA bcc_inst+1
 
     \ patch ADC and SBC operands in tileGridAddr_add_horzTileCount and tileGridAddr_sub_horzTileCount (tilegrid.6502)
@@ -290,8 +306,8 @@
     LDA #LO(tileAddrTblLo) : STA dstAddr
     LDA #HI(tileAddrTblLo) : STA dstAddr+1
 
-    LDA #LO(TILE_COUNT) : STA sizeLo
-    LDA #HI(TILE_COUNT) : STA sizeHi
+    LDX #LO(TILE_COUNT)
+    LDY #HI(TILE_COUNT)
 
     JSR memcpy
 
@@ -300,6 +316,9 @@
 
     LDA #LO(tileAddrTblHi) : STA dstAddr
     LDA #HI(tileAddrTblHi) : STA dstAddr+1
+
+    LDX #LO(TILE_COUNT)
+    LDY #HI(TILE_COUNT)
 
     JMP memcpy \ implicit RTS
 
@@ -325,8 +344,8 @@
     LDA #LO(spriteAddrTblLo) : STA dstAddr
     LDA #HI(spriteAddrTblLo) : STA dstAddr+1
 
-    LDA #LO(SPRITE_COUNT) : STA sizeLo
-    LDA #HI(SPRITE_COUNT) : STA sizeHi
+    LDX #LO(SPRITE_COUNT)
+    LDY #HI(SPRITE_COUNT)
 
     JSR memcpy
 
@@ -335,6 +354,9 @@
 
     LDA #LO(spriteAddrTblHi) : STA dstAddr
     LDA #HI(spriteAddrTblHi) : STA dstAddr+1
+
+    LDX #LO(SPRITE_COUNT)
+    LDY #HI(SPRITE_COUNT)
 
     JSR memcpy
 
@@ -384,10 +406,13 @@
     NEXT
 
     \ 11 k9 sprites
-    EQUB LO(k9Atlas1)
+    FOR addr, k9Atlas1, k9Atlas1 + K9_SPRITE_SIZE, K9_SPRITE_SIZE
+        EQUB LO(addr)
+    NEXT
+
     EQUB LO(k9Atlas2)
 
-    FOR addr, k9Atlas3, k9Atlas3 + (8 * K9_SPRITE_SIZE), K9_SPRITE_SIZE
+    FOR addr, k9Atlas3, k9Atlas3 + (7 * K9_SPRITE_SIZE), K9_SPRITE_SIZE
         EQUB LO(addr)
     NEXT
 
@@ -431,10 +456,13 @@
     NEXT
 
     \ 11 k9 sprites
-    EQUB HI(k9Atlas1)
+    FOR addr, k9Atlas1, k9Atlas1 + K9_SPRITE_SIZE, K9_SPRITE_SIZE
+        EQUB HI(addr)
+    NEXT
+
     EQUB HI(k9Atlas2)
 
-    FOR addr, k9Atlas3, k9Atlas3 + (8 * K9_SPRITE_SIZE), K9_SPRITE_SIZE
+    FOR addr, k9Atlas3, k9Atlas3 + (7 * K9_SPRITE_SIZE), K9_SPRITE_SIZE
         EQUB HI(addr)
     NEXT
 
@@ -456,8 +484,8 @@
     LDA #LO(spriteHealthBarTbl) : STA dstAddr
     LDA #HI(spriteHealthBarTbl) : STA dstAddr+1
 
-    LDA #LO(ENEMY_HEALTH_BAR_TABLE_SIZE) : STA sizeLo
-    LDA #HI(ENEMY_HEALTH_BAR_TABLE_SIZE) : STA sizeHi
+    LDX #LO(ENEMY_HEALTH_BAR_TABLE_SIZE)
+    LDY #HI(ENEMY_HEALTH_BAR_TABLE_SIZE)
 
     JSR memcpy
 
@@ -468,8 +496,8 @@
     LDA #LO(healthBarAtlas) : STA dstAddr
     LDA #HI(healthBarAtlas) : STA dstAddr+1
 
-    LDA #LO(ENEMY_HEALTH_BAR_ATLAS_SIZE) : STA sizeLo
-    LDA #HI(ENEMY_HEALTH_BAR_ATLAS_SIZE) : STA sizeHi
+    LDX #LO(ENEMY_HEALTH_BAR_ATLAS_SIZE)
+    LDY #HI(ENEMY_HEALTH_BAR_ATLAS_SIZE)
 
     JMP memcpy \ implicit RTS
 
@@ -498,8 +526,8 @@
     LDA #LO(drawObject_headJumpTbl) : STA dstAddr
     LDA #HI(drawObject_headJumpTbl) : STA dstAddr+1
 
-    LDA #LO(DRAW_OBJECT_JUMP_TABLE_SIZE) : STA sizeLo
-    LDA #HI(DRAW_OBJECT_JUMP_TABLE_SIZE) : STA sizeHi
+    LDX #LO(DRAW_OBJECT_JUMP_TABLE_SIZE)
+    LDY #HI(DRAW_OBJECT_JUMP_TABLE_SIZE)
 
     JSR memcpy
 
@@ -509,6 +537,9 @@
 
     LDA #LO(drawObject_tailJumpTbl) : STA dstAddr
     LDA #HI(drawObject_tailJumpTbl) : STA dstAddr+1
+
+    LDX #LO(DRAW_OBJECT_JUMP_TABLE_SIZE)
+    LDY #HI(DRAW_OBJECT_JUMP_TABLE_SIZE)
 
     JMP memcpy \ implicit RTS
 
@@ -533,8 +564,8 @@
     LDA #LO(soundEffects) : STA dstAddr
     LDA #HI(soundEffects) : STA dstAddr+1
 
-    LDA #LO(SOUND_EFFECTS_SIZE) : STA sizeLo
-    LDA #HI(SOUND_EFFECTS_SIZE) : STA sizeHi
+    LDX #LO(SOUND_EFFECTS_SIZE)
+    LDY #HI(SOUND_EFFECTS_SIZE)
 
     JMP memcpy \ implicit RTS
 
@@ -570,8 +601,8 @@
     LDA #LO(levelTileTypes) : STA dstAddr
     LDA #HI(levelTileTypes) : STA dstAddr+1
 
-    LDA #LO(TILE_COUNT) : STA sizeLo
-    LDA #HI(TILE_COUNT) : STA sizeHi
+    LDX #LO(TILE_COUNT)
+    LDY #HI(TILE_COUNT)
 
     JSR memcpy
 
@@ -584,8 +615,8 @@
     LDA #LO(switchPairings) : STA dstAddr
     LDA #HI(switchPairings) : STA dstAddr+1
 
-    LDA #LO(SWITCH_PAIRINGS_SIZE) : STA sizeLo
-    LDA #HI(SWITCH_PAIRINGS_SIZE) : STA sizeHi
+    LDX #LO(SWITCH_PAIRINGS_SIZE)
+    LDY #HI(SWITCH_PAIRINGS_SIZE)
 
     JSR memcpy
 
@@ -600,8 +631,8 @@
     LDA #LO(enemyAtlas1) : STA dstAddr
     LDA #HI(enemyAtlas1) : STA dstAddr+1
 
-    LDA #LO(ENEMY_SPRITE_SIZE) : STA sizeLo
-    LDA #HI(ENEMY_SPRITE_SIZE) : STA sizeHi
+    LDX #LO(ENEMY_SPRITE_SIZE)
+    LDY #HI(ENEMY_SPRITE_SIZE)
 
     JSR memcpy
 
@@ -614,6 +645,9 @@
     LDA #LO(enemyAtlas2) : STA dstAddr
     LDA #HI(enemyAtlas2) : STA dstAddr+1
 
+    LDX #LO(ENEMY_SPRITE_SIZE)
+    LDY #HI(ENEMY_SPRITE_SIZE)
+
     JSR memcpy
 
     \ next two enemy sprite at enemyAtlas3
@@ -625,8 +659,8 @@
     LDA #LO(enemyAtlas3) : STA dstAddr
     LDA #HI(enemyAtlas3) : STA dstAddr+1
 
-    LDA #LO(ENEMY_SPRITE_SIZE * 2) : STA sizeLo
-    LDA #HI(ENEMY_SPRITE_SIZE * 2) : STA sizeHi
+    LDX #LO(ENEMY_SPRITE_SIZE * 2)
+    LDY #HI(ENEMY_SPRITE_SIZE * 2)
 
     JSR memcpy
 
@@ -639,8 +673,8 @@
     LDA #LO(enemyAtlas4) : STA dstAddr
     LDA #HI(enemyAtlas4) : STA dstAddr+1
 
-    LDA #LO(ENEMY_SPRITE_SIZE * 5) : STA sizeLo
-    LDA #HI(ENEMY_SPRITE_SIZE * 5) : STA sizeHi
+    LDX #LO(ENEMY_SPRITE_SIZE * 5)
+    LDY #HI(ENEMY_SPRITE_SIZE * 5)
 
     JSR memcpy
 
@@ -653,8 +687,8 @@
     LDA #LO(enemyAtlas5) : STA dstAddr
     LDA #HI(enemyAtlas5) : STA dstAddr+1
 
-    LDA #LO(ENEMY_SPRITE_SIZE * 2) : STA sizeLo
-    LDA #HI(ENEMY_SPRITE_SIZE * 2) : STA sizeHi
+    LDX #LO(ENEMY_SPRITE_SIZE * 2)
+    LDY #HI(ENEMY_SPRITE_SIZE * 2)
 
     JSR memcpy
 
@@ -667,8 +701,8 @@
     LDA #LO(doorAtlas1) : STA dstAddr
     LDA #HI(doorAtlas1) : STA dstAddr+1
 
-    LDA #LO(DOOR_SPRITE_SIZE) : STA sizeLo
-    LDA #HI(DOOR_SPRITE_SIZE) : STA sizeHi
+    LDX #LO(DOOR_SPRITE_SIZE)
+    LDY #HI(DOOR_SPRITE_SIZE)
 
     JSR memcpy
 
@@ -681,8 +715,8 @@
     LDA #LO(doorAtlas2) : STA dstAddr
     LDA #HI(doorAtlas2) : STA dstAddr+1
 
-    LDA #LO(DOOR_SPRITE_SIZE * 2) : STA sizeLo
-    LDA #HI(DOOR_SPRITE_SIZE * 2) : STA sizeHi
+    LDX #LO(DOOR_SPRITE_SIZE * 2)
+    LDY #HI(DOOR_SPRITE_SIZE * 2)
 
     JSR memcpy
 
@@ -695,8 +729,8 @@
     LDA #LO(doorAtlas3) : STA dstAddr
     LDA #HI(doorAtlas3) : STA dstAddr+1
 
-    LDA #LO(DOOR_SPRITE_SIZE) : STA sizeLo
-    LDA #HI(DOOR_SPRITE_SIZE) : STA sizeHi
+    LDX #LO(DOOR_SPRITE_SIZE)
+    LDY #HI(DOOR_SPRITE_SIZE)
 
     JSR memcpy
 
@@ -709,8 +743,8 @@
     LDA #LO(elevatorAtlas) : STA dstAddr
     LDA #HI(elevatorAtlas) : STA dstAddr+1
 
-    LDA #LO(ELEVATOR_SPRITE_SIZE * 4) : STA sizeLo
-    LDA #HI(ELEVATOR_SPRITE_SIZE * 4) : STA sizeHi
+    LDX #LO(ELEVATOR_SPRITE_SIZE * 4)
+    LDY #HI(ELEVATOR_SPRITE_SIZE * 4)
 
     JSR memcpy
 
@@ -723,9 +757,12 @@
     LDA #LO(teleportAtlas) : STA dstAddr
     LDA #HI(teleportAtlas) : STA dstAddr+1
 
+    LDX #LO(ELEVATOR_SPRITE_SIZE * 4)
+    LDY #HI(ELEVATOR_SPRITE_SIZE * 4)
+
     JSR memcpy
 
-    \ first k9 sprite at k9Atlas1
+    \ first two k9 sprites at k9Atlas1
     srcAddr10 = srcAddr9 + (ELEVATOR_SPRITE_SIZE * 4)
 
     LDA #LO(srcAddr10) : STA srcAddr
@@ -734,13 +771,13 @@
     LDA #LO(k9Atlas1) : STA dstAddr
     LDA #HI(k9Atlas1) : STA dstAddr+1
 
-    LDA #LO(K9_SPRITE_SIZE) : STA sizeLo
-    LDA #HI(K9_SPRITE_SIZE) : STA sizeHi
+    LDX #LO(K9_SPRITE_SIZE * 2)
+    LDY #HI(K9_SPRITE_SIZE * 2)
 
     JSR memcpy
 
     \ next k9 sprite at k9Atlas2
-    srcAddr11 = srcAddr10 + K9_SPRITE_SIZE
+    srcAddr11 = srcAddr10 + (K9_SPRITE_SIZE * 2)
 
     LDA #LO(srcAddr11) : STA srcAddr
     LDA #HI(srcAddr11) : STA srcAddr+1
@@ -748,9 +785,12 @@
     LDA #LO(k9Atlas2) : STA dstAddr
     LDA #HI(k9Atlas2) : STA dstAddr+1
 
+    LDX #LO(K9_SPRITE_SIZE)
+    LDY #HI(K9_SPRITE_SIZE)
+
     JSR memcpy
 
-    \ remaining nine k9 sprite at k9Atlas3
+    \ remaining eight k9 sprites at k9Atlas3
     srcAddr12 = srcAddr11 + K9_SPRITE_SIZE
 
     LDA #LO(srcAddr12) : STA srcAddr
@@ -759,13 +799,13 @@
     LDA #LO(k9Atlas3) : STA dstAddr
     LDA #HI(k9Atlas3) : STA dstAddr+1
 
-    LDA #LO(K9_SPRITE_SIZE * 9) : STA sizeLo
-    LDA #HI(K9_SPRITE_SIZE * 9) : STA sizeHi
+    LDX #LO(K9_SPRITE_SIZE * 8)
+    LDY #HI(K9_SPRITE_SIZE * 8)
 
     JSR memcpy
 
     \ copy gamebar altas...
-    srcAddr13 = srcAddr12 + (K9_SPRITE_SIZE * 9)
+    srcAddr13 = srcAddr12 + (K9_SPRITE_SIZE * 8)
 
     LDA primarySamplesROMSEL
     ORA secondarySamplesROMSEL
@@ -799,11 +839,11 @@
         \ fall through to copyGamebarAsset
 
 .copyGamebarAsset
-    LDA #LO(GAMEBAR_SPRITE_SIZE) : STA sizeLo
-    LDA #HI(GAMEBAR_SPRITE_SIZE) : STA sizeHi
-
     LDA #LO(srcAddr13) : STA srcAddr
     LDA #HI(srcAddr13) : STA srcAddr+1
+
+    LDX #LO(GAMEBAR_SPRITE_SIZE)
+    LDY #HI(GAMEBAR_SPRITE_SIZE)
 
     JMP memcpy \ implicit RTS
 }
@@ -892,8 +932,7 @@
                 STA objectSpriteIndex, X
 
                 \ elevator callback
-                LDA #HI(elevatorFrameCallback) : STA objectFrameCallbackHi, X
-                LDA #LO(elevatorFrameCallback) : STA objectFrameCallbackLo, X
+                LDA #FRAME_CALLBACK_ELEVATOR : STA objectFrameCallback, X
 
                 JMP endif1
             .else1
@@ -909,8 +948,7 @@
                 STA objectSpriteIndex, X
 
                 \ teleport callback
-                LDA #HI(teleportFrameCallback) : STA objectFrameCallbackHi, X
-                LDA #LO(teleportFrameCallback) : STA objectFrameCallbackLo, X
+                LDA #FRAME_CALLBACK_TELEPORT : STA objectFrameCallback, X
             .endif1
 
             \ set tile flags
@@ -986,8 +1024,7 @@
             STA objectSpriteIndex, X
 
             \ callback
-            LDA #HI(doorFrameCallback) : STA objectFrameCallbackHi, X
-            LDA #LO(doorFrameCallback) : STA objectFrameCallbackLo, X
+            LDA #FRAME_CALLBACK_DOOR : STA objectFrameCallback, X
 
             \ set tile flags
             LDA #TILE_GRID_FLAGS_OPAQUE : STA flags
@@ -1036,20 +1073,23 @@
 }
 
 \
-\ memcpy(dstAddr, srcAddr, sizeLo/Hi)
+\ memcpy(dstAddr, srcAddr, X/Y registers)
 \
 \ params:
-\   dstAddr     Destination address
-\   srcAddr     Source address
-\   sizeLo/Hi   Number of bytes to copy
+\   dstAddr         Destination address
+\   srcAddr         Source address
+\   X/Y registers   Size, number of bytes to copy (X = low-byte, Y = high-byte)
 \
 \ Modifies:
-\   dstAddr, srcAddr
+\   dstAddr += size
+\   srcAddr += size
 \
 .memcpy
 {
+    STX sizeLo
+
     \ copy page(s)
-    LDX sizeHi
+    TYA : TAX
     BEQ skip1
     .pageLoop
         LDY #0
@@ -1098,6 +1138,8 @@
     .skip2
 
     RTS
+
+.sizeLo SKIP 1
 }
 
 \
@@ -1127,95 +1169,34 @@
         DEX
         BPL loop2
 
-    \
-    \ set tone generator 3 frequency and volume
-    \
-    SEI \ disable interupts
-
-    \ set zero volume
-    LDA #&9F
-    JSR sendSoundData
-
-    \ set frequency
-    LDA primarySamplesEnabled
-    ORA secondarySamplesEnabled
-    BEQ else
-
-        \ set highest frequency low bits
-        LDA #&81
-        JSR sendSoundData
-        
-        \ set highest frequency high bits
-        LDA #0
-        JSR sendSoundData
-
-        JMP endif
-    .else
-        \ set lowest frequency low bits
-        LDA #&8F
-        JSR sendSoundData
-         
-        \ set lowest frequency high bits
-        LDA #&3F
-        JSR sendSoundData
-    .endif
-
-    CLI \ reenable interrupts
-
-    RTS
+    \ ensure tone generator 3 is initialized correctly
+    JMP releaseToneGenerator3 \ implicit RTS
 
 \ primary sound vectors
 .primarySoundVectors_Regular
-    EQUW rts_0                          \ updatePursuit
-    EQUW soundEffect_pursuitOn          \ beginPursuit 
-    EQUW soundEffect_pursuitOff         \ endPursuit   
-    EQUW rts_0                          \ enemyLasered 
-    EQUW soundEffect_pain               \ weaponFired  
+    EQUW soundEffect_updatePursuit      \ updatePursuit
+    EQUW soundEffect_beginPursuit       \ beginPursuit 
+    EQUW soundEffect_endPursuit         \ endPursuit   
+    EQUW soundEffect_enemyLasered       \ enemyLasered 
+    EQUW soundEffect_weaponFired        \ weaponFired  
                                         
 .primarySoundVectors_SampleBased
     EQUW sample_updatePursuit           \ updatePursuit
-    EQUW sample_soundExterminate        \ beginPursuit 
-    EQUW sample_stop                    \ endPursuit   
-    EQUW sample_soundDalekGroan         \ enemyLasered 
-    EQUW sample_soundDalekWeapon        \ weaponFired  
+    EQUW sample_beginPursuit            \ beginPursuit 
+    EQUW sample_endPursuit              \ endPursuit   
+    EQUW sample_enemyLasered            \ enemyLasered 
+    EQUW sample_weaponFired             \ weaponFired  
 
 \ secondary sound vectors
 .secondarySoundVectors_Regular
-    EQUW rts_0                          \ enemyDestroyed
-    EQUW rts_0                          \ startLevel    
-    EQUW soundEffect_levelComplete      \ completeLevel 
+    EQUW soundEffect_enemyDestroyed     \ enemyDestroyed
+    EQUW soundEffect_levelStart         \ levelStart
+    EQUW soundEffect_levelComplete      \ levelComplete
 
 .secondarySoundVectors_SampleBased 
-    EQUW sample_soundK9Affirmative      \ enemyDestroyed
-    EQUW sample_soundK9InsufficientData \ startLevel    
-    EQUW sample_soundTardisDoor         \ completeLevel 
-
-.sendSoundData
-    STY temp \ save Y
-
-    \ set data direction register A (write &FF to &FE43)
-    LDY #&FF
-    STY &FE43
-
-    \ output register A (write sound data to &FE4F)
-    STA &FE4F
-
-    \ output register B, prepping write by setting chip write pin low (write 0 to &FE40)
-    INY
-    STY &FE40
-
-    \ keep the write enable line low for at least 8 us, 16 cycles
-    LDY #2
-    .innerLoop
-        DEY
-        BNE innerLoop
-                                                        
-    \ write data by setting chip write pin high (write 8 to &FE40)
-    LDY #8
-    STY &FE40
-     
-    LDY temp \ restore Y
-    RTS                                                 
+    EQUW sample_enemyDestroyed          \ enemyDestroyed
+    EQUW sample_levelStart              \ levelStart
+    EQUW sample_levelComplete           \ levelComplete 
 }
 
 \

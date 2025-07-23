@@ -108,8 +108,8 @@ ENDMACRO
     LDA #LO(blackPalette) : STA dstAddr
     LDA #HI(blackPalette) : STA dstAddr+1
 
-    LDA #LO(16) : STA sizeLo
-    LDA #HI(16) : STA sizeHi
+    LDX #LO(16)
+    LDY #HI(16)
 
     JMP memcpy \ implicit RTS
 
@@ -139,8 +139,8 @@ ENDMACRO
     LDA #LO(&7C00) : STA dstAddr
     LDA #HI(&7C00) : STA dstAddr+1
 
-    LDA #LO(titlesMinusPromptSize) : STA sizeLo
-    LDA #HI(titlesMinusPromptSize) : STA sizeHi
+    LDX #LO(titlesMinusPromptSize)
+    LDY #HI(titlesMinusPromptSize)
 
     JMP memcpy \ implicit RTS
 
@@ -152,8 +152,8 @@ ENDMACRO
     LDA #LO(&7C00 + titlesMinusPromptSize) : STA dstAddr
     LDA #HI(&7C00 + titlesMinusPromptSize) : STA dstAddr+1
 
-    LDA #LO(40) : STA sizeLo
-    LDA #HI(40) : STA sizeHi
+    LDX #LO(40)
+    LDY #HI(40)
 
     JSR memcpy
 
@@ -181,8 +181,8 @@ INCBIN "data\titles.bin"
     LDA #LO(&7C00) : STA dstAddr
     LDA #HI(&7C00): STA dstAddr+1
 
-    LDA #LO(1000) : STA sizeLo
-    LDA #HI(1000) : STA sizeHi
+    LDX #LO(1000)
+    LDY #HI(1000)
 
     JSR memcpy
 
@@ -455,9 +455,6 @@ ASSERT (HI(P%) > &1C) \ ensure populateSidewaysRAM is assembled after page &17 a
     LDA #LO(&8000) : STA dstAddr
     LDA #HI(&8000) : STA dstAddr+1
 
-    LDA #LO(PCM_DATA_LOAD_BUFFER_SIZE) : STA sizeLo
-    LDA #HI(PCM_DATA_LOAD_BUFFER_SIZE) : STA sizeHi
-
     LDA #'1' : STA index
 
     .loop
@@ -476,6 +473,10 @@ ASSERT (HI(P%) > &1C) \ ensure populateSidewaysRAM is assembled after page &17 a
         \ copy data to sideways RAM (we need to reset srcAddr)
         LDA #LO(pcmDataLoadBuffer) : STA srcAddr
         LDA #HI(pcmDataLoadBuffer) : STA srcAddr+1
+
+        LDX #LO(PCM_DATA_LOAD_BUFFER_SIZE)
+        LDY #HI(PCM_DATA_LOAD_BUFFER_SIZE)
+
         JSR memcpy
 
         \ restore DFS ROM

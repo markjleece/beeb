@@ -79,17 +79,11 @@
     JSR setObjectVerticalFlags
 
     \ set elevator callback
-    LDA #LO(elevatorFrameCallback_Ascend)
+    LDA #FRAME_CALLBACK_ELEVATOR_ASCEND
     BIT direction : BMI skip2
-        LDA #LO(elevatorFrameCallback_Descend)
+        LDA #FRAME_CALLBACK_ELEVATOR_DESCEND
     .skip2
-    STA objectFrameCallbackLo, X
-
-    LDA #HI(elevatorFrameCallback_Ascend)
-    BIT direction : BMI skip3
-        LDA #HI(elevatorFrameCallback_Descend)
-    .skip3
-    STA objectFrameCallbackHi, X
+    STA objectFrameCallback, X
 
     LDX temp \ <-- k9/enemy index
 
@@ -215,21 +209,30 @@
 }
 
 \
-\ elevatorMoveObjectUp(X register)
+\ elevatorMoveObject(X register, direction)
 \
-\ move object up helper
+\ move object up or down helper
 \
 \ params:
 \   X register      Object index
+\   direction       DIRECTION_UP or DIRECTION_DOWN
 \
-.elevatorMoveObjectUp
+.elevatorMoveObject
 {
-    \ move object up
-    LDA objectYLo, X
-    BNE skip1
-        DEC objectYHi, X
-    .skip1
-    DEC objectYLo, X
+    BIT direction : BMI else
+        \ move object down
+        INC objectYLo, X
+        BNE endif
+        INC objectYHi, X
+        BNE endif \ always branch
+    .else
+        \ move object up
+        LDA objectYLo, X
+        BNE skip
+            DEC objectYHi, X
+        .skip
+        DEC objectYLo, X
+    .endif
 
     \ set elevator redraw flag
     JMP setRedrawFlag \ implicit RTS
@@ -245,58 +248,8 @@
 \
 .elevatorFrameCallback_Ascend
 {
-    \ update keyframe every eight frames
-    LDA frameCount : AND #7 : BNE dontUpdateKeyframe
-        JSR elevatorNextKeyframe
-    .dontUpdateKeyframe
-
-    \ move elevator up
-    JSR elevatorMoveObjectUp
-
-    STX temp \ --> elevator index
-
-    \ X <-- passenger index
-    LDA objectState, X
-    AND #ELEVATOR_STATE_PASSENGER_MASK
-    TAX
-
-    \ if K9 is the passenger, play sound effect every four frames
-    BNE skip
-        LDA frameCount : AND #3 : BNE skip
-        JSR moveSoundEffect
-    .skip
-
-    \ move passenger up
-    JSR elevatorMoveObjectUp
-
-    \ auto scroll screen (if passenger is K9)?
-    LDA #LO(DIRECTION_UP) : STA direction
-    JSR autoScrollVertically
-    
-    LDX temp \ <-- elevator index
-
-    \ have we reached the next floor?
-    JMP queryStopElevator \ implicit RTS
-}
-
-\
-\ elevatorMoveObjectDown(X register)
-\
-\ move object down helper
-\
-\ params:
-\   X register   Elevator index
-\
-.elevatorMoveObjectDown
-{
-    \ move object down
-    INC objectYLo, X
-    BNE skip1
-        INC objectYHi, X
-    .skip1
-
-    \ set elevator redraw flag
-    JMP setRedrawFlag \ implicit RTS
+    LDA #LO(DIRECTION_UP)
+    BNE elevatorFrameCallback_Move
 }
 
 \
@@ -309,13 +262,31 @@
 \
 .elevatorFrameCallback_Descend
 {
+    LDA #DIRECTION_DOWN
+    \ fall through to elevatorFrameCallback_Move
+}
+
+\
+\ elevatorFrameCallback_Move(X register)
+\
+\ frame callback helper for an ascending or descending elevator
+\
+\ params:
+\   X register   Elevator index
+\   Accumulator  DIRECTION_UP or DIRECTION_DOWN
+\
+.elevatorFrameCallback_Move
+{
+    \ set direction
+    STA direction
+
     \ update keyframe every eight frames
     LDA frameCount : AND #7 : BNE dontUpdateKeyframe
         JSR elevatorNextKeyframe
     .dontUpdateKeyframe
 
-    \ move elevator down
-    JSR elevatorMoveObjectDown
+    \ move elevator
+    JSR elevatorMoveObject
 
     STX temp \ --> elevator index
 
@@ -330,13 +301,12 @@
         JSR moveSoundEffect
     .skip
 
-    \ move passenger down
-    JSR elevatorMoveObjectDown
+    \ move passenger
+    JSR elevatorMoveObject
 
     \ auto scroll screen (if passenger is K9)?
-    LDA #DIRECTION_DOWN : STA direction
     JSR autoScrollVertically
-
+    
     LDX temp \ <-- elevator index
 
     \ have we reached the next floor?
@@ -365,8 +335,7 @@
     CMP #TILE_TYPE_ELEVATOR : BNE notEnd
 
     \ yeah, we've reached the end!
-    LDA #HI(elevatorStopFrameCallback) : STA objectFrameCallbackHi, X
-    LDA #LO(elevatorStopFrameCallback) : STA objectFrameCallbackLo, X
+    LDA #FRAME_CALLBACK_ELEVATOR_STOP : STA objectFrameCallback, X
 
     .notEnd
     RTS
@@ -570,14 +539,14 @@
 }
 
 \
-\ elevatorStopFrameCallback(X register)
+\ elevatorFrameCallback_Stop(X register)
 \
 \ elevator frame callback, called when elevator stops moving
 \
 \ params:
 \   X register   Elevator index
 \
-.elevatorStopFrameCallback
+.elevatorFrameCallback_Stop
 {
     \ get elevator passenger index, pushing this on stack
     LDA objectState, X
@@ -605,8 +574,7 @@
     JSR clearObjectTileFlagsAbove
 
     \ restore callback
-    LDA #HI(elevatorFrameCallback) : STA objectFrameCallbackHi, X
-    LDA #LO(elevatorFrameCallback) : STA objectFrameCallbackLo, X
+    LDA #FRAME_CALLBACK_ELEVATOR : STA objectFrameCallback, X
 
     \ set passenger tile flags
     PLA \ <-- passenger index

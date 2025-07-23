@@ -34,10 +34,6 @@
     \ relocate sound effect data (which might have been modified by DFS)
     JSR relocateSoundEffectData
 
-    \ sound effect
-    LDA #SOUND_EFFECT_DIED
-    JSR soundEffect
-
     \ display screen
     JSR setMode7
     LDA #LO(batteryFlatTeletext) : STA srcAddr
@@ -79,6 +75,9 @@ INCBIN "data\died.bin"
 
     \ wait for space key press
     JSR waitForSpaceKeyPress
+
+    \ silence sound effects
+    JSR silenceSoundEffects
 
     \ initialize and show level
     JMP initializeLevel \ implicit RTS

@@ -31,16 +31,16 @@
 
 \ sound effect vectors (set in initializeSound)
 .primarySoundVectors                        \ REGULAR SOUNDS             SAMPLE-BASED SOUNDS
-.primarySoundVector_updatePursuit    SKIP 2 \ rts_0                      sample_updatePursuit
-.primarySoundVector_beginPursuit     SKIP 2 \ soundEffect_pursuitOn      sample_soundDalekExterminate
-.primarySoundVector_endPursuit       SKIP 2 \ soundEffect_pursuitOff     sample_stop
-.primarySoundVector_enemyLasered     SKIP 2 \ rts_0                      sample_soundDalekGroan
-.primarySoundVector_weaponFired      SKIP 2 \ soundEffect_pain           sample_soundDalekWeapon
+.primarySoundVector_updatePursuit    SKIP 2 \ soundEffect_updatePursuit  sample_updatePursuit
+.primarySoundVector_beginPursuit     SKIP 2 \ soundEffect_beginPursuit   sample_beginPursuit
+.primarySoundVector_endPursuit       SKIP 2 \ soundEffect_endPursuit     sample_endPursuit
+.primarySoundVector_enemyLasered     SKIP 2 \ soundEffect_enemyLasered   sample_enemyLasered
+.primarySoundVector_weaponFired      SKIP 2 \ soundEffect_weaponFired    sample_weaponFired
                                             
 .secondarySoundVectors                      \ REGULAR SOUNDS             SAMPLE-BASED SOUNDS
-.secondarySoundVector_enemyDestroyed SKIP 2 \ rts_0                      sample_soundK9Affirmative
-.secondarySoundVector_startLevel     SKIP 2 \ rts_0                      sample_soundK9InsufficientData
-.secondarySoundVector_completeLevel  SKIP 2 \ soundEffect_levelComplete  sample_soundTardisDoor
+.secondarySoundVector_enemyDestroyed SKIP 2 \ soundEffect_enemyDestroyed sample_enemyDestroyed
+.secondarySoundVector_beginLevel     SKIP 2 \ soundEffect_levelStart     sample_levelStart
+.secondarySoundVector_levelComplete  SKIP 2 \ soundEffect_levelComplete  sample_levelComplete
 
 \ sound API params
 .soundParams EQUB 0, 0, 0, 0, 0, 0, 0, 0
@@ -75,11 +75,13 @@
 \
 .levelCompleteSoundEffect
 {
-    JMP (secondarySoundVector_completeLevel) \ implicit RTS
+    JMP (secondarySoundVector_levelComplete) \ implicit RTS
 }
 
 \
 \ soundEffect_levelComplete()
+\
+\ invoked via secondarySoundVector_levelComplete
 \
 .soundEffect_levelComplete
 {
@@ -88,30 +90,79 @@
 }
 
 \
-\ soundEffect_pursuitOn()
+\ soundEffect_beginPursuit()
 \
-.soundEffect_pursuitOn
+\ invoked via primarySoundVector_beginPursuit
+\
+.soundEffect_beginPursuit
 {
+    \ ignore if a sample is playing
+    LDA playingSample : BNE rts_3
+
     LDA #SOUND_EFFECT_PURSUIT_ON
     BNE soundEffect \ implicit RTS
 }
 
 \
-\ soundEffect_pursuitOff
+\ soundEffect_endPursuit()
 \
-.soundEffect_pursuitOff
+\ invoked via primarySoundVector_endPursuit
+\
+.soundEffect_endPursuit
 {
     LDA #SOUND_EFFECT_PURSUIT_OFF
     BNE soundEffect \ implicit RTS
 }
 
 \
-\ soundEffect_pain
+\ soundEffect_weaponFired()
 \
-.soundEffect_pain
+\ invoked via primarySoundVector_weaponFired
+\
+.soundEffect_weaponFired
 {
     LDA #SOUND_EFFECT_PAIN
     BEQ soundEffect \ implicit RTS
+}
+
+\
+\ soundEffect_updatePursuit()
+\
+\ invoked via primarySoundVector_updatePursuit
+\
+.soundEffect_updatePursuit
+{
+    \ fall through to RTS
+}
+
+\
+\ soundEffect_enemyLasered()
+\
+\ invoked via primarySoundVector_enemyLasered
+\
+.soundEffect_enemyLasered
+{
+    \ fall through to RTS
+}
+
+\
+\ soundEffect_enemyDestroyed()
+\
+\ invoked via secondarySoundVector_enemyDestroyed
+\
+.soundEffect_enemyDestroyed
+{
+    \ fall through to RTS
+}
+
+\
+\ soundEffect_levelStart()
+\
+\ invoked via secondarySoundVector_levelStart
+\
+.soundEffect_levelStart
+{
+    RTS
 }
 
 \ 
@@ -121,6 +172,16 @@
 \
 .updateSoundEffects
 {
+    \ release tone generator 3?
+    LDA playingSample : BPL skip \ CMP #SAMPLE_PLAYBACK_STOPPED : BNE skip
+        
+        \ playingSample = SAMPLE_PLAYBACK_NONE
+        LDA #SAMPLE_PLAYBACK_NONE : STA playingSample
+
+        \ release tone generator 3
+        JSR releaseToneGenerator3
+    .skip
+
     \ decrement inhibitMoveSoundEffect (used to inhibit move sound effect)
     LDA inhibitMoveSoundEffect : BEQ endif1
         DEC inhibitMoveSoundEffect
@@ -233,22 +294,12 @@
 \
 \ silencePursuitSoundEffect
 \
-\ silence the pursuit sound effect, first checking that no enemies are in pursuit
+\ silence the pursuit sound effect (once)
 \
 .silencePursuitSoundEffect
 {
-    \ do nothing if any enemy is in pursuit
-    LDX enemyCount
-    BEQ loopEnd
-    .loop
-        LDA objectType, X : BMI rts_3
-        DEX
-        BNE loop
-    .loopEnd
-
-    \ silence sound effect (once)
     LDA pursuitSoundEffectCounter : BEQ rts_3
-        LDA #0 : STA pursuitSoundEffectCounter \ clear flag/counter
+        LDA #0 : STA pursuitSoundEffectCounter
         JMP (primarySoundVector_endPursuit) \ implicit RTS
 }
 
@@ -293,5 +344,104 @@
     RTS
 }
 
+\
+\ acquireToneGenerator3()
+\
+\ called by sample code to acquire tone generator 3
+\
+.acquireToneGenerator3
+{
+    \
+    \ set up tone generator 3 for sample-based playback
+    \
+    SEI \ disable interupts
+
+    LDA #&9F \ zero volume
+    JSR sendSoundData
+
+    LDA #&81 \ highest frequency (low-byte)
+    JSR sendSoundData
+
+    LDA #0 \ highest frequency (high-byte)
+    JSR sendSoundData
+
+    CLI \ re-enable interrupts
+
+    \
+    \ pause MOS pursuit sound effect, if its playing
+    \
+    LDA primarySamplesEnabled : BNE rts_3
+    LDA pursuitSoundEffectCounter : BEQ rts_3
+    JMP soundEffect_endPursuit \ implicit RTS
+}
+
+\
+\ releaseToneGenerator3()
+\
+\ called indirectly by sample code when its finished with tone generator 3
+\
+.releaseToneGenerator3
+{
+    \
+    \ restore tone generator 3 for MOS sounds
+    \
+    SEI \ disable interupts
+
+    LDA #&9F \ zero volume
+    JSR sendSoundData
+
+    LDA #&8F \ lowest frequency (low-byte)
+    JSR sendSoundData
+
+    LDA #&3F \ lowest frequency (high-byte)
+    JSR sendSoundData
+
+    CLI \ re-enable interrupts
+
+    \
+    \ resume MOS pursuit sound effect, if it should be playing
+    \
+    LDA primarySamplesEnabled : BNE rts_3
+    LDA pursuitSoundEffectCounter : BEQ else
+        JMP soundEffect_beginPursuit \ implicit RTS
+    .else
+        JMP soundEffect_endPursuit \ implicit RTS
+}
+
+\
+\ sendSoundData(A)
+\
+\ send sound data to SN76489 sound chip
+\
+\ params: 
+\   A (accumulator)     Sound data
+\
+.sendSoundData
+{
+    PHA \ --> sound data
+
+    \ set data direction register A (write &FF to &FE43)
+    LDA #&FF
+    STA &FE43
+
+    \ output register A (write sound data to &FE4F)
+    PLA \ <-- sound data
+    STA &FE4F
+
+    \ output register B, prepping write by setting chip write pin low (write 0 to &FE40)
+    LDA #0
+    STA &FE40
+
+    \ keep the write enable line low for at least 8 us, 16 cycles
+    LDA #&44     \ 2 cycles
+    .loop
+        LSR A    \ 6 cycles
+        BCC loop \ 8 cycles
+                                                        
+    \ write data by setting chip write pin high (write 8 to &FE40)
+    STA &FE40
+     
+    RTS                                                 
+}
 
 \ end file
