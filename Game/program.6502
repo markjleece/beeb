@@ -233,8 +233,8 @@ DIRECTION_LEFT = -2
 DIRECTION_RIGHT = 2
 
 \ scrolling constants
-AUTO_SCROLL_THRESHOLD = 96
-AUTO_SCROLL_DISTANCE = 16
+AUTO_SCROLL_THRESHOLD = 84
+AUTO_SCROLL_DISTANCE = 14
 
 \ tile grid masks used to extract tile flags (top 3-bits) and tile indices (bottom 5 bits) from tile grid values
 TILE_GRID_INDEX_MASK = &1F
@@ -625,9 +625,7 @@ ORG &1100
         JSR drawObjects
         JSR drawLaser
         JSR refreshGameBar
-        IF DEBUG_TILE_GRID_FLAGS != 0
-            JSR debugTileGridFlags
-        ENDIF
+        JSR debugTileGridFlags
         JSR refreshObjectDrawOrder
         JSR keyboardInputHandlers
         JSR enemyAI
@@ -640,9 +638,6 @@ ORG &1100
 \ includes...
 \
 
-INCLUDE "sound.6502"
-INCLUDE "scroll.6502"
-INCLUDE "draw.6502"
 INCLUDE "k9.6502"
 INCLUDE "enemy.6502"
 INCLUDE "elevator.6502"
@@ -652,6 +647,9 @@ INCLUDE "tilegrid.6502"
 INCLUDE "transition.6502"
 INCLUDE "switch.6502"
 INCLUDE "utils.6502"
+INCLUDE "sound.6502"
+INCLUDE "scroll.6502"
+INCLUDE "draw.6502"
 
 \
 \ in-game interrupt request routine
@@ -740,7 +738,7 @@ INCLUDE "utils.6502"
         LDY objectFrameCallback, X
         LDA frameCallbackTbl+0, Y : STA jsr_inst+1
         LDA frameCallbackTbl+1, Y : STA jsr_inst+2
-        .jsr_inst JSR &0000
+        .jsr_inst JSR &FFFF
 
         INC outerIndex
         LDA outerIndex
@@ -841,14 +839,16 @@ INCLUDE "utils.6502"
     LDA keyTbl + KEY_A
     ORA keyTbl + KEY_Z
     BPL nopress_a
-        JMP k9MoveLeft \ implicit RTS
+        LDA #LO(DIRECTION_LEFT)
+        JMP k9MoveHorizontally \ implicit RTS
     .nopress_a
 
     \ 'D' or 'X' key...
     LDA keyTbl + KEY_D
     ORA keyTbl + KEY_X
     BPL nopress_d
-        JMP k9MoveRight \ implicit RTS
+        LDA #LO(DIRECTION_RIGHT)
+        JMP k9MoveHorizontally \ implicit RTS
     .nopress_d
 
     \ 'R' key...

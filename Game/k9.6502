@@ -25,30 +25,54 @@
 \
 
 \
-\ k9MoveLeft()
+\ k9MoveHorizontally(direction)
 \
 \ invoked by key press handler
 \
-.k9MoveLeft
+\ params:
+\   Accumalator     DIRECTION_LEFT or DIRECTION_RIGHT
+\
+\ invoked by key press handler
+\
+.k9MoveHorizontally
 {
+    \ save direction
+    STA direction
+
     \ auto scroll screen
     LDA scrollCounter : AND #1 : BNE noscroll
         LDA objectXLo
         SEC 
         SBC scrnLeftLo
-        CMP #AUTO_SCROLL_THRESHOLD : BCS noscroll
-            LDA #LO(DIRECTION_LEFT) : STA scrollDirection
+        BIT direction : BPL right
+        .left
+            CMP #(AUTO_SCROLL_THRESHOLD + 1) : BCS noscroll
+            BCC doscroll
+        .right
+            CMP #(236 - AUTO_SCROLL_THRESHOLD) : BCC noscroll
+
+        .doscroll
+            LDA direction : STA scrollDirection
             LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
-    .noscroll
+   .noscroll
 
     \ cache k9's extents
     LDX #0
     JSR cacheObjectExtents
 
-    \ select animation
+    \ invoke k9SelectLeftAnimation or k9SelectRightAnimation
+    BIT direction : BPL k9SelectRightAnimation
+
+    \ fall through to k9SelectLeftAnimation
+}
+
+\
+\ k9SelectLeftAnimation()
+\
+.k9SelectLeftAnimation
+{
     LDA objectType
     AND #ANIMATE_MASK
-
     BNE else \ if (A == ANIMATE_LOOK_LEFT)
         LDA objectState : AND #(OBJECT_STATE_FLAGS_DESCENDING OR OBJECT_STATE_FLAGS_ASCENDING) : BNE rts_1
             LDA #ANIMATE_MOVE_LEFT
@@ -63,30 +87,12 @@
 }
 
 \
-\ k9MoveRight()
+\ k9SelectRightAnimation()
 \
-\ invoked by key press handler
-\
-.k9MoveRight
+.k9SelectRightAnimation
 {
-    \ auto scroll screen
-    LDA scrollCounter : AND #1 : BNE noscroll
-        LDA objectXLo
-        SEC 
-        SBC scrnLeftLo
-        CMP #(255 - AUTO_SCROLL_THRESHOLD) : BCC noscroll
-            LDA #LO(DIRECTION_RIGHT) : STA scrollDirection
-            LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
-    .noscroll
-
-    \ cache k9's extents
-    LDX #0
-    JSR cacheObjectExtents
-
-    \ select animation
     LDA objectType
     AND #ANIMATE_MASK
-    
     BEQ then \ if (A == ANIMATE_LOOK_LEFT) then
     CMP #ANIMATE_MOVE_LEFT : BEQ then
     CMP #ANIMATE_TURN_RIGHT_TO_LEFT: BNE else
@@ -112,11 +118,11 @@
 \ k9MoveVertically(direction)
 \
 \ invoked by key press handler
-
+\
 \ params:
 \   Accumalator     DIRECTION_UP or DIRECTION_DOWN
 \
-\ result`
+\ result
 \   A = 0 (success), 1 (failure)
 \
 .k9MoveVertically
@@ -127,8 +133,8 @@
     \ is K9 already ascending/descending?
     LDA objectState : AND #(OBJECT_STATE_FLAGS_DESCENDING OR OBJECT_STATE_FLAGS_ASCENDING) : BNE rts_1
 
-    \ cache object extents
-    LDX #0 \ K9 is zero index
+    \ cache k9's extents
+    LDX #0
     JSR cacheObjectExtents
 
     \ try to teleport
@@ -357,9 +363,7 @@
     \ determine next action based on adjacent type-type (in accumulator)
     CMP #TILE_TYPE_JEWEL : BEQ k9CollectJewel \ implicit RTS
     CMP #TILE_TYPE_KEY : BEQ k9CollectKey \ implicit RTS
-    CMP #TILE_TYPE_EXIT : BNE notExit
-        JMP levelComplete \ implicit RTS
-    .notExit
+    CMP #TILE_TYPE_EXIT : BEQ k9ExitLevel \ implicit RTS
     CMP #TILE_TYPE_DOOR : BNE notDoor
         JSR blockedSoundEffect
     .notDoor
@@ -376,6 +380,14 @@
     EQUB FRAME_CALLBACK_K9_MOVE_LEFT, FRAME_CALLBACK_K9_MOVE_RIGHT                  \ move
     EQUB FRAME_CALLBACK_K9_TURN_LEFT_TO_RIGHT, FRAME_CALLBACK_K9_TURN_RIGHT_TO_LEFT \ turn
 
+}
+
+\
+\ k9ExitLevel()
+\
+.k9ExitLevel
+{
+    JMP levelComplete \ implicit RTS
 }
 
 \

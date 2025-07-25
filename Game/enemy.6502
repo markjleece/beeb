@@ -51,7 +51,7 @@
 \   - If enemy sees k9 take an elevator up or down, action mode is changed to PURSUE_UP or PURSUE_DOWN.
 \   - If enemy elevator stops, enemy looks for k9 and turns if not seen.  If K9 still not seen, will try to descend/ascend again.
 \   - If k9 is not seen by any enemy for 10 seconds, all ACTION_PURSUE_... actions are demoted to ACTION_PACE.
-\   - Weeping angels are immobilized if face-to-face with K9, unless they are lasered.
+\   - Weeping angels are frozen (quantum locked) if K9 observes them, except when they are lasered or very close
 \
 
 \
@@ -66,10 +66,10 @@
 .enemyEndAllPursuit
 {
     \ if (endPursuitCounter == 0) return
-    LDA endPursuitCounter : BEQ rts_15
+    LDA endPursuitCounter : BEQ rts_14
 
     \ if (--endPursuitCounter != 0) return
-    DEC endPursuitCounter : BNE rts_15
+    DEC endPursuitCounter : BNE rts_14
 
     \ end all enemy pursuit
     LDX enemyCount
@@ -104,7 +104,7 @@
     LDY enemyCount
     BEQ loopEnd
     .loop
-        LDA objectType, Y : BMI rts_15
+        LDA objectType, Y : BMI rts_14
         DEY
         BNE loop
     .loopEnd
@@ -119,7 +119,7 @@
 \
 \ common RTS
 \
-.rts_15
+.rts_14
 {
     RTS
 }
@@ -142,13 +142,13 @@
     \ evaluate what action an individual enemy should take every sixteen frames
     CMP enemyCount
     BEQ then
-    BCS rts_15
+    BCS rts_14
     .then
     TAX \ -> enemy index
 
     \ is the enemy destroyed?
     LDA objectState, X
-    AND #ENEMY_STATE_HEALTH_MASK : BEQ rts_15
+    AND #ENEMY_STATE_HEALTH_MASK : BEQ rts_14
 
     \ does enemy have enough health to pursue K9?
     CMP #(ENEMY_WEAPON_THRESHOLD + 1) : BCS skip1
@@ -166,10 +166,23 @@
     BEQ clearImmobileFlag \ implicit RTS (enemy turning)
     STA direction
 
-    \ determine if K9 is in sight
+    \ is K9 is in sight
     JSR queryK9InSight
-    BMI clearImmobileFlag \ implicit RTS (not in sight)
     STA temp \ --> distance
+    BPL skip
+        \ K9 is not is sight, so check if enemy is a Weeping Angle that is observed from behind
+        LDA enemyType
+        CMP #ENEMY_TYPE_WEEPING_ANGEL
+        BNE clearImmobileFlag \ implicit RTS (not a Weeping Angel)
+
+        LDA direction
+        EOR #&FE
+        STA direction
+
+        JSR queryK9InSight
+        BMI clearImmobileFlag \ implicit RTS (K9 not behind)
+        BPL isWeepingAngelObserved \ implicit RTS (K9 is behind)
+    .skip
 
     \
     \ K9 is in sight!
@@ -212,7 +225,7 @@
     BCC useWeapon \ implcit RTS (in weapons range)
 
     \
-    \ immobolize Weeping Angels if they are face-to-face with K9, and not being lasered
+    \ immobolize Weeping Angels that are seen by K9, except when lasered
     \
 
     \ is a Weeping Angel?
@@ -220,16 +233,18 @@
     CMP #ENEMY_TYPE_WEEPING_ANGEL
     BNE clearImmobileFlag \ implicit RTS (not a Weeping Angel)
 
-    \ k9 and Weeping Angel face-to-face?  A = zero if face-to-face 
+.isWeepingAngelObserved
+    \ is Weeping Angel observed?
     JSR getK9Direction
     EOR direction
     EOR #LO(-1 EOR 1) \ left xor right
 
-    \ and lasered?
+    \ is Weeping Angel lasered?
     ORA laserFrameCount
 
-    BNE clearImmobileFlag \ implicit RTS (not face-to-face or lasered)
-    BEQ setImmobileFlag \ implicit RTS (face-to-face and not lasered)
+    \ set/clear immobile flag
+    BNE clearImmobileFlag \ implicit RTS (not observed or lasered)
+    BEQ setImmobileFlag \ implicit RTS (observed and not lasered)
 
 .useWeapon
     \ set K9 damage counter, if not set (processed in inflictK9Damage)
@@ -260,7 +275,7 @@
 \
 \ common RTS
 \
-.rts_16
+.rts_15
 {
     RTS
 }
@@ -277,7 +292,7 @@
 {
     \ look for K9
     JSR getObjectDirection
-    BEQ rts_16 \ enemy turning so just return
+    BEQ rts_15 \ enemy turning so just return
 
     STA direction
     JSR queryK9InSight
@@ -440,7 +455,35 @@
     AND #LO(NOT(ACTION_MASK))
     ORA temp
     STA objectType, X
+
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_16
+{
     RTS
+}
+
+\
+\ enemyFrameCallback_turnPreamble()
+\
+\ returns zero if redraw flag is set
+\
+.enemyFrameCallback_turnPreamble
+{
+    \ decrement frame counter 
+    DEC objectFrameCounter, X
+    BNE rts_16
+
+    \ reset frame counter
+    LDA #FRAME_COUNT_ENEMY_TURN
+    STA objectFrameCounter, X
+
+    \ set redraw flag
+    JMP setRedrawFlag \ implcit RTS (returns zero)
 }
 
 \
@@ -451,16 +494,8 @@
 \
 .enemyFrameCallback_TurnLeftToRight
 {
-    \ decrement frame counter 
-    DEC objectFrameCounter, X
-    BNE return
-
-    \ reset frame counter
-    LDA #FRAME_COUNT_ENEMY_TURN
-    STA objectFrameCounter, X
-
-    \ set redraw flag
-    JSR setRedrawFlag
+    JSR enemyFrameCallback_turnPreamble
+    BNE rts_16
 
     \ advance keyframe
     LDA objectSpriteIndex, X
@@ -472,7 +507,7 @@
     CMP #(SPRITE_INDEX_ENEMY_TURN + 3) : BCS endif
         DEC objectSpriteIndex, X
         LDA objectSpriteIndex, X
-        CMP #(SPRITE_INDEX_ENEMY_TURN - 1) : BNE return
+        CMP #(SPRITE_INDEX_ENEMY_TURN - 1) : BNE rts_16
             LDA #(SPRITE_INDEX_ENEMY_RIGHT + 1): STA objectSpriteIndex, X
         RTS
     .endif
@@ -492,9 +527,6 @@
         LDA #ANIMATE_LOOK_RIGHT
     .endif2
     JMP enemyAnimate \ implicit RTS
-
-.return
-    RTS
 }
 
 \
@@ -505,16 +537,8 @@
 \
 .enemyFrameCallback_TurnRightToLeft
 {
-    \ decrement frame counter
-    DEC objectFrameCounter, X
-    BNE return
-
-    \ reset frame counter
-    LDA #FRAME_COUNT_ENEMY_TURN
-    STA objectFrameCounter, X
-
-    \ set redraw flag
-    JSR setRedrawFlag
+    JSR enemyFrameCallback_turnPreamble
+    BNE rts_16
 
     \ advance keyframe
     LDA objectSpriteIndex, X
@@ -526,7 +550,7 @@
     CMP #(SPRITE_INDEX_ENEMY_TURN + 3) : BCS endif
         INC objectSpriteIndex, X
         LDA objectSpriteIndex, X
-        CMP #(SPRITE_INDEX_ENEMY_TURN + 3) : BNE return
+        CMP #(SPRITE_INDEX_ENEMY_TURN + 3) : BNE rts_16
             LDA #(SPRITE_INDEX_ENEMY_LEFT + 1): STA objectSpriteIndex, X
         RTS
     .endif
@@ -546,9 +570,6 @@
         LDA #ANIMATE_LOOK_LEFT
     .endif2
     JMP enemyAnimate \ implicit RTS
-
-.return
-    RTS
 }
 
 \
@@ -683,15 +704,6 @@
     CLC
     ADC frameCount
     AND #1
-
-    \ fall through to RTS
-}
-
-\
-\ common RTS
-\
-.rts_13
-{
     RTS
 }
 
@@ -777,6 +789,15 @@
         .skip2
         LDA #0 \ pass on success
     .skip1
+
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_13
+{
     RTS
 }
 
@@ -790,7 +811,7 @@
 {
     \ move forward slowly?
     JSR moveForwardSlowly
-    BNE return
+    BNE rts_13
 
     \ increment frame counter
     INC objectFrameCounter, X
@@ -805,7 +826,7 @@
     \ set keyframe, set redraw, continue animation?, and accumulator = objectXLo[X] AND &F
     LDA #SPRITE_INDEX_ENEMY_LEFT
     JSR frameCallback_MoveHorz
-    BCS return
+    BCS rts_13
 
     \ clear vacated tile flags
     CMP #8 : BNE skip2
@@ -851,8 +872,6 @@
             \ look left
             LDA #ANIMATE_LOOK_LEFT
             BEQ enemyAnimate \ implicit RTS
-.return
-    RTS
 }
 
 \
@@ -865,7 +884,7 @@
 {
     \ move forward slowly?
     JSR moveForwardSlowly
-    BNE return
+    BNE rts_13
 
     \ increment frame counter
     INC objectFrameCounter, X
@@ -879,7 +898,7 @@
     \ set keyframe, set redraw, continue animation?, and accumulator = objectXLo[X] AND &F
     LDA #SPRITE_INDEX_ENEMY_RIGHT
     JSR frameCallback_MoveHorz
-    BCS return
+    BCS rts_13
 
     \ clear vacated tile flags
     BNE skip2
@@ -924,9 +943,6 @@
             \ look right
             LDA #ANIMATE_LOOK_RIGHT
             BNE enemyAnimate \ implicit RTS
-
-.return
-    RTS
 }
 
 \

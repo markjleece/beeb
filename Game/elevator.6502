@@ -124,17 +124,16 @@
         LDA objectYLo
         SEC 
         SBC scrnTopLo
-        BIT direction : BMI down
+        BIT direction : BPL down
         .up
-            CMP #(255 - AUTO_SCROLL_THRESHOLD) : BCC noscroll
-                LDA #LO(DIRECTION_DOWN) : STA scrollDirection
-                LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
-                RTS
+            CMP #(AUTO_SCROLL_THRESHOLD + 1): BCS noscroll
+            BCC doscroll
         .down
-            CMP #AUTO_SCROLL_THRESHOLD : BEQ then : BCS noscroll
-            .then
-                LDA #LO(DIRECTION_UP) : STA scrollDirection
-                LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
+            CMP #(236 - AUTO_SCROLL_THRESHOLD) : BCC noscroll
+
+        .doscroll
+            LDA direction : STA scrollDirection
+            LDA #AUTO_SCROLL_DISTANCE : STA scrollCounter
     .noscroll
     RTS
 }
