@@ -76,13 +76,15 @@
 \
 \   Address  Size  Description
 \   -------  ----  -----------
+\   &0000    144   Zero-page game variables
+\   &0090    112   zero-page MOS variables      
 \   &0100    192   1 enemy sprite*
 \   &01C0    64    Program stack
 \   &0200    256   MOS general workspace
 \   &0300    192   1 enemy sprite*
 \   &03C0    32    1 door sprite*
 \   &03E0    32    Tile types* (repurposed MOS keyboard buffer)
-\   &0400    432   9 game objects array*
+\   &0400    432   9 game objects arrays*
 \   &05B0    384   2 enemy sprites*
 \   &0730    192   2 K9 sprites*
 \   &07F0    16    Black palette*
@@ -91,7 +93,7 @@
 \   &08C0    64    MOS workspace
 \   &0900    960   5 enemy sprites*
 \   &0CC0    64    2 door sprites*
-\   &0D00    32    Enemy health bar atlas* (repurposed NMI memory)
+\   &0D02    32    NMI handler + enemy health bar atlas* (repurposed NMI memory)
 \   &0D20    64    Tile and sprite address tables (high-bytes)* (repurposed NMI memory)
 \   &0D60    160   MOS ROM workspace
 \   &0E00    384   2 enemy sprites*
@@ -233,8 +235,8 @@ DIRECTION_LEFT = -2
 DIRECTION_RIGHT = 2
 
 \ scrolling constants
-AUTO_SCROLL_THRESHOLD = 84
-AUTO_SCROLL_DISTANCE = 14
+AUTO_SCROLL_THRESHOLD = 84 \ pixels
+AUTO_SCROLL_DISTANCE = 14  \ half-tiles (must be even)
 
 \ tile grid masks used to extract tile flags (top 3-bits) and tile indices (bottom 5 bits) from tile grid values
 TILE_GRID_INDEX_MASK = &1F
@@ -267,7 +269,7 @@ ENEMY_TYPE_GENERIC = 0
 ENEMY_TYPE_DALEK = 1
 ENEMY_TYPE_WEEPING_ANGEL = 2
 
-\ common object state flags (objectState high nibble)
+\ common object state flags (objectState high-nibble)
 OBJECT_STATE_FLAGS_MASK = &F0
 OBJECT_STATE_FLAGS_REDRAW = &80 \ negative
 OBJECT_STATE_FLAGS_DESCENDING = &40
@@ -275,22 +277,22 @@ OBJECT_STATE_FLAGS_ASCENDING = &20
 OBJECT_STATE_FLAGS_DISABLED = &10 \ applies to elevators, teleports, and doors
 OBJECT_STATE_FLAGS_LASERED = &10  \ applies to k9 and enemies
 
-\ door state flags (objectState low nibble)
+\ door state flags (objectState low-nibble)
 DOOR_STATE_FLAGS_DOOR_OPEN = &08 \ set if door is open
 DOOR_STATE_FLAGS_DOOR_UNLOCKED = &04 \ set if door is unlocked
 
-\ elevator state passenger mask (objectState low nibble)
+\ elevator state passenger mask (objectState low-nibble)
 ELEVATOR_STATE_PASSENGER_MASK = &0F \ used to get index of passenger
 
-\ enemy state flags and mask (objectState low nibble)
-ENEMY_STATE_HEALTH_MASK = &07   \ enemy health (bits 0..2)
-ENEMY_STATE_FLAGS_IMMOBILE = &08  \ set if enemy is firing weapon or a weeping angel is frozen (bit 3)
+\ enemy state flags and mask (objectState low-nibble)
+ENEMY_STATE_HEALTH_MASK = &07 \ enemy health (bits 0..2)
+ENEMY_STATE_FLAGS_IMMOBILE = &08 \ set if enemy is firing weapon or a Weeping Angel is frozen (bit 3)
 
 \ enemy constants
 ENEMY_LOOK_RANGE = 12 \ range enemies can see (in tiles)
-ENEMY_WEAPON_RANGE = 2 \ range of enemy weapons (in tiles)
-ENEMY_WEAPON_THRESHOLD = 2 \ enemy health required to use weapon
-ENEMY_SPRINT_THRESHOLD = 4 \ enemy health required to move quickly
+ENEMY_WEAPON_RANGE = 2 \ range of enemy (not Weeping Angels) weapons (in tiles)
+ENEMY_WEAPON_THRESHOLD = 2 \ enemy health required to use weapon (25%)
+ENEMY_SPRINT_THRESHOLD = 4 \ enemy health required to move quickly (50%)
 ENEMY_END_PURSUIT_COUNTER = 32 \ number of frames (x16) before enemies give up pursuit (10 seconds)
 
 \ K9 damage counters
@@ -342,7 +344,7 @@ GAMEBAR_SPRITE_SIZE = GAMEBAR_SPRITE_WIDTH * GAMEBAR_SPRITE_HEIGHT / 4
 
 \ k9 health
 MAX_HEALTH_HI = 16 \ (hi-byte)
-LASER_HEALTH_THRESHOLD_HI = 4 \ (hi-byte)
+LOW_HEALTH_HI = 4  \ (hi-byte)
 
 \ maximum key count
 MAX_KEY_COUNT = 9
@@ -389,7 +391,7 @@ SAMPLE_EXTERMINATE_FRAME_COUNT = 100
 INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT = 30
 
 \ data structure sizes (bytes)
-LEVEL_TILE_GRID_SIZE = 2048         \ tile grid size
+TILE_GRID_SIZE = 2048               \ tile grid size
 SOUND_EFFECTS_SIZE = 44             \ sound effects size
 SWITCH_PAIRINGS_SIZE = 48           \ switch pairings size
 DRAW_OBJECT_JUMP_TABLE_SIZE = 10    \ draw object jump tables size
@@ -430,7 +432,7 @@ k9Atlas1 = &730
 k9Atlas2 = &FA0
 k9Atlas3 = &2C90
 gamebarAtlas = &3050
-gamebarAtlas_sidewaysRAM = &BF20        \ location when 16K sideways RAM is detected
+gamebarAtlas_sidewaysRAM = &BF20        \ location when 16K or 32K of sideways RAM is detected
 healthBarAtlas = &0D02                  \ 30 byte atlas (repurposes NMI workspace)
 
 \ black palette location
@@ -449,7 +451,7 @@ spriteHealthBarTbl = &10E0              \ 12 byte sprite health bar table (repur
 \ level data locations
 levelLoadAddr = &3130                   \ address where level data is loaded
 levelPalette = &3130                    \ 16 byte level palette
-levelTiles = &3140                      \ 27 x 64 byte tiles.  Each tile contain two character rows of texel quads. Tiles are indexed from 1. Tile 0 is implicitly filled with zeros.
+levelTiles = &3140                      \ 27 x 64 byte tiles. Each tile contain two character rows of texel quads. Tiles are indexed from 1. Tile 0 is implicitly filled with zeros.
 levelTileGrid = &3800                   \ 2K of tile values (flags/indicies)
 levelTileTypes = &03E0                  \ 28 x 1-byte tile types (repurposes MOS keyboard buffer)
 
@@ -469,7 +471,7 @@ levelSwitchPairingsLoaded = &40E3       \ level switch pairings
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
 drawObject_tailJumpTbl = &10F6          \ 10 byte tail jump offset table (repurposes DFS &10E0-&10FF workspace)
 
-\ dfs page backup (used to store page &17 that DFS modifies)
+\ dfs page backup (used to store page &17 or &1C that DFS modifies)
 dfsPageBackup = &7B00
 
 \ PCM data load address (located below page backup)
@@ -492,9 +494,9 @@ ORG 0
 .level                      SKIP 1  \ 1..LEVEL_COUNT
 .objectCount                SKIP 1  \ number of game objects (<= MAX_OBJECT_COUNT)
 .enemyCount                 SKIP 1  \ number of enemy game objects
-.elevatorCount              SKIP 1  \ number of elevator game objects
+.elevatorCount              SKIP 1  \ number of elevator game objects (includes teleports)
 .doorCount                  SKIP 1  \ number of door objects
-.vsync                      SKIP 1  \ set on vsync
+.vsync                      SKIP 1  \ set on 'vsync' (when last screen scanline has been read for display)
 .frameCount                 SKIP 1  \ incremented every frame
 .scrnLeftLo                 SKIP 1  \ left position of screen (low/high bytes)
 .scrnLeftHi                 SKIP 1  
@@ -507,8 +509,8 @@ ORG 0
 .keyCount                   SKIP 1  \ current number of keys (0..9)
 .healthLo                   SKIP 1  \ k9's health (low/high bytes) value range: 0..MAX_HEALTH_HI:&FF
 .healthHi                   SKIP 1  
-.laserInhibited             SKIP 1  \ set if laser is inhibited (occurs when enemy is destroyed)
-.laserFrameCount            SKIP 1  \ 0..2 (2 = turn on, 1 = turn off, 0 = off)
+.laserInhibited             SKIP 1  \ set if laser is inhibited (occurs when enemy or destructible tile is destroyed)
+.laserFrameCount            SKIP 1  \ 0..2 (2 = draw, 1 = undraw, 0 = off)
 .laserAddr                  SKIP 2  \ start address of drawn laser beam (used to undraw laser beam)
 .laserDirection             SKIP 1  \ direction in which laser beam was drawn (used to undraw laser beam)
 .laserLength                SKIP 1  \ length of drawn laser beam (used to undraw laser beam)
@@ -516,7 +518,7 @@ ORG 0
 .enemyHealthLo              SKIP 1  \ low health byte of enemy. Used to decrement ememy health
 .k9DamageCounter            SKIP 1  \ set to K9_DAMAGE_ON_COUNTER when enemy fires weapon
 .endPursuitCounter          SKIP 1  \ set to ENEMY_END_PURSUIT_COUNTER when k9 is in sight
-.pursuitSoundEffectCounter  SKIP 1  \ sound effect counter. Used to ignore duplicate requests and repeat sample
+.pursuitSoundEffectCounter  SKIP 1  \ sound effect counter. Used to ignore duplicate requests or repeat 'exterminate' sample
 .laserSoundEffectOn         SKIP 1  \ sound effect flag. Used to ignore duplicate requests
 .blockedSoundEffectOn       SKIP 1  \ sound effect flag. Used to ignore duplicate requests
 .inhibitMoveSoundEffect     SKIP 1  \ sound effect flag. Used to inhibit move sound effects
@@ -531,9 +533,9 @@ ORG 0
 .jewelHealthGainHi          SKIP 1  \ jewel health gain (high byte)
 .enemyType                  SKIP 1  \ enemy type (ENEMY_TYPE_GENERIC, ENEMY_TYPE_DALEK, or ENEMY_TYPE_WEEPING_ANGEL)
 .playingSample              SKIP 1  \ playing sample (SAMPLE_PLAYBACK_VOID, SAMPLE_PLAYBACK_PLAYING, SAMPLE_PLAYBACK_STOPPED)
-.primarySamplesEnabled      SKIP 1  \ primary samples enabled flag
+.primarySamplesEnabled      SKIP 1  \ primary samples enabled flag (whether to play primary (Dalek) samplee)
 .primarySamplesROMSEL       SKIP 1  \ primary samples ROM selector (zero denotes no sideways RAM)
-.secondarySamplesEnabled    SKIP 1  \ secondary samples enabled flag
+.secondarySamplesEnabled    SKIP 1  \ secondary samples enabled flag (whether to play secondary (k9/TARDIS) samples)
 .secondarySamplesROMSEL     SKIP 1  \ secondary samples ROM selector (zero denotes no additional sideways RAM)
 .transitionVariables                \ transition variables (transitionUpperTimer..transitionState should not be moved or reordered)
 .transitionUpperTimer       SKIP 2  \ timer for controlling position of upper palette change
@@ -544,7 +546,7 @@ ORG 0
 .transitionState            SKIP 1  \ transition state: TRANSITION_VOID, TRANSITION_RUNNING, TRANSITION_COMPLETE
 .transitionPreviousIRQ1V    SKIP 2  \ IRQ1V prior to invoking transition
 .transitionCompleteCallback SKIP 2  \ transition callback, invoked when crop open transition completes
-.laseredTileLeft            SKIP 1  \ lasered tile position
+.laseredTileLeft            SKIP 1  \ lasered tile screen position
 .laseredTileTop             SKIP 1
 .laseredTileStrength        SKIP 1  \ lasered tile strength
 .laseredTileRedraw          SKIP 1  \ lasered tile redraw flag
@@ -637,7 +639,6 @@ ORG &1100
 \
 \ includes...
 \
-
 INCLUDE "k9.6502"
 INCLUDE "enemy.6502"
 INCLUDE "elevator.6502"

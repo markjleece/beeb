@@ -189,7 +189,7 @@
 
     \ heart beat sound effect...
     LDA healthHi
-    CMP #LASER_HEALTH_THRESHOLD_HI : BCS endif2
+    CMP #LOW_HEALTH_HI : BCS endif2
 
         \ sound heart beat every 64 frames, but not if the laser sound effect is playing
         LDA frameCount

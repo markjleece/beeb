@@ -411,7 +411,7 @@
 
             \ bounds check
             LDA tileGridAddr+1
-            CMP #HI(levelTileGrid + LEVEL_TILE_GRID_SIZE + &100) : BCS failure
+            CMP #HI(levelTileGrid + TILE_GRID_SIZE + &100) : BCS failure
         .endif
 
         \ loop while tile is space
