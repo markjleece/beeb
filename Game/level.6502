@@ -128,10 +128,15 @@
     ASL enemyWeaponStrengthLo : ROL enemyWeaponStrengthHi
     ASL enemyWeaponStrengthLo : ROL enemyWeaponStrengthHi
 
+    \ apply God mode?
+    LDA godMode : BMI skip
+        JSR applyGodMode
+    .skip
+
     \ set switchOnTileGridValue
     LDY #0
     STY switchOnTileGridValue
-    .loop
+    .loop1
         LDA levelTileTypesLoaded, Y
         CMP #TILE_TYPE_SWITCH_ON
         BNE skip1
@@ -141,7 +146,7 @@
         .skip1
         INY
         CPY #TILE_COUNT
-        BNE loop
+        BNE loop1
 
     \ set enemyWeaponRangePlusOne
     LDX #(ENEMY_WEAPON_RANGE + 1)
@@ -203,7 +208,52 @@
     SEC
     SBC #1
     STA scrnTopHiMaxMinusOne
+
+    \ patch black color 'or-mask' in drawGameBar (draw.6502) which is used to show that the game 
+    \ is in God mode. We iterate over the palette entries, looking for a black one, and set 
+    \ the or-mask based on matching entry's index
+    LDX #0
+    .loop2
+        \ if (levelPalette[4*X] == blackPaletteEntries[X]) break
+        TXA 
+        ASL A : ASL A
+        TAY
+        LDA levelPalette, Y
+        CMP blackPaletteEntries, X
+        BEQ loop2end
+
+        \ increment and loop?
+        INX
+        CPX #4
+        BNE loop2
+    .loop2end
+
+    LDA blackPixelOrMasks, X
+    STA ora_inst+1
+
     RTS
+
+    \ logical colors
+    PAL_color_0 = &00
+    PAL_color_1 = &20
+    PAL_color_2 = &80
+    PAL_color_3 = &A0
+
+    \ phycical colors
+    PAL_black = (0 EOR 7)
+
+.blackPaletteEntries
+    EQUB PAL_color_0 + PAL_black
+    EQUB PAL_color_1 + PAL_black
+    EQUB PAL_color_2 + PAL_black
+    EQUB PAL_color_3 + PAL_black
+
+.blackPixelOrMasks
+    EQUB &00
+    EQUB &01
+    EQUB &10
+    EQUB &11
+    EQUB &00
 }
 
 \

@@ -390,10 +390,10 @@
     LDA #&9F \ zero volume
     JSR sendSoundData
 
-    LDA #&8F \ lowest frequency (low-byte)
+    LDA #&84 \ lowest note frequency (low-byte)
     JSR sendSoundData
 
-    LDA #&3F \ lowest frequency (high-byte)
+    LDA #&3F \ lowest note frequency (high-byte)
     JSR sendSoundData
 
     CLI \ re-enable interrupts

@@ -420,6 +420,25 @@
 }
 
 \
+\ enemyFrameCallback_turnPreamble()
+\
+\ returns zero if redraw flag is set
+\
+.enemyFrameCallback_turnPreamble
+{
+    \ decrement frame counter 
+    DEC objectFrameCounter, X
+    BNE rts_16
+
+    \ reset frame counter
+    LDA #FRAME_COUNT_ENEMY_TURN
+    STA objectFrameCounter, X
+
+    \ set redraw flag
+    JMP setRedrawFlag \ implcit RTS (returns zero)
+}
+
+\
 \ setPursueVerticalAction(X register)
 \
 \ params:
@@ -468,25 +487,6 @@
 }
 
 \
-\ enemyFrameCallback_turnPreamble()
-\
-\ returns zero if redraw flag is set
-\
-.enemyFrameCallback_turnPreamble
-{
-    \ decrement frame counter 
-    DEC objectFrameCounter, X
-    BNE rts_16
-
-    \ reset frame counter
-    LDA #FRAME_COUNT_ENEMY_TURN
-    STA objectFrameCounter, X
-
-    \ set redraw flag
-    JMP setRedrawFlag \ implcit RTS (returns zero)
-}
-
-\
 \ enemyFrameCallback_TurnLeftToRight(X register) - animation frame callback
 \
 \ params:
@@ -516,17 +516,23 @@
 
     \ select next animation
     LDA objectType, X
-    AND #ACTION_MASK : BEQ else2 \ if (action != ACTION_LOOK)
+    AND #ACTION_MASK : BEQ lookRight \ if (action != ACTION_LOOK)
         BPL skip \ if (action == ACTION_PURSUE...)
             CMP #ACTION_PURSUE_RIGHT : BEQ skip \ if (action != ACTION_PURSE_RIGHT)
                 JSR setPursueVerticalAction
         .skip
-        LDA #ANIMATE_MOVE_RIGHT
-        BNE endif2
-    .else2
-        LDA #ANIMATE_LOOK_RIGHT
-    .endif2
-    JMP enemyAnimate \ implicit RTS
+
+        LDA objectXLo, X
+        AND #&F
+        CMP #8 : BNE moveRight
+            \ can we move to the right at a tile boundary, doing so if we can
+            JSR querySetEnemyRightTileGridFlags : BNE lookRight
+
+        .moveRight
+            JMP enemyAnimate_MoveRight \ implicit RTS
+
+        .lookRight
+            JMP enemyAnimate_LookRight \ implicit RTS
 }
 
 \
@@ -559,17 +565,23 @@
 
     \ select next animation
     LDA objectType, X
-    AND #ACTION_MASK : BEQ else2 \ if (action != ACTION_LOOK)
+    AND #ACTION_MASK : BEQ lookLeft \ if (action != ACTION_LOOK)
         BPL skip \ if (action == ACTION_PURSUE...)
             CMP #ACTION_PURSUE_LEFT : BEQ skip \ if (action != ACTION_PURSE_LEFT)
                 JSR setPursueVerticalAction
         .skip
-        LDA #ANIMATE_MOVE_LEFT
-        BNE endif2
-    .else2
-        LDA #ANIMATE_LOOK_LEFT
-    .endif2
-    JMP enemyAnimate \ implicit RTS
+
+        LDA objectXLo, X
+        AND #&F
+        BNE moveLeft
+            \ can we move to the left at a tile boundary, doing so if we can
+            JSR querySetEnemyLeftTileGridFlags : BNE lookLeft
+
+        .moveLeft
+            JMP enemyAnimate_MoveLeft \ implicit RTS
+
+        .lookLeft
+            JMP enemyAnimate_LookLeft \ implicit RTS
 }
 
 \
@@ -603,26 +615,21 @@
 
         LDA objectXLo, X
         AND #&F
-        CMP #4 : BNE else
-            \ can we pursue K9 up or down, doing so if we can
-            JSR enemyPursueUpOrDown
-            BEQ endif
-            BNE moveLeft
-        .else
-        CMP #0 : BNE moveLeft
+        BNE else
             \ can we move to the left at a tile boundary, doing so if we can
-            LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
-            JSR querySetObjectLeftTileGridFlags : BEQ moveLeft
+            JSR querySetEnemyLeftTileGridFlags : BEQ moveLeft
 
             \ otherwise decrement frame counter, turning if this reaches zero
             DEC objectFrameCounter, X : BNE endif
-                LDA #ANIMATE_TURN_LEFT_TO_RIGHT
-                JMP enemyAnimate \ implicit RTS
+                JMP enemyAnimate_TurnLeftToRight \ implicit RTS
 
-        .moveLeft
-            \ move left
-            LDA #ANIMATE_MOVE_LEFT
-            JMP enemyAnimate \ implicit RTS
+            .moveLeft
+            JMP enemyAnimate_MoveLeft \ implicit RTS
+
+        .else
+        CMP #4 : BNE moveLeft
+            \ can we pursue K9 up or down, doing so if we can
+            JSR enemyPursueUpOrDown : BNE moveLeft
     .endif
 
     \ set redraw flag intermittently
@@ -647,26 +654,21 @@
 
         LDA objectXLo, X
         AND #&F
-        CMP #4 : BNE else
-            \ can we pursue k9 up or down, doing so if we can
-            JSR enemyPursueUpOrDown
-            BEQ endif
-            BNE moveRight
-        .else
-        CMP #8 : BNE moveRight
+        CMP #8 : BNE else
             \ can we move to the right at a tile boundary, doing so if we can
-            LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
-            JSR querySetObjectRightTileGridFlags : BEQ moveRight
+            JSR querySetEnemyRightTileGridFlags : BEQ moveRight
 
             \ otherwise decrement frame counter, turning if this reaches zero
             DEC objectFrameCounter, X : BNE endif
-                LDA #ANIMATE_TURN_RIGHT_TO_LEFT
-                JMP enemyAnimate \ implicit RTS
+                JMP enemyAnimate_TurnRightToLeft \ implicit RTS
 
-        .moveRight
-            \ move right
-            LDA #ANIMATE_MOVE_RIGHT
-            JMP enemyAnimate \ implicit RTS
+            .moveRight
+            JMP enemyAnimate_MoveRight \ implicit RTS
+
+        .else
+        CMP #4 : BNE moveRight
+            \ can we pursue k9 up or down, doing so if we can
+            JSR enemyPursueUpOrDown : BNE moveRight
     .endif
 
     \ set redraw flag intermittently
@@ -836,42 +838,30 @@
 
     \ can enemy move?
     JSR canEnemyMove
-    BNE lookLeft
+    BNE enemyAnimate_LookLeft
 
     \ select next animation...
     LDA objectType, X
-    AND #ACTION_MASK : BEQ lookLeft \ if (action != ACTION_LOOK)
+    AND #ACTION_MASK : BEQ enemyAnimate_LookLeft \ if (action != ACTION_LOOK)
     
         LDA objectXLo, X
         AND #&F
-        CMP #4 : BNE else
-            \ can we pursue K9 up or down, doing so if we can
-            JSR enemyPursueUpOrDown
-            BNE moveLeft
-            BEQ lookLeft
-
-        .else
-        CMP #0 : BNE moveLeft
+        BNE else
             \ can we move to the left at a tile boundary, doing so if we can
-            LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
-            JSR querySetObjectLeftTileGridFlags : BEQ moveLeft
+            JSR querySetEnemyLeftTileGridFlags : BEQ enemyAnimate_MoveLeft
 
             \ otherwise turn or wait
-            CMP #TILE_TYPE_SPACE : BEQ lookLeft
+            CMP #TILE_TYPE_SPACE : BEQ enemyAnimate_LookLeft
 
             \ turn left to right
-            LDA #ANIMATE_TURN_LEFT_TO_RIGHT
-            BNE enemyAnimate \ implicit RTS
+            JMP enemyAnimate_TurnLeftToRight \ implicit RTS
 
-        .moveLeft
-            \ move left
-            LDA #ANIMATE_MOVE_LEFT
-            BNE enemyAnimate \ implicit RTS
-
-        .lookLeft
-            \ look left
-            LDA #ANIMATE_LOOK_LEFT
-            BEQ enemyAnimate \ implicit RTS
+        .else
+        CMP #4 : BNE enemyAnimate_MoveLeft
+            \ can we pursue K9 up or down, doing so if we can
+            JSR enemyPursueUpOrDown
+            BNE enemyAnimate_MoveLeft
+            BEQ enemyAnimate_LookLeft
 }
 
 \
@@ -908,41 +898,112 @@
     
     \ can enemy move?
     JSR canEnemyMove
-    BNE lookRight
+    BNE enemyAnimate_LookRight
     
     \ select next animation...
     LDA objectType, X
-    AND #ACTION_MASK : BEQ lookRight \ if (action != ACTION_LOOK)
+    AND #ACTION_MASK : BEQ enemyAnimate_LookRight \ if (action != ACTION_LOOK)
         LDA objectXLo, X
         AND #&F
         CMP #4 : BNE else
             \ can we pursue K9 up or down, doing so if we can
             JSR enemyPursueUpOrDown
-            BNE moveRight
-            BEQ lookRight
+            BNE enemyAnimate_MoveRight
+            BEQ enemyAnimate_LookRight
 
         .else
-        CMP #8 : BNE moveRight
+        CMP #8 : BNE enemyAnimate_MoveRight
             \ can we move to the right at a tile boundary, doing so if we can
-            LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY): STA flags
-            JSR querySetObjectRightTileGridFlags : BEQ moveRight
+            JSR querySetEnemyRightTileGridFlags : BEQ enemyAnimate_MoveRight
 
             \ otherwise turn or wait
-            CMP #TILE_TYPE_SPACE : BEQ lookRight
+            CMP #TILE_TYPE_SPACE : BEQ enemyAnimate_LookRight
 
-            \ turn right to left
-            LDA #ANIMATE_TURN_RIGHT_TO_LEFT
-            BNE enemyAnimate \ implicit RTS
+            \ fall through to enemyAnimate_TurnRightToLeft
+}
 
-        .moveRight
-            \ move right
-            LDA #ANIMATE_MOVE_RIGHT
-            BNE enemyAnimate \ implicit RTS
+\
+\ enemyAnimate_TurnRightToLeft(X)
+\
+\ enemyAnimate helper
+\
+\ params:
+\   X register   Enemy index
+\
+.enemyAnimate_TurnRightToLeft
+{
+    LDA #ANIMATE_TURN_RIGHT_TO_LEFT
+    BNE enemyAnimate \ implicit RTS
+}
 
-        .lookRight 
-            \ look right
-            LDA #ANIMATE_LOOK_RIGHT
-            BNE enemyAnimate \ implicit RTS
+\
+\ enemyAnimate_TurnLeftToRight(X)
+\
+\ enemyAnimate helper
+\
+\ params:
+\   X register   Enemy index
+\
+.enemyAnimate_TurnLeftToRight
+{
+    LDA #ANIMATE_TURN_LEFT_TO_RIGHT
+    BNE enemyAnimate \ implicit RTS
+}
+
+\
+\ enemyAnimate_LookLeft(X)
+\
+\ enemyAnimate helper
+\
+\ params:
+\   X register   Enemy index
+\
+.enemyAnimate_LookLeft
+{
+    LDA #ANIMATE_LOOK_LEFT
+    BEQ enemyAnimate \ implicit RTS
+}
+
+\
+\ enemyAnimate_LookRight(X)
+\
+\ enemyAnimate helper
+\
+\ params:
+\   X register   Enemy index
+\
+.enemyAnimate_LookRight
+{
+    LDA #ANIMATE_LOOK_RIGHT
+    BNE enemyAnimate \ implicit RTS
+}
+
+\
+\ enemyAnimate_MoveLeft(X)
+\
+\ enemyAnimate helper
+\
+\ params:
+\   X register   Enemy index
+\
+.enemyAnimate_MoveLeft
+{
+    LDA #ANIMATE_MOVE_LEFT
+    BNE enemyAnimate \ implicit RTS
+}
+
+\
+\ enemyAnimate_MoveRight(X)
+\
+\ enemyAnimate helper
+\
+\ params:
+\   X register   Enemy index
+\
+.enemyAnimate_MoveRight
+{
+    LDA #ANIMATE_MOVE_RIGHT
+    \ fall through to enemyAnimate
 }
 
 \
@@ -1218,6 +1279,30 @@
     AND #LO(NOT(ACTION_MASK))
     STA objectType, X
     RTS
+}
+
+\
+\ querySetEnemyLeftTileGridFlags(X)
+\
+\ params:
+\   X register   Enemy index
+\
+.querySetEnemyLeftTileGridFlags
+{
+    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+    JMP querySetObjectLeftTileGridFlags
+}
+
+\
+\ querySetEnemyRightTileGridFlags(X)
+\
+\ params:
+\   X register   Enemy index
+\
+.querySetEnemyRightTileGridFlags
+{
+    LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
+    JMP querySetObjectRightTileGridFlags
 }
 
 \ end file

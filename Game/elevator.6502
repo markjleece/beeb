@@ -120,7 +120,7 @@
 .autoScrollVertically
 {
     CPX #0 : BNE noscroll \ is K9?
-    LDA scrollCounter : AND #1 : BNE noscroll \ if scrollCounter is even
+    LDA scrollCounter : LSR A : BCS noscroll \ is odd?
         LDA objectYLo
         SEC 
         SBC scrnTopLo

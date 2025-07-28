@@ -207,11 +207,11 @@ AMPLITUDE_PHASE_RELEASE = 3
     \ silence sound channels, setting frequency to lowest value
     LDX #0
     .loop
-        \ set lowest frequency low bits
-        LDA #&0F
+        \ set lowest note frequency low bits
+        LDA #&04
         JSR setSoundChipFrequencyLo
          
-        \ set lowest frequency high bits
+        \ set lowest note frequency high bits
         LDA #&3F
         JSR setSoundChipFrequencyHi
 

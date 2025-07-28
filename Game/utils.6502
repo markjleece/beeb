@@ -118,10 +118,32 @@ ASSERT (HI(P%) > &17) \ ensure scanKey is assembled after &17FF
 
 \ key table containing key scan codes. The top bit is set if the key is down
 .^keyTbl 
-    EQUB &41, &32, &21, &51, &53, &36, &33
-    EQUB &62, &39, &29, &19, &79, &30, &31
-    EQUB &11, &12, &13, &34, &24, &15, &26
-    EQUB &61, &42, &48, &68, &23
+    EQUB &41 \ KEY_A
+    EQUB &32 \ KEY_D
+    EQUB &53 \ KEY_G
+    EQUB &36 \ KEY_O
+    EQUB &33 \ KEY_R
+    EQUB &51 \ KEY_S
+    EQUB &23 \ KEY_T
+    EQUB &21 \ KEY_W
+    EQUB &42 \ KEY_X
+    EQUB &61 \ KEY_Z
+    EQUB &30 \ KEY_1
+    EQUB &31 \ KEY_2
+    EQUB &11 \ KEY_3
+    EQUB &12 \ KEY_4
+    EQUB &13 \ KEY_5
+    EQUB &34 \ KEY_6
+    EQUB &24 \ KEY_7
+    EQUB &15 \ KEY_8
+    EQUB &26 \ KEY_9
+    EQUB &48 \ KEY_COLON
+    EQUB &68 \ KEY_DIVIDE
+    EQUB &62 \ KEY_SPACE
+    EQUB &39 \ KEY_UP
+    EQUB &29 \ KEY_DOWN
+    EQUB &19 \ KEY_LEFT
+    EQUB &79 \ KEY_RIGHT
 }
 
 \
@@ -139,39 +161,5 @@ ASSERT (HI(P%) > &17) \ ensure scanKey is assembled after &17FF
     STA vsync
     RTS
 }
-
-\
-\ waitTenths(A)
-\
-\ params:
-\   A (accumulator)    Number of tenths of a second to pause
-\
-\ modifies X, Y, temp
-\
-IF DEBUG_WAIT_TENTHS = 1
-.waitTenths
-{
-    STA temp
-
-    .tenthsLoop
-     
-    LDX #155
-    .outerLoop
-    
-    LDY #255
-    .innerLoop
-
-    DEY
-    BNE innerLoop
-
-    DEX
-    BNE outerLoop
-
-    DEC temp
-    BNE tenthsLoop
-
-    RTS
-}
-ENDIF
 
 \ end file

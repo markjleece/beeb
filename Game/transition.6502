@@ -207,7 +207,7 @@
         \ decrement counter
         LDA transitionCounter
         DEC transitionCounter
-        AND #1 : BEQ else
+        LSR A : BCC else
             \
             \ Bottom crop boundary
             \

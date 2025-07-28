@@ -40,7 +40,7 @@
     STA direction
 
     \ auto scroll screen
-    LDA scrollCounter : AND #1 : BNE noscroll
+    LDA scrollCounter : LSR A : BCS noscroll \ is odd?
         LDA objectXLo
         SEC 
         SBC scrnLeftLo
@@ -281,14 +281,13 @@
 \
 .k9Animate
 {
-    AND #LO(NOT(OBJECT_TYPE_MASK)) \ ensure type is OBJECT_TYPE_K9
-    STA objectType
-
     LDX #0 \ ensure X is zero (k9 is the first object)
 
+    \ save animation, ensuring type is OBJECT_TYPE_K9 and ACTION flags are not set
+    AND #LO(NOT(OBJECT_TYPE_MASK OR ACTION_MASK))
+    STA objectType
+
     \ initialize animation
-    AND #ANIMATE_MASK
-    STA temp \ --> animation
     LSR A : LSR A
     TAY
 
@@ -301,7 +300,7 @@
     \ additional properties
     LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
 
-    LDA temp \ <-- animation
+    LDA objectType \ <-- animation
     CMP #ANIMATE_TURN_LEFT_TO_RIGHT : BEQ then
     CMP #ANIMATE_TURN_RIGHT_TO_LEFT : BNE else1
     .then

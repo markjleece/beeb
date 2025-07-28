@@ -44,6 +44,9 @@
 {
 IF DEBUG_TILE_GRID_FLAGS != 0
     RTS
+
+    .^ora_inst
+    SKIP 160 \ report same number of unused code/data bytes
 ELSE
     \ dstAddr = scrnAddr + 384
     LDX #LO(384)
@@ -70,6 +73,9 @@ ELSE
     LDA level
     JSR drawDigit
 
+    LDA #16    
+    JSR dstAddr_add
+
     \ draw heart icon
     JSR copyBytesToScreen_16
 
@@ -85,19 +91,19 @@ ELSE
     LDA (srcBaseAddr), Y \ peek key color
     ASL A
     LDX #0
-    BCC skip2
+    BCC skip1
         DEX \ X = &FF
-    .skip2
+    .skip1
     STX flags \ <-- XOR mask
 
     \ 'OR mask' (temp) = (heathHi < 5) ? (&F ^ XOR mask) : 0
     LDA healthHi
     CMP #5
     LDA #0
-    BCS skip1
+    BCS skip2
         LDA #&0F
         EOR flags
-    .skip1
+    .skip2
     STA temp \ <-- OR mask
 
     \ offset, count = 4
@@ -168,8 +174,18 @@ ELSE
 
     \ draw key count
     LDA keyCount
+    JSR drawDigit
 
-    \ fall through to drawDigit
+    \ god mode?
+    LDA godMode : BMI skip3
+        \ render top-right screen pixel black
+        LDY #8
+        LDA (dstAddr), Y
+        AND #&EE
+        .^ora_inst ORA #&11 \ operand patched in initializeLevelVariables (level.6502)
+        STA (dstAddr), Y
+    .skip3
+    RTS
 
 .drawDigit
     ASL A : ASL A : ASL A : ASL A \ MUL 16
@@ -182,9 +198,7 @@ ELSE
         STA (dstAddr), Y : DEY
         BPL digitLoop
 
-    LDA #16    
-    JMP dstAddr_add \ implicit RTS
-
+    RTS
 
 .copyBytesToScreen_16
     LDA #16
@@ -283,7 +297,6 @@ ELSE
 
     RTS
 
-    SKIP 141 \ report same number of unsued code/data bytes
 ENDIF
 }
 
@@ -369,10 +382,10 @@ ENDIF
     \ X/Y = LO/HI(scroll-down ? 31*512 : 0)
     LDA #0 : STA leftLo
     TAX : TAY
-    BIT scrollDirection : BMI skip
+    BIT scrollDirection : BMI skip1
         LDA #248
         LDY #HI(31*512)
-    .skip
+    .skip1
     STA topLo
 
     \ offset = 0 | 32
@@ -391,24 +404,21 @@ ENDIF
     LDX #16
     .loop
         \ shift rendering to below gamebar (one character below)
-        CPX #4 : BNE skip1
-        BIT scrollDirection : BPL skip1
-            LDA offset : BEQ else_1
+        CPX #4 : BNE skip2
+        BIT scrollDirection : BPL skip2
+            LDA offset : BEQ skip3
                 \ tileGridAddr += horzTileCount
                 JSR tileGridAddr_add_horzTileCount
+            .skip3
 
-                \ offset = 0
-                LDA #0
-                BEQ endif_1
-            .else_1
-                \ offset = 32
-                LDA #32
-            .endif_1
+            \ offset = 0 -> 32 or 32 -> 0
+            LDA #32
+            EOR offset
             STA offset
 
             \ dstAddr += 512
             JSR dstAddr_add_512 
-        .skip1  
+        .skip2
 
         \ get tile source address (srcAddr)
         JSR getTileSrcAddr
@@ -669,16 +679,13 @@ ENDIF
 
     \ update code to render regular or lasered
     LDA #LO(innerLoop_regular)
+    LDY #HI(innerLoop_regular)
     BIT index : BPL skip2
         LDA #LO(innerLoop_lasered)
+        LDY #HI(innerLoop_lasered)
     .skip2
     STA innerLoop+1
-
-    LDA #HI(innerLoop_regular)
-    BIT index : BPL skip3
-        LDA #HI(innerLoop_lasered)
-    .skip3
-    STA innerLoop+2
+    STY innerLoop+2
 
     \ render the tile
     LDX #2
@@ -908,16 +915,13 @@ ENDIF
 
     \ populate JSR address with laserUpdateVariablesLeftToRight or laserUpdateVariablesRightToLeft
     LDA #LO(laserUpdateVariablesLeftToRight)
+    LDY #HI(laserUpdateVariablesLeftToRight)
     BIT laserDirection : BPL skip4
         LDA #LO(laserUpdateVariablesRightToLeft)
+        LDY #HI(laserUpdateVariablesRightToLeft)
     .skip4
     STA jsr_inst+1
-
-    LDA #HI(laserUpdateVariablesLeftToRight)
-    BIT laserDirection : BPL skip5
-        LDA #HI(laserUpdateVariablesRightToLeft)
-    .skip5
-    STA jsr_inst+2
+    STY jsr_inst+2
 
     \ draw first few pixels
     LDY #0
@@ -933,14 +937,14 @@ ENDIF
         \ background color?
         LDA (dstAddr), Y
         STA laserLastPixels
-        BEQ skip
+        BEQ skip5
             \ draw last few pixels
             STX laserLength
             JSR drawEnd
 
             \ hit test
             JMP laserHitTest \ implicit RTS
-        .skip
+        .skip5
 
         \ draw 4 laser pixels
         LDA #&0F
@@ -984,16 +988,13 @@ ENDIF
 
     \ populate JSR address with dstAddr_add_8 or dstAddr_sub_8
     LDA #LO(dstAddr_add_8)
+    LDY #HI(dstAddr_add_8)
     BIT laserDirection : BPL skip1
         LDA #LO(dstAddr_sub_8)
+        LDY #HI(dstAddr_sub_8)
     .skip1
     STA jsr_inst+1
-
-    LDA #HI(dstAddr_add_8)
-    BIT laserDirection : BPL skip2
-        LDA #HI(dstAddr_sub_8)
-    .skip2
-    STA jsr_inst+2
+    STY jsr_inst+2
 
     LDY #0
     LDX #&FF \ clear first few pixels twice
@@ -1015,10 +1016,10 @@ ENDIF
 
         \ clear first few pixels again?
         DEX
-        BPL skip3
+        BPL skip2
             LDX laserLength
             BNE first
-        .skip3
+        .skip2
 
         \ restore last few pixels
         BEQ drawEnd

@@ -22,9 +22,9 @@
 
 \
 \ God mode - activated by pressing the 'G' 'O' 'D' keys together
-\  - gives K9 unlimited health and keys
-\  - enables scrolling using the arror keys
+\  - doubles strength of K9's laser and halves the power of enemy weapons
 \  - enables a specific level to be loaded using the number keys: 1..LEVEL_COUNT
+\  - enables scrolling using the arror keys
 \
 \ Memory map:
 \
@@ -139,10 +139,8 @@
 \
 
 \ debug flags
-DEBUG_TILE_GRID_FLAGS = 0       \ overlay tile grid flags (super useful)
-DEBUG_DISABLE_SIDEWAYS_RAM = 0  \ disable sideways RAM (useful to speed up startup time)
-DEBUG_GODMODE_NO_REPLENISH = 0  \ disable god mode health & key replenishment (useful for testing levels)
-DEBUG_WAIT_TENTHS = 0           \ waitTenths util routine (useful for debugging)
+DEBUG_TILE_GRID_FLAGS = 0      \ overlay tile grid flags (super useful)
+DEBUG_DISABLE_SIDEWAYS_RAM = 0 \ disable sideways RAM (useful to speed up startup time)
 
 \ number of levels
 LEVEL_COUNT = 6 \ max supported levels is 9
@@ -150,30 +148,30 @@ LEVEL_COUNT = 6 \ max supported levels is 9
 \ keys (keyTbl indices)
 KEY_A = 0
 KEY_D = 1
-KEY_W = 2
-KEY_S = 3
-KEY_G = 4
-KEY_O = 5
-KEY_R = 6
-KEY_SPACE = 7 
-KEY_UP = 8
-KEY_DOWN = 9 
-KEY_LEFT = 10
-KEY_RIGHT = 11
-KEY_1 = 12
-KEY_2 = 13
-KEY_3 = 14
-KEY_4 = 15
-KEY_5 = 16
-KEY_6 = 17
-KEY_7 = 18
-KEY_8 = 19
-KEY_9 = 20
-KEY_Z = 21
-KEY_X = 22
-KEY_COLON = 23
-KEY_DIVIDE = 24
-KEY_T = 25
+KEY_G = 2
+KEY_O = 3
+KEY_R = 4
+KEY_S = 5
+KEY_T = 6
+KEY_W = 7
+KEY_X = 8
+KEY_Z = 9
+KEY_1 = 10
+KEY_2 = 11
+KEY_3 = 12
+KEY_4 = 13
+KEY_5 = 14
+KEY_6 = 15
+KEY_7 = 16
+KEY_8 = 17
+KEY_9 = 18
+KEY_COLON = 19
+KEY_DIVIDE = 20
+KEY_SPACE = 21
+KEY_UP = 22
+KEY_DOWN = 23 
+KEY_LEFT = 24
+KEY_RIGHT = 25
 
 \ object types (objectType bits 0,1)
 OBJECT_TYPE_MASK = %00000011
@@ -639,6 +637,7 @@ ORG &1100
 \
 \ includes...
 \
+INCLUDE "draw.6502"
 INCLUDE "k9.6502"
 INCLUDE "enemy.6502"
 INCLUDE "elevator.6502"
@@ -650,7 +649,6 @@ INCLUDE "switch.6502"
 INCLUDE "utils.6502"
 INCLUDE "sound.6502"
 INCLUDE "scroll.6502"
-INCLUDE "draw.6502"
 
 \
 \ in-game interrupt request routine
@@ -771,6 +769,35 @@ INCLUDE "draw.6502"
 }
 
 \
+\ set God mode
+\
+.setGodMode
+{
+    \ set God mode
+    ASL godMode \ = 0
+
+    \ sound achievement
+    JSR achievementSoundEffect
+
+    \ fall through to applyGodMode
+}
+
+\
+\ apply God mode
+\
+.applyGodMode
+{
+    \ laserStrength *= 2
+    ASL laserStrength
+
+    \ enemyWeaponStrengthHi \= 2
+    LSR enemyWeaponStrengthHi
+    ROR enemyWeaponStrengthLo
+
+    RTS
+}
+
+\
 \ keyboard input handlers
 \
 .keyboardInputHandlers
@@ -779,12 +806,11 @@ INCLUDE "draw.6502"
     JSR scanKeys
 
     \ set god mode?
-    LDA keyTbl + KEY_G
+    LDA godMode
+    AND keyTbl + KEY_G
     AND keyTbl + KEY_O
     AND keyTbl + KEY_D
-    BPL skip
-        STA godMode \ set god mode
-    .skip
+    BMI setGodMode \ implicit RTS
 
     \ space key...
     LDA keyTbl + KEY_SPACE
@@ -831,7 +857,7 @@ INCLUDE "draw.6502"
          
         \ wait for key release
         .loop
-            LDA #&23
+            LDA #&23 \ KEY_T
             JSR scanKey
             BMI loop
     .nopress_t
@@ -859,14 +885,7 @@ INCLUDE "draw.6502"
     .nopress_r
 
     \ god mode?
-    LDA godMode : BEQ rts_10
-
-    \ replenish health and keys
-IF DEBUG_GODMODE_NO_REPLENISH = 0
-    LDA #MAX_HEALTH_HI : STA healthHi
-    LDA #&FF : STA healthLo
-    LDA #MAX_KEY_COUNT : STA keyCount
-ENDIF
+    LDA godMode : BMI rts_10
 
     \ check reload level keys (1..LEVEL_COUNT)
     LDX #LEVEL_COUNT
@@ -880,7 +899,7 @@ ENDIF
         BNE loop1
 
     \ don't process arrow keys if scroll counter is odd
-    LDA scrollCounter : AND #1 : BNE rts_10
+    LDA scrollCounter : LSR A : BCS rts_10
 
     \ arrow keys
     LDX #3
@@ -897,10 +916,6 @@ ENDIF
     RTS    
 
 .directionTbl EQUB LO(DIRECTION_UP), LO(DIRECTION_DOWN), LO(DIRECTION_LEFT), LO(DIRECTION_RIGHT)
-
-IF DEBUG_GODMODE_NO_REPLENISH != 0
-    SKIP 12 \ report same number of unsued code/data bytes
-ENDIF
 }
 
 \
@@ -1173,8 +1188,8 @@ ENDIF
 
     \ toggle palettes and play sound effect
     TYA \ <-- k9DamageCounter (before decrement)
-    AND #1
-    BNE restorePalette
+    LSR A 
+    BCS restorePalette
         JSR setBlackPalette
         JMP (primarySoundVector_weaponFired) \ implicit RTS
     .restorePalette
