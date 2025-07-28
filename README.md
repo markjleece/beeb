@@ -5,8 +5,8 @@ A Doctor Who fan platform game written for the BBC Micro Model B, titled '**An A
 <img width="300" alt="instructions" src="https://github.com/user-attachments/assets/5dff1db3-5082-4c77-903f-211ac98db17b" />
 <img width="300" alt="level1" src="https://github.com/user-attachments/assets/aae50eb1-49fe-4717-8860-2717ac371b12" />
 <img width="300" alt="level2" src="https://github.com/user-attachments/assets/ee76ce82-2ce1-4beb-bdf0-f8d033634c08" />
-<img width="300" alt="level3" src="https://github.com/user-attachments/assets/ff179e81-ce36-45ad-ab3b-48c2cdbb7741" />
-<img width="300" alt="level4" src="https://github.com/user-attachments/assets/62dada4e-25e5-4213-bb21-f117c45bf230" />
+<img width="300" alt="level3" src="https://github.com/user-attachments/assets/dcff0c3c-b9b7-46be-bc1c-ddbb9b016b8f" />
+<img width="300" alt="level4" src="https://github.com/user-attachments/assets/ea199881-82c3-4a09-a667-8b680e7c73a6" />
 <img width="300" alt="level5" src="https://github.com/user-attachments/assets/e2db08e2-2ac9-47cc-a406-98ca7f782e03" />
 <img width="300" alt="level6" src="https://github.com/user-attachments/assets/fb26a278-8689-4269-82bb-226342dd59ba" />
 
@@ -31,7 +31,7 @@ Each level is really a puzzle, to figure out how to navigate K9 to the TARDIS.  
 
 Some levels contain switches which can be activated using K9’s laser to control elevators, teleports, and doors. Levels also feature weak, distinctively colored walls that K9’s laser can destroy.
 
-The game includes a ‘god mode’ — activated by pressing the ‘G’, ‘O’, and ‘D’ keys together — that grants K9 unlimited health and keys. You can load any level by pressing keys '1' to '6', and use the arrow keys to scroll around a level.
+The game includes a ‘god mode’ — activated by pressing the ‘G’, ‘O’, and ‘D’ keys together — giving K9 a stronger laser and shield. You can also load any level by pressing keys '1' to '6', and use the arrow keys to scroll around a level.
 
 # Running the game
 The game can be run in [BeebEm](https://github.com/stardot/beebem-windows) using the disc image: **game/program.ssd**, or run on a BBC Micro model B (with MMFS Turbo support) by copying **game/BEEB.MMB** to a micro-sd card.
