@@ -34,7 +34,7 @@ namespace LevelEditor.ux
         {
             enemyTypeComboBox.Items.Add("Generic");
             enemyTypeComboBox.Items.Add("Dalek");
-            enemyTypeComboBox.Items.Add("Weeping Angle");
+            enemyTypeComboBox.Items.Add("Weeping Angel");
             enemyTypeComboBox.SelectedIndex = (int)Settings.EnemyType;
 
             enemyWeaponStrengthComboBox.Items.Add("320 (high)");

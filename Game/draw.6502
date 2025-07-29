@@ -67,9 +67,7 @@ ELSE
     \ draw level icon
     JSR copyBytesToScreen_16
 
-    \
     \ draw level number
-    \
     LDA level
     JSR drawDigit
 

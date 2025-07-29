@@ -166,11 +166,11 @@
     BEQ clearImmobileFlag \ implicit RTS (enemy turning)
     STA direction
 
-    \ is K9 is in sight
+    \ is K9 in sight
     JSR queryK9InSight
     STA temp \ --> distance
     BPL skip
-        \ K9 is not is sight, so check if enemy is a Weeping Angle that is observed from behind
+        \ K9 is not is sight, so check if enemy is a Weeping Angel that is observed from behind
         LDA enemyType
         CMP #ENEMY_TYPE_WEEPING_ANGEL
         BNE clearImmobileFlag \ implicit RTS (not a Weeping Angel)

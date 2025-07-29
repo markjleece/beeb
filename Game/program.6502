@@ -365,8 +365,8 @@ VSYNC_SIGNAL_DELAY = VSYNC_DELAY + 32 * 8 * 64
 SOUND_EFFECT_PAIN = 0
 SOUND_EFFECT_LASER_ON = 4
 SOUND_EFFECT_LASER_OFF = 8
-SOUND_EFFECT_HEART_BEAT = 12
-SOUND_EFFECT_DIED = 16
+SOUND_EFFECT_LOW_BATTERY = 12
+SOUND_EFFECT_FLAT_BATTERY = 16
 SOUND_EFFECT_LEVEL_COMPLETE = 20
 SOUND_EFFECT_ACHIEVEMENT = 24
 SOUND_EFFECT_BLOCKED = 28
@@ -461,7 +461,7 @@ levelEnemyWeaponStrengthLoaded = &401E  \ level enemy weapon strength (relocated
 levelLaserStrengthLoaded = &401F        \ level laser strength (relocated to laserStrength)
 levelLaserHealthDrainLoaded = &4020     \ level laser health drain (relocated to laserHealthDrain)
 levelJewelHealthGainHiLoaded = &4021    \ level jewel health gain (relocated to jewelHealthGainHi)
-levelEnemyTypeLoaded = &4022            \ level enemy type (used in setting weepingAngles, primarySamplesEnabled, and secondarySamplesEnabled)
+levelEnemyTypeLoaded = &4022            \ level enemy type (relocated to enemyType)
 levelObjectsLoaded = &4023              \ level object descriptors (used to populate game objects)
 levelSwitchPairingsLoaded = &40E3       \ level switch pairings
 
@@ -1363,7 +1363,7 @@ INCLUDE "scroll.6502"
     JSR levelEndPreamble
 
     \ sound effect
-    LDA #SOUND_EFFECT_DIED
+    LDA #SOUND_EFFECT_FLAT_BATTERY
     JSR soundEffect
 
     \ reload current level

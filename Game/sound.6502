@@ -187,17 +187,17 @@
         DEC inhibitMoveSoundEffect
     .endif1
 
-    \ heart beat sound effect...
+    \ low battery/health sound effect...
     LDA healthHi
     CMP #LOW_HEALTH_HI : BCS endif2
 
-        \ sound heart beat every 64 frames, but not if the laser sound effect is playing
+        \ sound low battery/health beep every 64 frames, but not if the laser sound effect is playing
         LDA frameCount
         AND #&3F
         ORA laserSoundEffectOn
         BNE endif2
 
-        LDA #SOUND_EFFECT_HEART_BEAT
+        LDA #SOUND_EFFECT_LOW_BATTERY
         BNE soundEffect \ implicit RTS
     .endif2
 
