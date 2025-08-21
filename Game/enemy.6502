@@ -420,25 +420,6 @@
 }
 
 \
-\ enemyFrameCallback_turnPreamble()
-\
-\ returns zero if redraw flag is set
-\
-.enemyFrameCallback_turnPreamble
-{
-    \ decrement frame counter 
-    DEC objectFrameCounter, X
-    BNE rts_16
-
-    \ reset frame counter
-    LDA #FRAME_COUNT_ENEMY_TURN
-    STA objectFrameCounter, X
-
-    \ set redraw flag
-    JMP setRedrawFlag \ implcit RTS (returns zero)
-}
-
-\
 \ setPursueVerticalAction(X register)
 \
 \ params:
@@ -494,8 +475,10 @@
 \
 .enemyFrameCallback_TurnLeftToRight
 {
-    JSR enemyFrameCallback_turnPreamble
-    BNE rts_16
+    \ decrement frame counter, resetting it if it reaches zero, and set the redraw flag
+    LDA #FRAME_COUNT_ENEMY_TURN
+    JSR nextAnimationFrame
+    BNE rts_16 \ next keyframe?
 
     \ advance keyframe
     LDA objectSpriteIndex, X
@@ -543,8 +526,10 @@
 \
 .enemyFrameCallback_TurnRightToLeft
 {
-    JSR enemyFrameCallback_turnPreamble
-    BNE rts_16
+    \ decrement frame counter, resetting it if it reaches zero, and set the redraw flag
+    LDA #FRAME_COUNT_ENEMY_TURN
+    JSR nextAnimationFrame
+    BNE rts_16 \ next keyframe?
 
     \ advance keyframe
     LDA objectSpriteIndex, X
@@ -825,12 +810,16 @@
     .skip1
     DEC objectXLo, X
 
-    \ set keyframe, set redraw, continue animation?, and accumulator = objectXLo[X] AND &F
+    \ set animation keyframe, and redraw flag
     LDA #SPRITE_INDEX_ENEMY_LEFT
-    JSR frameCallback_MoveHorz
-    BCS rts_13
+    JSR setMoveAnimationKeyFrame
+    BNE rts_13 \ animation completed?
+
+    \ animation completed
 
     \ clear vacated tile flags
+    LDA objectXLo, X
+    AND #&F
     CMP #8 : BNE skip2
         LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
         JSR clearObjectRightTileFlags
@@ -885,12 +874,16 @@
         INC objectXHi, X
     .skip1
 
-    \ set keyframe, set redraw, continue animation?, and accumulator = objectXLo[X] AND &F
+    \ set animation keyframe, and redraw flag
     LDA #SPRITE_INDEX_ENEMY_RIGHT
-    JSR frameCallback_MoveHorz
-    BCS rts_13
+    JSR setMoveAnimationKeyFrame
+    BNE rts_13 \ animation completed?
+
+    \ animation completed
 
     \ clear vacated tile flags
+    LDA objectXLo, X
+    AND #&F
     BNE skip2
         LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_ENEMY) : STA flags
         JSR clearObjectLeftTileFlags

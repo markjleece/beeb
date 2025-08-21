@@ -156,12 +156,16 @@
     .skip1
     DEC objectXLo
 
-    \ set keyframe, set redraw, continue animation?, and accumulator = objectXLo[X] AND &F
+    \ set animation keyframe, and redraw flag
     LDA #SPRITE_INDEX_K9_LEFT
-    JSR frameCallback_MoveHorz
-    BCS rts_1
+    JSR setMoveAnimationKeyFrame
+    BNE rts_1 \ animation completed?
+
+    \ animation completed
 
     \ clear vacated tile flags
+    LDA objectXLo
+    AND #&F
     CMP #8 : BNE skip2
         LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
         JSR clearObjectRightTileFlags
@@ -183,12 +187,16 @@
         INC objectXHi
     .skip1
 
-    \ set keyframe, set redraw, continue animation?, and accumulator = objectXLo[X] AND &F
+    \ set animation keyframe, and redraw flag
     LDA #SPRITE_INDEX_K9_RIGHT
-    JSR frameCallback_MoveHorz
-    BCS rts_1
+    JSR setMoveAnimationKeyFrame
+    BNE rts_1 \ animation completed?
+
+    \ animation completed
 
     \ clear vacated tile flags
+    LDA objectXLo
+    AND #&F
     BNE skip2
         LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
         JSR clearObjectLeftTileFlags
@@ -204,9 +212,10 @@
 \
 .k9FrameCallback_TurnLeftToRight
 {
-    \ common preamble
-    JSR k9TurnCallbackPreamble
-    BNE rts_2
+    \ decrement frame counter, resetting it if it reaches zero, and set the redraw flag
+    LDA #FRAME_COUNT_K9_TURN
+    JSR nextAnimationFrame
+    BNE rts_2 \ next keyframe?
 
     \ advance keyframe
     DEC objectSpriteIndex
@@ -225,9 +234,10 @@
 \
 .k9FrameCallback_TurnRightToLeft
 {
-    \ common preamble
-    JSR k9TurnCallbackPreamble
-    BNE rts_2
+    \ decrement frame counter, resetting it if it reaches zero, and set the redraw flag
+    LDA #FRAME_COUNT_K9_TURN
+    JSR nextAnimationFrame
+    BNE rts_2 \ next keyframe?
 
     \ advance keyframe
     INC objectSpriteIndex
@@ -239,30 +249,6 @@
     \ look left when animation completes
     LDA #ANIMATE_LOOK_LEFT \ is zero
     BEQ k9Animate \ implicit RTS
-}
-
-\
-\ k9TurnCallbackPreamble()
-\
-\ Common functionality in k9FrameCallback_TurnLeftToRight & k9FrameCallback_TurnRightToLeft
-\
-.k9TurnCallbackPreamble
-{
-    \ decrement frame counter
-    DEC objectFrameCounter
-    BNE rts_2
-
-    \ reset frame counter
-    LDA #FRAME_COUNT_K9_TURN
-    STA objectFrameCounter
-
-    \ sound effect
-    JSR moveSoundEffect
-
-    \ set redraw flag (returns success)
-    JSR setRedrawFlag
-
-    \ fall throught to RTS
 }
 
 \

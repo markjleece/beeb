@@ -318,12 +318,12 @@ INCBIN "data\instructions.bin"
     LDA primarySamplesROMSEL
     ORA secondarySamplesROMSEL
     BEQ else
-        LDA #LO(ingame_sample_irq) : STA IRQ1V
-        LDA #HI(ingame_sample_irq) : STA IRQ1V+1
+        LDA #LO(ingame_sample_isr) : STA IRQ1V
+        LDA #HI(ingame_sample_isr) : STA IRQ1V+1
         JMP endif
     .else
-        LDA #LO(ingame_irq) : STA IRQ1V
-        LDA #HI(ingame_irq) : STA IRQ1V+1
+        LDA #LO(ingame_isr) : STA IRQ1V
+        LDA #HI(ingame_isr) : STA IRQ1V+1
     .endif
 
     \ disable System-VIA Timer2, CB1, CB2, and CA2 interrupts

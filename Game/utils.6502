@@ -21,7 +21,7 @@
 \ --------------------------------------------------------------
 
 \
-\ Utility routines & macros
+\ Utility routines
 \
 
 \
@@ -149,7 +149,7 @@ ASSERT (HI(P%) > &17) \ ensure scanKey is assembled after &17FF
 \
 \ waitForVSync()
 \
-\ wait for v-sync signal from IRQ
+\ wait for v-sync signal
 \
 .waitForVSync
 {

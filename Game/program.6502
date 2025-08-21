@@ -347,7 +347,7 @@ LOW_HEALTH_HI = 4  \ (hi-byte)
 \ maximum key count
 MAX_KEY_COUNT = 9
 
-\ IRQ vector address
+\ interupt service routine vector for IRQ1
 IRQ1V = &0204
 
 \ 39 character rows per frame
@@ -651,19 +651,19 @@ INCLUDE "sound.6502"
 INCLUDE "scroll.6502"
 
 \
-\ in-game interrupt request routine
+\ in-game interrupt service routine
 \
-.ingame_irq
+.ingame_isr
 {
     \ save accumalator
     LDA &FC : PHA
 
-    .^irq_try_vsync \ entry point from ingame_sample_irq
+    .^try_ingame_isr \ entry point from ingame_sample_isr
 
     \ System-VIA vsync irq?
     LDA &FE4D
     AND #2
-    BEQ try_timer1
+    BEQ skip_vsync
         \ mark vsync interrupt as handled
         STA &FE4D
     
@@ -677,24 +677,21 @@ INCLUDE "scroll.6502"
 
         \ just return (we don't want MOS to process SYSTEM-VIA v-sync irqs)
         RTI
-    
-    .try_timer1
+    .skip_vsync
 
     \ System-VIA timer 1 irq?
     LDA &FE4D
     AND #&40
-    BEQ try_mos
+    BEQ skip_timer1
         \ signal vsync. We do this at the bottom of the visible screen to give 
         \ the game loop a head start
         INC vsync
-
-        \ pass irq to MOS, which processes sounds using this timer
-
-    .try_mos
+    .skip_timer1
 
     \ restore accumulator, updating &FC
     PLA : STA &FC
 
+    \ pass irq to MOS, which processes sounds using timer 1
     JMP (mosIRQ1V) \ implicit RTI
 }
 
@@ -1199,12 +1196,12 @@ INCLUDE "scroll.6502"
 \
 \ frameCallback_IntermittentRedraw(X register)
 \
-\ frame callback that sets the redraw flag every 8 frames, offset by the object index
+\ frame callback that sets the redraw flag every 8 frames, offset by the object's index
 \
 \ the redraw flags is not set for disabled elevators, teleports, and doors
 \
 \ returns:
-\   none-zero if no further processing should occur
+\   zero if redraw flag was not, otherwise none-zero
 \
 \ params:
 \   X register   Object index
@@ -1218,7 +1215,7 @@ INCLUDE "scroll.6502"
     BNE rts_0
 
     \ don't set the redraw flag for disabled elevators, teleports, and doors
-    CPX enemyCount : BCC endif : BEQ endif 
+    CPX enemyCount : BCC endif : BEQ endif
         LDA objectState, X
         AND #OBJECT_STATE_FLAGS_DISABLED
         BNE rts_0
@@ -1230,7 +1227,7 @@ INCLUDE "scroll.6502"
 \
 \ setRedrawFlag(X register)
 \
-\ always returns zero, denoting success
+\ always returns zero (leveraged by callers)
 \
 \ params:
 \   X register   Object index 
@@ -1240,17 +1237,7 @@ INCLUDE "scroll.6502"
     LDA objectState, X
     ORA #OBJECT_STATE_FLAGS_REDRAW
     STA objectState, X
-
-    LDA #0 \ return success
-
-    \ fall through to RTS
-}
-
-\
-\ common RTS
-\
-.rts_0
-{
+    LDA #0
     RTS
 }
 
@@ -1269,9 +1256,11 @@ INCLUDE "scroll.6502"
 }
 
 \
-\ frameCallback_MoveHorz(A,Y)
+\ setMoveAnimationKeyFrame(A,Y)
 \
-\ set keyframe, set redraw, continue animation? (carry set), and accumulator = objectXLo[X] AND &F
+\ set move animation keyframe, and set redraw flag
+\
+\ return zero if animation has completed, otherwise none-zero
 \
 \ params:
 \   Accumulator SPRITE_INDEX_K9_LEFT, SPRITE_INDEX_K9_RIGHT, SPRITE_INDEX_ENEMY_LEFT or SPRITE_INDEX_ENEMY_RIGHT
@@ -1280,35 +1269,58 @@ INCLUDE "scroll.6502"
 \ modifies:
 \   temp, Y
 \
-.frameCallback_MoveHorz
+.setMoveAnimationKeyFrame
 {
-    STA temp
-
     \ set keyframe
+    STA temp
     LDA objectXLo, X
-    TAY \ --> objectXLo, X
     AND #3
+    TAY \ --> objectXLo[X] MOD 4
     CLC
-    ADC temp \ SPRITE_INDEX_K9_LEFT ...
+    ADC temp
     STA objectSpriteIndex, X
 
     \ set redraw flag
     JSR setRedrawFlag
 
-    \ continue animation?
-    TYA \ <-- objectXLo, X
-    AND #3
-    BNE failure
+    \ return zero if animation has completed
+    TYA \ <-- objectXLo[X] MOD 4
 
-    \ accumulator = objectXLo[X] & 0xF
-    TYA \ <-- objectXLo, X
-    AND #&F
-    RTS
+    \ fall through to RTS
+}
 
-    .failure
-    SEC
+\
+\ common RTS
+\
+.rts_0
+{
     RTS
 }
+
+\
+\ nextAnimationFrame(A, X)
+\
+\ decrement object's frame counter, resetting it if it reaches zero, and set the redraw flag
+\
+\ return zero if frame counter is reset, and the redraw flag is set
+\
+\ params:
+\   Accumulator     Frame counter reset value
+\   X register      Object index
+\
+.nextAnimationFrame
+{
+    \ decrement frame counter 
+    DEC objectFrameCounter, X
+    BNE rts_0
+
+    \ reset frame counter
+    STA objectFrameCounter, X
+
+    \ set redraw flag
+    JMP setRedrawFlag \ implicit RTS (returns zero)
+}
+
 
 \
 \ roundFourObjectPosition(X register, flags)

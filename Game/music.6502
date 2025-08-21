@@ -312,8 +312,8 @@ AMPLITUDE_PHASE_RELEASE = 3
     LDA IRQ1V+1 : STA mosIRQ1V+1
 
     \ set IRQ1V vector to music IRQ
-    LDA #LO(music_irq) : STA IRQ1V
-    LDA #HI(music_irq) : STA IRQ1V+1
+    LDA #LO(music_isr) : STA IRQ1V
+    LDA #HI(music_isr) : STA IRQ1V+1
 
     \ disable all System-VIA and User-VIA interrupts
     LDA #&7F
@@ -345,9 +345,9 @@ AMPLITUDE_PHASE_RELEASE = 3
 }
 
 \
-\ music interrupt request routine, used to play music
+\ music interrupt service routine, used to play music
 \
-.music_irq
+.music_isr
 {
     \ preserve state
     LDA &FC : PHA

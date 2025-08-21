@@ -136,13 +136,13 @@
         DEY
         BPL loop
 
-    \ save IRQ (will be either ingame_irq or ingame_sample_irq)
+    \ save IRQ (will be either ingame_isr or ingame_sample_isr)
     LDA IRQ1V : STA transitionPreviousIRQ1V
     LDA IRQ1V+1 : STA transitionPreviousIRQ1V+1
 
     \ set IRQ 
-    LDA #LO(cropTransition_irq) : STA IRQ1V
-    LDA #HI(cropTransition_irq) : STA IRQ1V+1
+    LDA #LO(cropTransition_isr) : STA IRQ1V
+    LDA #HI(cropTransition_isr) : STA IRQ1V+1
 
     \ switch System-VIA Timer1 to continous mode
     LDA #&40
@@ -160,9 +160,9 @@
 }
 
 \
-\ crop transition interrupt request routine
+\ crop transition interrupt service routine
 \
-.cropTransition_irq
+.cropTransition_isr
 {
     \ save accumalator
     LDA &FC : PHA
@@ -170,7 +170,7 @@
     \ System-VIA vsync irq?
     LDA &FE4D 
     AND #2
-    BEQ try_timer_one
+    BEQ skip_vsync
         \
         \ Handle v-sync
         \
@@ -191,12 +191,13 @@
 
         \ return with RTI (we don't want MOS processing v-syncs)
         JMP return_rti
+    .skip_vsync
 
     \ System-VIA Timer1 irq?
     .try_timer_one
     LDA &FE4D
     AND #&40
-    BEQ try_mos
+    BEQ skip_timer1
         \
         \ Handle Timer1
         \
@@ -250,8 +251,7 @@
             PLA : TAY
 
             \ fall through to let MOS process sounds at the top crop boundary
-
-    .try_mos
+    .skip_timer1
 
     \ restore accumulator, updating &FC
     PLA : STA &FC

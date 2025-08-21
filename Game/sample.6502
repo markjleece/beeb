@@ -32,95 +32,96 @@ LSR_OPCODE = &4A \ LSR A
 AND_OPCODE = &29 \ AND immediate
 
 \
-\ in-game sample interrupt request routine
+\ in-game sample interrupt service routine
 \
-.ingame_sample_irq
+.ingame_sample_isr
 {
     \ save accumalator
-    LDA &FC : PHA 
+    LDA &FC : PHA
 
     \ User-VIA Timer1 irq?
     LDA &FE6D
     AND #&80
-    BEQ try_vsync
+    BEQ skip_timer1
 
-    \
-    \ Play sample (invoked 8000 times a second)
-    \
+        \
+        \ Play sample (invoked 8000 times a second)
+        \
 
-    \ mark interrupt as handled
-    LDA &FE64
+        \ mark interrupt as handled
+        LDA &FE64
 
-    \ save Y
-    TYA : PHA
+        \ save Y
+        TYA : PHA
 
-    \ set data direction register A (write &FF to &FE43)
-    LDY #&FF
-    STY &FE43
+        \ set data direction register A (write &FF to &FE43)
+        LDY #&FF
+        STY &FE43
         
-    \ load sample (amplitude will be in high or low nibble)
-    INY \ Y = 0
-    LDA (pcmDataAddr), Y
+        \ load sample (amplitude will be in high or low nibble)
+        INY \ Y = 0
+        LDA (pcmDataAddr), Y
 
-    \ extract low or high nibble E.g. 'A &= 0xF' or 'A >>= 4'
-    .^irq_inst1 NOP : NOP : NOP : NOP
+        \ extract low or high nibble E.g. 'A &= 0xF' or 'A >>= 4'
+        .^irq_inst1 NOP : NOP : NOP : NOP
 
-    \ add 'set tone-3 volume' control bits
-    ORA #&90
+        \ add 'set tone-3 volume' control bits
+        ORA #&90
 
-    \ output register A (write sound sample to &FE4F)
-    STA &FE4F
+        \ output register A (write sound sample to &FE4F)
+        STA &FE4F
 
-    \ output register B, prepping write by setting chip write enable pin low (write 0 to &FE40)
-    STY &FE40
+        \ output register B, prepping write by setting chip write enable pin low (write 0 to &FE40)
+        STY &FE40
         
-    \ note: we need to keep the write enable line low for 8 us (16 cycles)
+        \ note: we need to keep the write enable line low for 8 us (16 cycles)
 
-    \ increment pcmDataAddr
-    INC pcmDataAddr \ 5 cycles
-    BNE skip        \ 3 cycles (branch)
-        INC pcmDataAddr+1
+        \ increment pcmDataAddr
+        INC pcmDataAddr \ 5 cycles
+        BNE skip        \ 3 cycles (branch)
+            INC pcmDataAddr+1
 
-        \ have we reached the end of the first half or second half?
-        LDA pcmDataAddr+1
-        .^irq_inst2 CMP #0
-        BNE skip
+            \ have we reached the end of the first half or second half?
+            LDA pcmDataAddr+1
+            .^irq_inst2 CMP #0
+            BNE skip
 
-        \ have we played the first half or the second half?
-        LDA #LSR_OPCODE : CMP irq_inst1 : BEQ else
+            \ have we played the first half or the second half?
+            LDA #LSR_OPCODE : CMP irq_inst1 : BEQ else
 
-            \ at end of first half, so rewrite instructions to extract high nibbles
-            STA irq_inst1+0
-            STA irq_inst1+1
-            STA irq_inst1+2
-            STA irq_inst1+3
+                \ at end of first half, so rewrite instructions to extract high nibbles
+                STA irq_inst1+0
+                STA irq_inst1+1
+                STA irq_inst1+2
+                STA irq_inst1+3
 
-            \ reset pcmDataAddr
-            .^irq_inst3 LDA #0 : STA pcmDataAddr
-            .^irq_inst4 LDA #0 : STA pcmDataAddr+1
+                \ reset pcmDataAddr
+                .^irq_inst3 LDA #0 : STA pcmDataAddr
+                .^irq_inst4 LDA #0 : STA pcmDataAddr+1
 
-            BNE endif \ always branch
-        .else
-            \ at end of second half, so stop sampling
-            JSR stopSampling
-        .endif
-    .skip
+                BNE endif \ always branch
+            .else
+                \ at end of second half, so stop sampling
+                JSR stopSampling
+            .endif
+        .skip
 
-    \ restore Y
-    PLA : TAY   \ 6 cycles
+        \ restore Y
+        PLA : TAY   \ 6 cycles
 
-    \ complete write by setting chip write pin high (write 8 to &FE40)
-    LDA #8      \ 2 cycles
-    STA &FE40
+        \ complete write by setting chip write pin high (write 8 to &FE40)
+        LDA #8      \ 2 cycles
+        STA &FE40
    
-    \ restore accumulator, updating &FC
-    PLA : STA &FC
+        \ restore accumulator, updating &FC
+        PLA : STA &FC
 
-    \ just return (we don't want MOS to process User-VIA Timer1 irqs)
-    RTI
+        \ just return (we don't want MOS to process User-VIA Timer1 irqs)
+        RTI
 
-.try_vsync
-    JMP irq_try_vsync \ invoke regular IRQ
+    .skip_timer1
+  
+    JMP try_ingame_isr \ invoke regular ingame service interrupt routine
 }
 
 \
