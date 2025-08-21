@@ -36,6 +36,8 @@ The game includes a ‘god mode’ — activated by pressing the ‘G’, ‘O�
 # Running the game
 The game can be run in [BeebEm](https://github.com/stardot/beebem-windows) using the disc image: **game/program.ssd**, or run on a BBC Micro model B (with MMFS Turbo support) by copying **game/BEEB.MMB** to a micro-sd card.
 
+The game is also posted on the [Complete BBC Micro Games Archive](https://bbcmicro.co.uk/game.php?id=4527), and can be played using **jsbeeb** from there.
+
 The game targets a BBC Model B with a floppy disc drive (or MMFS Turbo support). The game's sound effects are enhanced if 16K or 32K of sideways RAM is installed.
 
 # Building the game
