@@ -29,7 +29,7 @@
 \
 .refreshGameBar
 {
-    \ update gamebar every 8 frames, offset by 2
+    \ update game bar every 8 frames, offset by 2
     LDA frameCount
     AND #7
     CMP #2
@@ -317,8 +317,8 @@ ENDIF
         LDA scrnLeftLo
         BNE loop
 
-    \ update hardware
-    JSR waitForVSync
+    \ update hardware after next v-sync
+    JSR waitForNextVSync
     JMP updateScreenPosition \ implicit RTS
 }
 
@@ -401,7 +401,7 @@ ENDIF
 
     LDX #16
     .loop
-        \ shift rendering to below gamebar (one character below)
+        \ shift rendering to below game bar (one character below)
         CPX #4 : BNE skip2
         BIT scrollDirection : BPL skip2
             LDA offset : BEQ skip3
@@ -447,7 +447,7 @@ ENDIF
 \
 \ calcVertTileStripStart
 \
-\ calculates the tile tile source address and offset, and the screen destination address
+\ calculates the tile source address and offset, and the screen destination address
 \ 
 \ params:
 \   leftLo, topLo       Screen coords
@@ -533,7 +533,7 @@ ENDIF
             \ dstAddr += 512
             JSR dstAddr_add_512 
 
-            \ srcAddr += stide
+            \ srcAddr += stride
             LDA srcAddr
             ADC stride
             STA srcAddr
@@ -555,7 +555,7 @@ ENDIF
 \
 \ drawTileLeftOfGamebar()
 \
-\ draws the tile character positioned left of the gamebar
+\ draws the tile character positioned left of the game bar
 \
 \ modifies: 
 \   self: dstAddr, srcAddr, outerCount, count, offset
@@ -668,7 +668,7 @@ ENDIF
     \ get screen address of tile
     JSR getTileScreenAddr
 
-    \ get tile src address
+    \ get tile source address
     LDA #0 : STA offset
     JSR getTileSrcAddr
     
@@ -789,7 +789,7 @@ ENDIF
     LDA #LO(-1)
     JSR drawTile
 
-    \ redraw tile when laser beam is undrawn
+    \ redraw tile when laser beam is erased
     INC laseredTileRedraw
    
     \ if (laseredTileTop/Left == top/left) ..
@@ -828,13 +828,13 @@ ENDIF
 \
 \ drawLaserOn()
 \
-\ draw laser beem fropm K9's muzzle
+\ draw laser beam from K9's muzzle
 \
 \ modifies:
-\   laserAddr       scrn address of muzzle byte
+\   laserAddr       screen address of muzzle byte
 \   laserMaxLength  max length of laser
 \   laserDirection  positive (left to right), negative (right to left)
-\   dstAddr         updated across scanlines
+\   dstAddr         updated across scan-line
 \   leftLo          muzzle x screen position
 \   topLo           muzzle y screen position
 \   temp            leftLo MOD 4
@@ -869,7 +869,7 @@ ENDIF
     SEC
     SBC scrnLeftLo
 
-    \ ensure last two bits of xPos are either clear or set, so (leftLo, poxY) correctly intersests an enemy
+    \ ensure last two bits of xPos are either clear or set, so (leftLo, poxY) correctly intersects an enemy
     AND #&FC \ clear bits is looking left
     BIT laserDirection : BMI skip2
         ORA #3 \ set bits is looking right
@@ -1039,7 +1039,7 @@ ENDIF
         LDA laseredTileLeft : STA leftLo
         LDA laseredTileTop : STA topLo
         LDA #0 : STA laseredTileRedraw
-        JMP drawTile \ implicit
+        JMP drawTile \ implicit RTS
     .else
         \ restore last pixels
         LDA laserLastPixels
@@ -1057,8 +1057,8 @@ ENDIF
 \ params:
 \   leftLo/Hi       left coordinate (level coords)
 \   topLo/Hi        top coordinate (level coords)
-\   width           width in pixels
-\   height          height in pixels
+\   width           the width in pixels
+\   height          the height in pixels
 \   scrnLeftLo/Hi   screen left position (level coords)
 \   scrnTopLo/Hi    screen left position (level coords)
 \
@@ -1210,7 +1210,7 @@ ENDIF
 \ drawObject(X register)
 \ 
 \ draws an object to the screen (clipped if needed).  The routine draws the object column by column. The 
-\ scanlines above and below can optionally be erased.
+\ scan-lines above and below can optionally be erased.
 \
 \ params:
 \   X register      Object index
@@ -1223,9 +1223,9 @@ ENDIF
 \   bottomLo/Hi     bottom position
 \   width           sprite width (4,8,12,16...)
 \   height          sprite height (1+)
-\   stride          stride across sprite data (original height)
-\   eraseAbove      erase scanline above (false|true)
-\   eraseBelow      erase scanline below (false|true)
+\   stride          the stride across sprite data (original height)
+\   eraseAbove      erase scan-line above (false|true)
+\   eraseBelow      erase scan-line below (false|true)
 \   srcBaseAddr     base address of sprite data (advanced every column)
 \   dstBaseAddr     base address of screen (advanced every column)
 \   srcAddr         address of sprite data (advanced drawing column)
@@ -1275,7 +1275,7 @@ ENDIF
     STA eraseBelow
 
     \
-    \ convert to screen space (with broard clipping)
+    \ convert to screen space (with broad clipping)
     \
     
     JSR convertToScreenSpace
@@ -1455,7 +1455,7 @@ ENDIF
     .endif11
     
     \
-    \ calculate head loop count/jump offset, and tail jump offet
+    \ calculate head loop count/jump offset, and tail jump offset
     \
     LDA offset \ (top % 8)
     CLC
@@ -1591,7 +1591,7 @@ ENDIF
 .drawLaseredObject
 {
     \
-    \ calculate head loop count/jump offset, and tail jump offet
+    \ calculate head loop count/jump offset, and tail jump offset
     \
     LDA offset \ (top % 8)
     CLC
@@ -1825,7 +1825,7 @@ ENDIF
     LDY #1 : STY height
     DEY : STY heightMinusOne
 
-    \ convert to screen space, performing broard clipping
+    \ convert to screen space, performing broad clipping
     JSR convertToScreenSpace
     BNE rts_6 \ fully clipped
 
@@ -1859,7 +1859,7 @@ ENDIF
         STY leftLo \ left = 0
     .endif_7
 
-    \ calculate destination screen addr
+    \ calculate destination screen address
     JSR calcScreenDstAddr
 
     \ dstAddr += (topLo MOD 8)

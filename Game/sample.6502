@@ -23,7 +23,7 @@
 \
 \ Sample routines, used to play samples when 16K or 32K of sideways RAM is available
 \
-\ This code is overwritten with the gamebar atlas asset on machines that don't 
+\ This code is overwritten with the game bar atlas asset on machines that don't 
 \ have 16K or 32K of sideways RAM
 \
 
@@ -36,10 +36,10 @@ AND_OPCODE = &29 \ AND immediate
 \
 .ingame_sample_isr
 {
-    \ save accumalator
+    \ save accumulator
     LDA &FC : PHA
 
-    \ User-VIA Timer1 irq?
+    \ User-VIA Timer1 IRQ?
     LDA &FE6D
     AND #&80
     BEQ skip_timer1
@@ -116,12 +116,12 @@ AND_OPCODE = &29 \ AND immediate
         \ restore accumulator, updating &FC
         PLA : STA &FC
 
-        \ just return (we don't want MOS to process User-VIA Timer1 irqs)
+        \ just return (we don't want MOS to process User-VIA Timer1 IRQ)
         RTI
 
     .skip_timer1
   
-    JMP try_ingame_isr \ invoke regular ingame service interrupt routine
+    JMP try_ingame_isr \ invoke regular in-game service interrupt routine
 }
 
 \
@@ -146,22 +146,22 @@ AND_OPCODE = &29 \ AND immediate
 \ plays a sample
 \
 \ params:
-\   Accumalator     primarySamplesROMSEL or secondarySamplesROMSEL
+\   Accumulator     primarySamplesROMSEL or secondarySamplesROMSEL
 \   Y register      SAMPLE_DALEK_EXTERMINATE, SAMPLE_DALEK_GROAN, SAMPLE_DALEK_WEAPON, SAMPLE_AFFIRMATIVE
 \
 .sample_play
 {
-    SEI \ disable interupts
+    SEI \ disable interrupts
 
     \ select sideways RAM bank
     STA &F4 : STA &FE30
 
-    \ rewrite irq instructions to play first half of sample
+    \ rewrite IRQ instructions to play first half of sample
     LDA pcmDataEndAddrHiTbl, Y : STA irq_inst2+1
     LDA pcmDataStartAddrLoTbl, Y : STA irq_inst3+1 : STA pcmDataAddr \ also set pcmDataAddr
     LDA pcmDataStartAddrHiTbl, Y : STA irq_inst4+1  : STA pcmDataAddr+1
 
-    \ rewrite irq instuctions to extract low nibbles
+    \ rewrite IRQ instructions to extract low nibbles
     LDA #AND_OPCODE : STA irq_inst1+0 : STA irq_inst1+2
     LDA #&0F : STA irq_inst1+1 : STA irq_inst1+3
 
@@ -186,7 +186,7 @@ AND_OPCODE = &29 \ AND immediate
 \
 .sample_endPursuit
 {
-    SEI \ disable interupts
+    SEI \ disable interrupts
 
     JSR stopSampling
 

@@ -46,7 +46,7 @@
 \
 \ initialiseLevel()
 \
-\ initialise level after its been loaded
+\ initialize level after its been loaded
 \
 \ Note that this routine is packaged with each level and is overwritten
 \
@@ -83,7 +83,7 @@
 \
 \ initializeLevelVariables
 \
-\ initialise level variables
+\ initialize level variables
 \
 \ Note that this routine is packaged with each level and is overwritten
 \
@@ -173,7 +173,7 @@
     .skip3
     STA secondarySamplesEnabled
 
-    \ patch BCC instuction in getObjectTileGridAddr (tilegrid.6502)
+    \ patch BCC instruction in getObjectTileGridAddr (tilegrid.6502)
     LDA levelHorzTileCountLoaded
     CMP #128 : BNE else1
         LDA #0
@@ -191,6 +191,17 @@
         LDA #9
     .endif4
     STA bcc_inst+1
+
+    \ patch JSR routine in inflictK9Damage (program.6502)
+    LDX #LO(setBlackPalette)
+    LDY #HI(setBlackPalette)
+    LDA enemyType
+    CMP #ENEMY_TYPE_DALEK : BNE skip4
+        LDX #LO(setInvertedLevelPalette)
+        LDY #HI(setInvertedLevelPalette)
+    .skip4
+    STX jsr_inst+1
+    STY jsr_inst+2
 
     \ patch ADC and SBC operands in tileGridAddr_add_horzTileCount and tileGridAddr_sub_horzTileCount (tilegrid.6502)
     LDA levelHorzTileCountLoaded
@@ -210,15 +221,15 @@
     STA scrnTopHiMaxMinusOne
 
     \ patch black color 'or-mask' in drawGameBar (draw.6502) which is used to show that the game 
-    \ is in God mode. We iterate over the palette entries, looking for a black one, and set 
-    \ the or-mask based on matching entry's index
+    \ is in God mode. We iterate over the level palette entries (which hasn't been relocated yet), 
+    \ looking for a black one, and set the or-mask based on matching entry's index
     LDX #0
     .loop2
-        \ if (levelPalette[4*X] == blackPaletteEntries[X]) break
+        \ if (levelPaletteLoaded[4*X] == blackPaletteEntries[X]) break
         TXA 
         ASL A : ASL A
         TAY
-        LDA levelPalette, Y
+        LDA levelPaletteLoaded, Y
         CMP blackPaletteEntries, X
         BEQ loop2end
 
@@ -239,7 +250,7 @@
     PAL_color_2 = &80
     PAL_color_3 = &A0
 
-    \ phycical colors
+    \ physical color
     PAL_black = (0 EOR 7)
 
 .blackPaletteEntries
@@ -265,8 +276,8 @@
     \ first, clear the screen
     \
 
-    \ make changes after a v-sync
-    JSR waitForVSync
+    \ make changes after next v-sync
+    JSR waitForNextVSync
 
     \ fill Mode 7 screen memory with spaces
     LDA #&20 \ space
@@ -284,8 +295,8 @@
     \ next, set custom screen mode (with palette set to black)
     \
 
-    \ make changes after a v-sync
-    JSR waitForVSync
+    \ make changes after next v-sync
+    JSR waitForNextVSync
 
     \ set up video 6845 CRTC
     LDX #13
@@ -338,7 +349,7 @@
     EQUB 32             \ R6  vertical displayed
     EQUB 34             \ R7  vertical position
     EQUB 0              \ R8  interlace
-    EQUB 7              \ R9  scanlines per row
+    EQUB 7              \ R9  scan-lines per row
     EQUB 32             \ R10 cursor start
     EQUB 8              \ R11 cursor end
     EQUB HI(&4000/8)    \ R12 screen start address, high
@@ -384,7 +395,7 @@
 }
 
 \
-\ reloacate sprite address table
+\ relocate sprite address table
 \
 .relocateSpriteAddrTbl
 {
@@ -413,7 +424,7 @@
     LDA primarySamplesROMSEL
     ORA secondarySamplesROMSEL
     BEQ skip
-        \ gamebar atlas resides in sideways RAM
+        \ game bar atlas resides in sideways RAM
         LDA #LO(gamebarAtlas_sidewaysRAM) : STA spriteAddrTblLo + SPRITE_INDEX_GAMEBAR
         LDA #HI(gamebarAtlas_sidewaysRAM) : STA spriteAddrTblHi + SPRITE_INDEX_GAMEBAR
     .skip
@@ -466,7 +477,7 @@
         EQUB LO(addr)
     NEXT
 
-    \ 1 gamebar sprite
+    \ 1 game bar sprite
     EQUB LO(gamebarAtlas)
 
 .spriteAddrTblHiLocal
@@ -516,7 +527,7 @@
         EQUB HI(addr)
     NEXT
 
-    \ 1 gamebar sprite
+    \ 1 game bar sprite
     EQUB HI(gamebarAtlas)
 }
 
@@ -642,6 +653,20 @@
 \
 .relocateLevelData
 {
+    \
+    \ relocate palette
+    \
+    LDA #LO(levelPaletteLoaded) : STA srcAddr
+    LDA #HI(levelPaletteLoaded) : STA srcAddr+1
+
+    LDA #LO(levelPalette) : STA dstAddr
+    LDA #HI(levelPalette) : STA dstAddr+1
+
+    LDX #LO(PALETTE_SIZE)
+    LDY #HI(PALETTE_SIZE)
+
+    JSR memcpy
+
     \
     \ relocate tile types
     \
@@ -854,7 +879,7 @@
 
     JSR memcpy
 
-    \ copy gamebar altas...
+    \ copy game bar atlas...
     srcAddr13 = srcAddr12 + (K9_SPRITE_SIZE * 8)
 
     LDA primarySamplesROMSEL
@@ -882,7 +907,7 @@
 
         RTS
     .else
-        \ copy atlas to normal location, overwritting sample.6502
+        \ copy atlas to normal location, overwriting sample.6502
         LDA #LO(gamebarAtlas) : STA dstAddr
         LDA #HI(gamebarAtlas) : STA dstAddr+1
         

@@ -45,7 +45,7 @@ namespace LevelEditor
 
         internal void Read(FileStream fs)
         {
-            // read bbc 4-color palette format
+            // read BBC 4-color palette format
             for (int i = 0; i < PaletteSize; i++)
             {
                 ColorIndices[i] = (byte)((fs.ReadByte() ^ 0x07) & 0x0F);
@@ -57,7 +57,7 @@ namespace LevelEditor
 
         internal void Write(FileStream fs)
         {
-            // write bbc 4-color palette format
+            // write BBC 4-color palette format
             byte[] logicalColors = [0x00, 0x20, 0x80, 0xA0];
             for (int i = 0; i < PaletteSize; i++)
             {

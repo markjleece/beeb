@@ -28,7 +28,7 @@
 .musicData
 INCBIN "data\music.dat"
 
-\ music data cursor (resuses dstBaseAddr)
+\ music data cursor (reuses dstBaseAddr)
 musicDataAddr = dstBaseAddr
 
 \ music envelope definitions
@@ -96,7 +96,7 @@ lowestNativeFrequency = 80
 .lowFrequencyToneGenerator  EQUB &FF \ used to control the low frequency tone generator
 .lowFrequencyToggle         EQUB 0 \ used by the low frequency tone generator
     
-\ envelope constants (from Beeb User Guide)
+\ envelope constants (from BBC Micro User Guide)
 ENVELOPE_N = 0      \ envelope number (not used)
 ENVELOPE_T = 1      \ step length in 1/100th seconds (1..127) (bit-7 assumed set)
 ENVELOPE_PI1 = 2    \ change in pitch in section 1 (-128..127)
@@ -199,7 +199,7 @@ AMPLITUDE_PHASE_RELEASE = 3
 .stopMusic
 {
     \ restore MOS IRQ1V
-    SEI \ disable interupts
+    SEI \ disable interrupts
     LDA mosIRQ1V : STA IRQ1V
     LDA mosIRQ1V+1 : STA IRQ1V+1
     CLI \ re-enable interrupts
@@ -305,7 +305,7 @@ AMPLITUDE_PHASE_RELEASE = 3
 \
 .initializeMusicInterrupts
 {
-    SEI \ disable interupts
+    SEI \ disable interrupts
 
     \ remember MOS IRQ1V
     LDA IRQ1V : STA mosIRQ1V
@@ -324,7 +324,7 @@ AMPLITUDE_PHASE_RELEASE = 3
     LDA #&E2
     STA &FE4E
 
-    \ set Timer1 to continous mode and Timer2 to one-shot mode
+    \ set Timer1 to continuous mode and Timer2 to one-shot mode
     LDA #&40
     STA &FE4B
 

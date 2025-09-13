@@ -30,7 +30,7 @@
 \ invoked by key press handler
 \
 \ params:
-\   Accumalator     DIRECTION_LEFT or DIRECTION_RIGHT
+\   Accumulator     DIRECTION_LEFT or DIRECTION_RIGHT
 \
 \ invoked by key press handler
 \
@@ -107,7 +107,7 @@
 }
     
 \
-\ commom RTS
+\ common RTS
 \
 .rts_1
 {
@@ -120,7 +120,7 @@
 \ invoked by key press handler
 \
 \ params:
-\   Accumalator     DIRECTION_UP or DIRECTION_DOWN
+\   Accumulator     DIRECTION_UP or DIRECTION_DOWN
 \
 \ result
 \   A = 0 (success), 1 (failure)

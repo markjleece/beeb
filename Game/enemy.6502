@@ -137,7 +137,7 @@
     \ evaluate whether to end all pursuit every sixteen frames
     LDA frameCount
     AND #&0F
-    BEQ enemyEndAllPursuit
+    BEQ enemyEndAllPursuit \ implicit RTS
 
     \ evaluate what action an individual enemy should take every sixteen frames
     CMP enemyCount
@@ -222,10 +222,10 @@
     \ use weapon if K9 is in weapons range?
     LDA temp \ <-- distance
     CMP enemyWeaponRangePlusOne
-    BCC useWeapon \ implcit RTS (in weapons range)
+    BCC useWeapon \ implicit RTS (in weapons range)
 
     \
-    \ immobolize Weeping Angels that are seen by K9, except when lasered
+    \ immobilize Weeping Angels that are seen by K9, except when lasered
     \
 
     \ is a Weeping Angel?
@@ -726,7 +726,7 @@
         \ if (object[X].XPos MOD 16) == 0)
         TYA : BNE rts_13
             \ clear left tile flags
-            JMP clearObjectLeftTileFlags \ implcit RTS
+            JMP clearObjectLeftTileFlags \ implicit RTS
     .else
     \ if (animation == MOVE_RIGHT && (object[X].XPos MOD 16) == 8)
     CMP #ANIMATE_MOVE_RIGHT : BNE rts_13
@@ -1032,7 +1032,7 @@
     ORA temp
     STA objectType, X
 
-    \ if turning, round position to nearist multiple of four
+    \ if turning, round position to nearest multiple of four
     \ ensuring that right tile flags are cleared if needed
     AND #ANIMATE_MASK
     CMP #ANIMATE_TURN_LEFT_TO_RIGHT : BEQ then1
@@ -1254,7 +1254,7 @@
     .skip3
 
     \ invoke enemy lasered sound effect
-    JMP (primarySoundVector_enemyLasered) \ implict RTS
+    JMP (primarySoundVector_enemyLasered) \ implicit RTS
 }
 
 \

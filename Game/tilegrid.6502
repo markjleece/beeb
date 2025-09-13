@@ -34,7 +34,7 @@
 \
 \ params:
 \   X register   Object index
-\   flags        Flags to query: TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY
+\   flags        The flags to query: TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY
 \
 \ modifies:
 \   self: offsetX, offsetY, Y
@@ -100,7 +100,7 @@
 \
 \ params:
 \   X register   Object index
-\   flags        Flags to query: TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY
+\   flags        The flags to query: TILE_GRID_FLAGS_OPAQUE | TILE_GRID_FLAGS_K9 | TILE_GRID_FLAGS_ENEMY
 \
 \ modifies:
 \   self: offsetX, offsetY, Y

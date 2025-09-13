@@ -41,7 +41,7 @@ namespace LevelEditor
             }
             else if (TileIndex >= Level.TileCount)
             {
-                MessageBox.Show("This last six tiles are object tiles. They cannot be editied", "Edit Tile", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("This last six tiles are object tiles. They cannot be edited", "Edit Tile", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
 

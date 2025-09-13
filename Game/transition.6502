@@ -101,7 +101,7 @@
 \ completeTransition routine when the transition completes
 \
 \ params:
-\   Accumalator     Callback address (low byte)
+\   Accumulator     Callback address (low byte)
 \   Y register      Callback address (high byte)
 \
 .startCropOpenTransition
@@ -119,12 +119,12 @@
 \ startTransition
 \
 \ params:
-\   Accumalator     Transition constants (low byte)
+\   Accumulator     Transition constants (low byte)
 \   Y register      Transition constants (high byte)
 \
 .startTransition
 {
-    SEI \ disable interupts
+    SEI \ disable interrupts
 
     \ initialize variables (transitionUpperTimer..transitionState)
     STA srcAddr
@@ -144,7 +144,7 @@
     LDA #LO(cropTransition_isr) : STA IRQ1V
     LDA #HI(cropTransition_isr) : STA IRQ1V+1
 
-    \ switch System-VIA Timer1 to continous mode
+    \ switch System-VIA Timer1 to continuous mode
     LDA #&40
     STA &FE4B
     
@@ -164,10 +164,10 @@
 \
 .cropTransition_isr
 {
-    \ save accumalator
+    \ save accumulator
     LDA &FC : PHA
 
-    \ System-VIA vsync irq?
+    \ System-VIA v-sync IRQ?
     LDA &FE4D 
     AND #2
     BEQ skip_vsync
@@ -176,7 +176,7 @@
         \
         STA &FE4D \ mark interrupt as handled
     
-        \ signal vsync (so game loop can continue to run)
+        \ signal v-sync (so the game continues to run)
         INC vsync
 
         \ stop transition?
@@ -193,7 +193,7 @@
         JMP return_rti
     .skip_vsync
 
-    \ System-VIA Timer1 irq?
+    \ System-VIA Timer1 IRQ?
     .try_timer_one
     LDA &FE4D
     AND #&40
@@ -256,7 +256,7 @@
     \ restore accumulator, updating &FC
     PLA : STA &FC
 
-    \ pass System-VIA Timer1 irq to MOS, which processes sounds using this timer
+    \ pass System-VIA Timer1 IRQ to MOS, which processes sounds using this timer
     JMP (mosIRQ1V) \ implicit RTI
 
 .stop_transition
@@ -280,7 +280,7 @@
     \ restore accumulator, updating &FC
     PLA : STA &FC
 
-    \ just return (we don't want MOS to process System-VIA v-sync irqs)
+    \ just return (we don't want MOS to process System-VIA v-sync IRQ)
     RTI
 }
 

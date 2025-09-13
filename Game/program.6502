@@ -24,7 +24,7 @@
 \ God mode - activated by pressing the 'G' 'O' 'D' keys together
 \  - doubles strength of K9's laser and halves the power of enemy weapons
 \  - enables a specific level to be loaded using the number keys: 1..LEVEL_COUNT
-\  - enables scrolling using the arror keys
+\  - enables scrolling using the arrow keys
 \
 \ Memory map:
 \
@@ -36,8 +36,8 @@
 \   | Screen (256x256, 4 color mode)  |
 \   +---------------------------------+ &4000
 \   | Game data (portions reloaded)   |
-\   +---------------------------------+ &2C90
-\   | Game code (7056 bytes)          |
+\   +---------------------------------+ &2CA0
+\   | Game code (7072 bytes)          |
 \   +---------------------------------+ &1100
 \   | Game data (portions reloaded)   | 
 \   +---------------------------------+ &10E0
@@ -87,7 +87,7 @@
 \   &0400    432   9 game objects arrays*
 \   &05B0    384   2 enemy sprites*
 \   &0730    192   2 K9 sprites*
-\   &07F0    16    Black palette*
+\   &07F0    16    Level palette*
 \   &0800    128   MOS workspace
 \   &0880    64    Tile and sprite address tables (low-bytes)* (repurposed MOS printer buffer)
 \   &08C0    64    MOS workspace
@@ -104,12 +104,11 @@
 \   &10C0    32    DFS workspace
 \   &10E0    12    Sprite health bar table* (repurposed transient DFS memory)
 \   &10EC    20    Draw object jump tables* (repurposed transient DFS memory)
-\   &1100    7056  Program code
-\   &2C90    768   8 K9 sprites*
-\   &2F90    96    4 elevator sprites*
-\   &2FF0    96    4 teleport sprites*
-\   &3050    224   Gamebar sprites* (or sample.6502 if 16K+ of sideways RAM exists)
-\   &3130    16    Level palette*
+\   &1100    7072  Program code
+\   &2CA0    768   8 K9 sprites*
+\   &2FA0    96    4 elevator sprites*
+\   &3000    96    4 teleport sprites*
+\   &3060    224   Game bar sprites* (or sample.6502 if 16K+ of sideways RAM exists)
 \   &3140    1728  Level tiles*
 \   &3800    2048  Level tile grid*
 \   &4000    16K   256x256 4-color screen**
@@ -130,8 +129,8 @@
 \   Enemy AI                Every sixteen frames, offset by object index
 \   End all enemy pursuit?  Every sixteen frames
 \   Inflict damage on K9    Every sixteen frames, offset by 6 
-\   Redraw gamebar          Every eight frames, offset by 2
-\   Update draw order       Every thrity-two frames, offset by 8
+\   Redraw game bar         Every eight frames, offset by 2
+\   Update draw order       Every thirty-two frames, offset by 8
 \
 
 \
@@ -347,15 +346,15 @@ LOW_HEALTH_HI = 4  \ (hi-byte)
 \ maximum key count
 MAX_KEY_COUNT = 9
 
-\ interupt service routine vector for IRQ1
+\ interrupt service routine vector for IRQ1
 IRQ1V = &0204
 
 \ 39 character rows per frame
-\ 8 scanlines per character row
-\ each scanline is 64 micro seconds
+\ 8 scan-lines per character row
+\ each scan-line is 64 micro seconds
 \ v-sync normally occurs at character row 35 
-\ v-sync interrupt occurs two scanlines later
-\ delay to first scanline is:
+\ v-sync interrupt occurs two scan-lines later
+\ delay to first scan-line is:
 VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
 
 \ delay to bottom of visible screen is:
@@ -389,6 +388,7 @@ SAMPLE_EXTERMINATE_FRAME_COUNT = 100
 INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT = 30
 
 \ data structure sizes (bytes)
+PALETTE_SIZE = 16                   \ palette size
 TILE_GRID_SIZE = 2048               \ tile grid size
 SOUND_EFFECTS_SIZE = 44             \ sound effects size
 SWITCH_PAIRINGS_SIZE = 48           \ switch pairings size
@@ -424,52 +424,50 @@ enemyAtlas5 = &E00
 doorAtlas1 = &3C0
 doorAtlas2 = &CC0
 doorAtlas3 = &F80
-elevatorAtlas = &2F90
-teleportAtlas = &2FF0
+elevatorAtlas = &2FA0
+teleportAtlas = &3000
 k9Atlas1 = &730
 k9Atlas2 = &FA0
-k9Atlas3 = &2C90
-gamebarAtlas = &3050
+k9Atlas3 = &2CA0
+gamebarAtlas = &3060
 gamebarAtlas_sidewaysRAM = &BF20        \ location when 16K or 32K of sideways RAM is detected
-healthBarAtlas = &0D02                  \ 30 byte atlas (repurposes NMI workspace)
-
-\ black palette location
-blackPalette = &07F0
+healthBarAtlas = &0D02                  \ 30 byte atlas (re-purposes NMI workspace)
 
 \ sound effects location
-soundEffects = &1090                    \ 44 byte sound effect data (repurposes DFS &1090-&10BF workspace)
+soundEffects = &1090                    \ 44 byte sound effect data (re-purposes DFS &1090-&10BF workspace)
 
 \ tile and sprite address table locations
 tileAddrTblLo = &0880                   \ 28 byte tile address table (low-bytes) (repurposes MOS printer buffer)
 tileAddrTblHi = &0D20                   \ 28 byte tile address table (high-bytes) (repurposes NMI workspace)
 spriteAddrTblLo = &089C                 \ 35 byte sprite address table (low-bytes) (repurposes MOS printer buffer)
 spriteAddrTblHi = &0D3C                 \ 35 byte sprite address table (high-bytes) (repurposes NMI workspace)
-spriteHealthBarTbl = &10E0              \ 12 byte sprite health bar table (repurposes DFS &10E0-&10FF workspace)
+spriteHealthBarTbl = &10E0              \ 12 byte sprite health bar table (re-purposes DFS &10E0-&10FF workspace)
 
 \ level data locations
-levelLoadAddr = &3130                   \ address where level data is loaded
-levelPalette = &3130                    \ 16 byte level palette
+levelLoadAddr = &3140                   \ address where level data is loaded
 levelTiles = &3140                      \ 27 x 64 byte tiles. Each tile contain two character rows of texel quads. Tiles are indexed from 1. Tile 0 is implicitly filled with zeros.
-levelTileGrid = &3800                   \ 2K of tile values (flags/indicies)
+levelTileGrid = &3800                   \ 2K of tile values (flags/indices)
 levelTileTypes = &03E0                  \ 28 x 1-byte tile types (repurposes MOS keyboard buffer)
+levelPalette = &07F0                    \ 16 byte level palette
 
 \ level load locations (data loaded into screen memory and relocated)
 levelHorzTileCountLoaded = &4000        \ level extents
-levelVertTileCountLoaded = &4001        
+levelVertTileCountLoaded = &4001
 levelTileTypesLoaded = &4002            \ level tile types (relocated to levelTileTypes)
-levelEnemyWeaponStrengthLoaded = &401E  \ level enemy weapon strength (relocated to enemyWeaponStrengthLo/Hi)
-levelLaserStrengthLoaded = &401F        \ level laser strength (relocated to laserStrength)
-levelLaserHealthDrainLoaded = &4020     \ level laser health drain (relocated to laserHealthDrain)
-levelJewelHealthGainHiLoaded = &4021    \ level jewel health gain (relocated to jewelHealthGainHi)
-levelEnemyTypeLoaded = &4022            \ level enemy type (relocated to enemyType)
-levelObjectsLoaded = &4023              \ level object descriptors (used to populate game objects)
-levelSwitchPairingsLoaded = &40E3       \ level switch pairings
+levelPaletteLoaded = &401E              \ level palette (relocated to levelPalette)
+levelEnemyWeaponStrengthLoaded = &402E  \ level enemy weapon strength (relocated to enemyWeaponStrengthLo/Hi)
+levelLaserStrengthLoaded = &402F        \ level laser strength (relocated to laserStrength)
+levelLaserHealthDrainLoaded = &4030     \ level laser health drain (relocated to laserHealthDrain)
+levelJewelHealthGainHiLoaded = &4031    \ level jewel health gain (relocated to jewelHealthGainHi)
+levelEnemyTypeLoaded = &4032            \ level enemy type (relocated to enemyType)
+levelObjectsLoaded = &4033              \ level object descriptors (used to populate game objects)
+levelSwitchPairingsLoaded = &40F3       \ level switch pairings (relocated to switchPairings)
 
 \ drawObject head and tail jump offset tables
 drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
 drawObject_tailJumpTbl = &10F6          \ 10 byte tail jump offset table (repurposes DFS &10E0-&10FF workspace)
 
-\ dfs page backup (used to store page &17 or &1C that DFS modifies)
+\ DFS page backup (used to store page &17 or &1C that DFS modifies)
 dfsPageBackup = &7B00
 
 \ PCM data load address (located below page backup)
@@ -494,26 +492,26 @@ ORG 0
 .enemyCount                 SKIP 1  \ number of enemy game objects
 .elevatorCount              SKIP 1  \ number of elevator game objects (includes teleports)
 .doorCount                  SKIP 1  \ number of door objects
-.vsync                      SKIP 1  \ set on 'vsync' (when last screen scanline has been read for display)
+.vsync                      SKIP 1  \ set on 'v-sync' (when last screen scan-line has been read for display)
 .frameCount                 SKIP 1  \ incremented every frame
 .scrnLeftLo                 SKIP 1  \ left position of screen (low/high bytes)
 .scrnLeftHi                 SKIP 1  
-.scrnLeftHiMaxMinusOne      SKIP 1  \ maximum value of above variable, minue one
+.scrnLeftHiMaxMinusOne      SKIP 1  \ maximum value of above variable, minus one
 .scrnTopLo                  SKIP 1  \ top position of screen (low/high bytes)
 .scrnTopHi                  SKIP 1
-.scrnTopHiMaxMinusOne       SKIP 1  \ maximum value of above variable, minue one
+.scrnTopHiMaxMinusOne       SKIP 1  \ maximum value of above variable, minus one
 .scrollCounter              SKIP 1  \ number of half-tiles to scroll, in the direction specified by scrollDirection
 .scrollDirection            SKIP 1  \ scroll direction (DIRECTION_UP..DIRECTION_RIGHT)
 .keyCount                   SKIP 1  \ current number of keys (0..9)
 .healthLo                   SKIP 1  \ k9's health (low/high bytes) value range: 0..MAX_HEALTH_HI:&FF
 .healthHi                   SKIP 1  
 .laserInhibited             SKIP 1  \ set if laser is inhibited (occurs when enemy or destructible tile is destroyed)
-.laserFrameCount            SKIP 1  \ 0..2 (2 = draw, 1 = undraw, 0 = off)
-.laserAddr                  SKIP 2  \ start address of drawn laser beam (used to undraw laser beam)
-.laserDirection             SKIP 1  \ direction in which laser beam was drawn (used to undraw laser beam)
-.laserLength                SKIP 1  \ length of drawn laser beam (used to undraw laser beam)
-.laserLastPixels            SKIP 1  \ last pixels of drawn laser (used to undraw laser beam)
-.enemyHealthLo              SKIP 1  \ low health byte of enemy. Used to decrement ememy health
+.laserFrameCount            SKIP 1  \ 0..2 (2 = draw, 1 = erase, 0 = off)
+.laserAddr                  SKIP 2  \ start address of drawn laser beam (used to erase laser beam)
+.laserDirection             SKIP 1  \ direction in which laser beam was drawn (used to erase laser beam)
+.laserLength                SKIP 1  \ length of drawn laser beam (used to erase laser beam)
+.laserLastPixels            SKIP 1  \ last pixels of drawn laser (used to erase laser beam)
+.enemyHealthLo              SKIP 1  \ low health byte of enemy. Used to decrement enemy health
 .k9DamageCounter            SKIP 1  \ set to K9_DAMAGE_ON_COUNTER when enemy fires weapon
 .endPursuitCounter          SKIP 1  \ set to ENEMY_END_PURSUIT_COUNTER when k9 is in sight
 .pursuitSoundEffectCounter  SKIP 1  \ sound effect counter. Used to ignore duplicate requests or repeat 'exterminate' sample
@@ -531,9 +529,9 @@ ORG 0
 .jewelHealthGainHi          SKIP 1  \ jewel health gain (high byte)
 .enemyType                  SKIP 1  \ enemy type (ENEMY_TYPE_GENERIC, ENEMY_TYPE_DALEK, or ENEMY_TYPE_WEEPING_ANGEL)
 .playingSample              SKIP 1  \ playing sample (SAMPLE_PLAYBACK_VOID, SAMPLE_PLAYBACK_PLAYING, SAMPLE_PLAYBACK_STOPPED)
-.primarySamplesEnabled      SKIP 1  \ primary samples enabled flag (whether to play primary (Dalek) samplee)
+.primarySamplesEnabled      SKIP 1  \ primary samples enabled flag (whether to play Dalek samples)
 .primarySamplesROMSEL       SKIP 1  \ primary samples ROM selector (zero denotes no sideways RAM)
-.secondarySamplesEnabled    SKIP 1  \ secondary samples enabled flag (whether to play secondary (k9/TARDIS) samples)
+.secondarySamplesEnabled    SKIP 1  \ secondary samples enabled flag (whether to play K9/TARDIS samples)
 .secondarySamplesROMSEL     SKIP 1  \ secondary samples ROM selector (zero denotes no additional sideways RAM)
 .transitionVariables                \ transition variables (transitionUpperTimer..transitionState should not be moved or reordered)
 .transitionUpperTimer       SKIP 2  \ timer for controlling position of upper palette change
@@ -617,7 +615,7 @@ ORG &1100
     LDX #&FF : TXS \ reset stack
     JSR titles
     .gameLoop
-        JSR waitForVSync
+        JSR waitOnVSync
         INC frameCount
         JSR completeTransition
         JSR inflictK9Damage
@@ -655,16 +653,16 @@ INCLUDE "scroll.6502"
 \
 .ingame_isr
 {
-    \ save accumalator
+    \ save accumulator
     LDA &FC : PHA
 
     .^try_ingame_isr \ entry point from ingame_sample_isr
 
-    \ System-VIA vsync irq?
+    \ System-VIA v-sync IRQ?
     LDA &FE4D
     AND #2
     BEQ skip_vsync
-        \ mark vsync interrupt as handled
+        \ mark v-sync interrupt as handled
         STA &FE4D
     
         \ initiate Timer1. We signal v-sync and have MOS process sounds at
@@ -675,15 +673,15 @@ INCLUDE "scroll.6502"
          \ restore accumulator, updating &FC
         PLA : STA &FC
 
-        \ just return (we don't want MOS to process SYSTEM-VIA v-sync irqs)
+        \ just return (we don't want MOS to process SYSTEM-VIA v-sync IRQ)
         RTI
     .skip_vsync
 
-    \ System-VIA timer 1 irq?
+    \ System-VIA timer 1 IRQ?
     LDA &FE4D
     AND #&40
     BEQ skip_timer1
-        \ signal vsync. We do this at the bottom of the visible screen to give 
+        \ signal v-sync. We do this at the bottom of the visible screen to give 
         \ the game loop a head start
         INC vsync
     .skip_timer1
@@ -691,7 +689,7 @@ INCLUDE "scroll.6502"
     \ restore accumulator, updating &FC
     PLA : STA &FC
 
-    \ pass irq to MOS, which processes sounds using timer 1
+    \ pass IRQ to MOS, which processes sounds using timer 1
     JMP (mosIRQ1V) \ implicit RTI
 }
 
@@ -1140,60 +1138,6 @@ INCLUDE "scroll.6502"
 }
 
 \
-\ inflictK9Damage()
-\
-\ inflict damange on K9
-\
-\ k9DamageCounter is used to create two black flashes, followed by a one second pause
-\
-.inflictK9Damage
-{
-    \ process every 16 frames, offset by 6
-    LDA frameCount
-    AND #&F
-    CMP #6
-    BNE rts_0
-
-    \ if (damageCounter == 0) return
-    LDY k9DamageCounter
-    BEQ rts_0
-
-    \ decrement damage counter
-    DEC k9DamageCounter
-
-    \ if (damageCounter <= K9_DAMAGE_OFF_COUNTER) return
-    CPY #(K9_DAMAGE_OFF_COUNTER + 1)
-    BCC rts_0
-
-    \ if the pursuit sound effect counter is zero (because no enemies are in pursuit), just restore the palette
-    LDA pursuitSoundEffectCounter : BEQ restorePalette
-
-    \ sound exterminate in the pause, and not before
-    LDA #18 : STA pursuitSoundEffectCounter
-
-    \ inflict damage on K9
-    LDA healthLo
-    SBC enemyWeaponStrengthLo \ carry flag set above
-    STA healthLo
-    LDA healthHi
-    SBC enemyWeaponStrengthHi
-    STA healthHi
-
-    \ if (health <= 0) invoke level incomplete experience
-    BEQ levelIncomplete \ implicit RTS
-    BCC levelIncomplete \ implicit RTS
-
-    \ toggle palettes and play sound effect
-    TYA \ <-- k9DamageCounter (before decrement)
-    LSR A 
-    BCS restorePalette
-        JSR setBlackPalette
-        JMP (primarySoundVector_weaponFired) \ implicit RTS
-    .restorePalette
-        JMP setLevelPalette \ implicit RTS
-}
-
-\
 \ frameCallback_IntermittentRedraw(X register)
 \
 \ frame callback that sets the redraw flag every 8 frames, offset by the object's index
@@ -1325,7 +1269,7 @@ INCLUDE "scroll.6502"
 \
 \ roundFourObjectPosition(X register, flags)
 \
-\ round an object's horizontal position to the nearst multiple of four, clearing
+\ round an object's horizontal position to the nearest multiple of four, clearing
 \ the right tile's flags if it was vacated. Code assumes the object is 24 pixels wide.
 \
 \ params:
@@ -1349,6 +1293,105 @@ INCLUDE "scroll.6502"
 }
 
 \
+\ setLevelPalette()
+\
+.setLevelPalette
+{
+    LDY #15
+    .loop
+        LDA levelPalette, Y
+        STA &FE21
+        DEY
+        BPL loop
+    RTS
+}
+
+\
+\ setBlackPalette()
+\
+.setBlackPalette
+{
+    LDY #15
+    .loop
+        LDA levelPalette, Y
+        ORA #7 \ make color black
+        STA &FE21
+        DEY
+        BPL loop
+    RTS
+}
+
+\
+\ setInvertedLevelPalette()
+\
+.setInvertedLevelPalette
+{
+    LDY #15
+    .loop
+        LDA levelPalette, Y
+        EOR #7 \ invert color
+        STA &FE21
+        DEY
+        BPL loop
+    RTS
+}
+
+\
+\ inflictK9Damage()
+\
+\ inflict damage on K9
+\
+\ k9DamageCounter is used to create two inverted or black flashes, followed by a one second pause
+\
+.inflictK9Damage
+{
+    \ process every 16 frames, offset by 6
+    LDA frameCount
+    AND #&F
+    CMP #6
+    BNE rts_0
+
+    \ if (damageCounter == 0) return
+    LDY k9DamageCounter
+    BEQ rts_0
+
+    \ decrement damage counter
+    DEC k9DamageCounter
+
+    \ if (damageCounter <= K9_DAMAGE_OFF_COUNTER) return
+    CPY #(K9_DAMAGE_OFF_COUNTER + 1)
+    BCC rts_0
+
+    \ if the pursuit sound effect counter is zero (because no enemies are in pursuit), just restore the palette
+    LDA pursuitSoundEffectCounter : BEQ setLevelPalette \ implicit RTS
+
+    \ sound exterminate in the pause, and not before
+    LDA #18 : STA pursuitSoundEffectCounter
+
+    \ inflict damage on K9
+    LDA healthLo
+    SBC enemyWeaponStrengthLo \ carry flag set above
+    STA healthLo
+    LDA healthHi
+    SBC enemyWeaponStrengthHi
+    STA healthHi
+
+    \ if (health <= 0) invoke level incomplete experience
+    BEQ levelIncomplete \ implicit RTS
+    BCC levelIncomplete \ implicit RTS
+
+    \ toggle palettes and play sound effect
+    TYA \ <-- k9DamageCounter (before decrement)
+    LSR A 
+    BCS setLevelPalette \ implicit RTS
+
+    \ JSR setInvertedLevelPalette or JSR setBlackPalette
+    .^jsr_inst JSR &FFFF \ address patched in initializeLevelVariables (level.6502)
+
+    JMP (primarySoundVector_weaponFired) \ implicit RTS
+}
+
+\
 \ levelEndPreamble()
 \ 
 .levelEndPreamble
@@ -1359,8 +1402,8 @@ INCLUDE "scroll.6502"
     \ crop close transition
     JSR cropCloseTransition
 
-    \ wait for v-sync
-    JSR waitForVSync
+    \ wait for next v-sync
+    JSR waitForNextVSync
 
     \ set palette black
     JMP setBlackPalette \ implicit RTS
@@ -1414,7 +1457,7 @@ INCLUDE "scroll.6502"
 .loadLevel
 {
     \ return if a crop transition is in progress
-    LDA transitionState : BNE rts_0
+    LDA transitionState : BNE return
 
     \ common preamble
     JSR levelEndPreamble
@@ -1424,6 +1467,9 @@ INCLUDE "scroll.6502"
 
     \ initialize level
     JMP initializeLevel \ implicit RTS
+
+    .return
+    RTS
 }
 
 \
@@ -1455,7 +1501,7 @@ INCLUDE "scroll.6502"
 \ loadLevelFile(level)
 \
 \ params:
-\   accumalator     1..9, or 0 = finale experience
+\   accumulator     1..9, or 0 = finale experience
 \
 ASSERT (HI(P%) > &1C) \ ensure loadLevelFile is assembled after page &17 and &1C
 
@@ -1540,8 +1586,8 @@ ORG k9Atlas3
 SKIP (levelLoadAddr - k9Atlas3)
 
 \
-\ load sample.6502 where the gamebar atlas normally resides. On machines with 
-\ sideways RAM (16K or 32K) this is used to play samples, and the gamebar
+\ load sample.6502 where the game bar atlas normally resides. On machines with 
+\ sideways RAM (16K or 32K) this is used to play samples, and the game bar
 \ atlas is instead located at gamebarAtlas_sidewaysRAM
 \
 CLEAR gamebarAtlas, gamebarAtlas + GAMEBAR_SPRITE_SIZE
@@ -1598,7 +1644,7 @@ INCLUDE "finale.6502"   \ replace titles code with finale code
 SAVE "level0", modeSevenCode, end
 
 \
-\ primary pcm data --> SSD 
+\ primary PCM data --> SSD 
 \
 ORG &8000
 INCBIN "data\pcm_primary.dat"
@@ -1610,7 +1656,7 @@ SAVE "pcmP4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOA
 SAVE "pcmP5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 
 \
-\ secondary pcm data --> SSD 
+\ secondary PCM data --> SSD 
 \
 CLEAR &8000, &CF00
 ORG &8000

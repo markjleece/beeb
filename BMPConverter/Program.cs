@@ -43,6 +43,8 @@ namespace BMPConverter
     {
         const char LevelCount = '6';
 
+        const int FilePaletteOffset = 3806;
+
         private static readonly string assetsFolderPath = GetSolutionFolder() + "\\Game\\assets\\level{0}\\";
         private static readonly string dataFolderPath = GetSolutionFolder() + "\\Game\\data\\";
 
@@ -119,9 +121,9 @@ namespace BMPConverter
             Color[] palette = new Color[4];
 
             // read palette data from level file
-            FileStream fileStream = File.OpenRead(dataFolderPath + $"level{level}.dat");
-
             byte[] paletteData = new byte[16];
+            FileStream fileStream = File.OpenRead(dataFolderPath + $"level{level}.dat");
+            fileStream.Seek(FilePaletteOffset, SeekOrigin.Begin);
             fileStream.ReadExactly(paletteData);
             fileStream.Close();
 
@@ -135,7 +137,7 @@ namespace BMPConverter
         }
 
         //
-        // Convert BMP file into bbc sprite data (column based, 4-color data)
+        // Convert BMP file into BBC sprite data (column based, 4-color data)
         //
         static private byte[] ConvertBMPFile(string bmpFilePathName, int spriteCount, int spriteWidth, int spriteHeight, Color[] palette)
         {
@@ -227,14 +229,14 @@ namespace BMPConverter
                         int green = (rgba & greenMask) >> greenShift;
                         int blue = (rgba & blueMask) >> blueShift;
 
-                        // convert to bbc logical color
+                        // convert to BBC logical color
                         byte bbcLogicalColor = RGBAtoLogicalColor(red, green, blue, palette);
 
-                        // update bbc screen byte
+                        // update BBC screen byte
                         bbcScreenByte |= bbcScreenBits[i][bbcLogicalColor];
                     }
 
-                    // set output bbc screen byte
+                    // set output BBC screen byte
                     result[index++] = (byte)bbcScreenByte;
                 }
             }
@@ -300,7 +302,7 @@ namespace BMPConverter
             return fileStream.ReadByte() | (fileStream.ReadByte() << 8) | (fileStream.ReadByte() << 16) | (fileStream.ReadByte() << 24);
         }
 
-        // bbc logical colors
+        // BBC logical colors
         enum Color : byte
         {
             Black = 0,

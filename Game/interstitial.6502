@@ -34,8 +34,11 @@
     \ relocate sound effect data (which might have been modified by DFS)
     JSR relocateSoundEffectData
 
-    \ display screen
+    \ set mode 7 after next v-sync
+    JSR waitForNextVSync
     JSR setMode7
+
+    \ set screen memory
     LDA #LO(batteryFlatTeletext) : STA srcAddr
     LDA #HI(batteryFlatTeletext) : STA srcAddr+1
     JSR memcpyToScreen
@@ -66,9 +69,11 @@ INCBIN "data\died.bin"
     \ invoke sound effect
     JSR levelCompleteSoundEffect
 
-    \ display screen
+    \ set mode 7 after next v-sync
+    JSR waitForNextVSync
     JSR setMode7
 
+    \ set screen memory
     LDA #LO(levelCompleteTeletext) : STA srcAddr
     LDA #HI(levelCompleteTeletext) : STA srcAddr+1
     JSR memcpyToScreen

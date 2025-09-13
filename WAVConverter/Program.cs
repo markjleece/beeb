@@ -129,7 +129,7 @@ namespace WAVConverter
 
         private static byte[] ExtractAndEncodeData(string filePath)
         {
-            // read PCM data from 8/8K wav file
+            // read PCM data from 8/8K WAV file
             byte[] pcmData = ReadPCMData(filePath, out _);
             if (pcmData.Length == 0) return [];
 

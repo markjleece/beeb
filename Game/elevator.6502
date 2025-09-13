@@ -60,7 +60,7 @@
     LDA objectState, X
     AND #OBJECT_STATE_FLAGS_DISABLED : BNE failure
 
-    \ queries and sets the destination elevator as occuplied (passenger is going to occupy it)
+    \ queries and sets the destination elevator as occupied (passenger is going to occupy it)
     JSR querySetElevatorTileOccupied : BNE success
 
     \ store elevator starting position in the frame counter (we need to put it somewhere)
@@ -345,7 +345,7 @@
 \
 \ returns if K9/enemy is on tiles of the passed type.
 \
-\ zero if object is on tiles with the passed type type, or none-zero
+\ zero if object is on tiles with the passed type, or none-zero
 \
 \ params:
 \   Accumulator     TILE_TYPE_FLAG_ELEVATOR or TILE_TYPE_MASK_TELEPORT
@@ -384,7 +384,7 @@
 \
 \ findNextElevator()
 \
-\ find the next platfrom in the direction specified, either above or below
+\ find the next platform in the direction specified, either above or below
 \
 \ params:
 \   direction       DIRECTION_UP or DIRECTION_DOWN

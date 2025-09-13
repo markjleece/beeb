@@ -87,9 +87,6 @@ namespace LevelEditor
 
         internal void Read(FileStream fs)
         {
-            // 16 byte palette
-            Palette.Read(fs);
-
             // 27 x 64 byte tiles
             for (int i = 1; i < TileCount; i++)
             {
@@ -113,6 +110,9 @@ namespace LevelEditor
                 Tiles[i].Type = (Tile.TileType)tileTypes[i];
             }
 
+            // 16 byte palette
+            Palette.Read(fs);
+
             // settings (5 bytes)
             Settings.Read(fs);
 
@@ -132,9 +132,6 @@ namespace LevelEditor
 
         internal void Write(FileStream fs)
         {
-            // 16 byte palette (loaded @ 30B0)
-            Palette.Write(fs);
-
             // 27 x 64 byte tiles
             for (int i = 1; i < TileCount; i++)
             {
@@ -153,6 +150,9 @@ namespace LevelEditor
             {
                 fs.WriteByte((byte)tile.Type);
             }
+
+            // 16 byte palette
+            Palette.Write(fs);
 
             // settings (5 bytes)
             Settings.Write(fs);

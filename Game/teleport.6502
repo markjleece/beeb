@@ -51,7 +51,7 @@
     \ get destination teleport index (held in teleport's objectFrameCounter)
     LDY objectFrameCounter, X
 
-    \ deltaXY = objectXY[dest teleport] - objectXY[teleport]
+    \ deltaXY = objectXY[destination teleport] - objectXY[teleport]
     LDA objectXLo, Y
     SEC
     SBC objectXLo, X
@@ -86,7 +86,7 @@
     \ perform crop close transition
     JSR cropCloseTransition
 
-    \ undraw K9 from the screen
+    \ erase K9 from the screen
     LDA objectSpriteIndex : PHA
 
     LDA #&FF : STA objectSpriteIndex

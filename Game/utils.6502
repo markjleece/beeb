@@ -25,34 +25,6 @@
 \
 
 \
-\ setBlackPalette()
-\
-.setBlackPalette
-{
-    LDY #15
-    .loop
-        LDA blackPalette, Y
-        STA &FE21
-        DEY
-        BPL loop
-    RTS
-}
-
-\
-\ setLevelPalette()
-\
-.setLevelPalette
-{
-    LDY #15
-    .loop
-        LDA levelPalette, Y
-        STA &FE21
-        DEY
-        BPL loop
-    RTS
-}
-
-\
 \ scanKey(A)
 \
 \ params:
@@ -69,7 +41,7 @@ ASSERT (HI(P%) > &17) \ ensure scanKey is assembled after &17FF
 
     SEI \ disable interrupts
 
-    \ stop autoscan
+    \ stop auto-scan
     LDA #%00000011
     STA &FE40
 
@@ -81,11 +53,11 @@ ASSERT (HI(P%) > &17) \ ensure scanKey is assembled after &17FF
     STY &FE4F
     LDY &FE4F
     
-    \ restart autoscan
+    \ restart auto-scan
     LDA #%00001011
     STA &FE40
 
-    CLI \ reenable interrupts
+    CLI \ re-enable interrupts
 
     TYA \ <-- key scan code (bit 7 set if key is down)
     
@@ -147,11 +119,29 @@ ASSERT (HI(P%) > &17) \ ensure scanKey is assembled after &17FF
 }
 
 \
-\ waitForVSync()
+\ waitForNextVSync()
 \
-\ wait for v-sync signal
+\ wait until the v-sync flag is set by a interrupt service routine, clearing it afterwards.
 \
-.waitForVSync
+\ The routine clears the v-sync flag and then waits for it to be set.
+\
+.waitForNextVSync
+{
+    \ clear v-sync flag
+    LDA #0
+    STA vsync
+
+    \ fall through to waitOnVSync
+}
+
+\
+\ waitOnVSync()
+\
+\ wait on v-sync flag being set by a interrupt service routine, clearing it afterwards.
+\
+\ The routine does not wait if the v-sync flag is already set.
+\
+.waitOnVSync
 {
     .loop
         LDA vsync

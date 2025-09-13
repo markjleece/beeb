@@ -354,7 +354,7 @@
     \
     \ set up tone generator 3 for sample-based playback
     \
-    SEI \ disable interupts
+    SEI \ disable interrupts
 
     LDA #&9F \ zero volume
     JSR sendSoundData
@@ -385,7 +385,7 @@
     \
     \ restore tone generator 3 for MOS sounds
     \
-    SEI \ disable interupts
+    SEI \ disable interrupts
 
     LDA #&9F \ zero volume
     JSR sendSoundData

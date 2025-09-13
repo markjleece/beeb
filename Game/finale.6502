@@ -21,17 +21,16 @@
 \ --------------------------------------------------------------
 
 \
-\ Finale routines and data.  
+\ Finale routines
 \
 
 \
 \ finale
 \
-\ show final screen
+\ show final experience
 \
 .finale
 {
-    JSR setMode7
     JSR showCongratsScreen
     JSR playMusic
     JSR waitForSpaceKeyPress
@@ -44,10 +43,14 @@
 \
 .showCongratsScreen
 {
-    \ populate screen memory
+    \ set mode 7 after next v-sync
+    JSR waitForNextVSync
+    JSR setMode7
+
+    \ set screen memory
     LDA #LO(congratsTeletext) : STA srcAddr
     LDA #HI(congratsTeletext) : STA srcAddr+1
-    JMP memcpyToScreen \ implicit RTS
+    JMP memcpyToScreen
 
 .congratsTeletext
 INCBIN "data\congrats.bin"
@@ -58,6 +61,9 @@ INCBIN "data\congrats.bin"
 \
 .showCreditsScreen
 {
+    \ wait for next v-sync
+    JSR waitForNextVSync
+
     \ populate screen memory
     LDA #LO(creditsTeletext) : STA srcAddr
     LDA #HI(creditsTeletext) : STA srcAddr+1

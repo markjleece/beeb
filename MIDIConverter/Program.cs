@@ -50,7 +50,7 @@ namespace MIDIConverter
             for (int i = 0; i < 256; i++)
             {
                 double n = 7.0 + (double)i / 4.0;
-                double frequency = Math.Pow(2.0, (double)(n - 49.0) / 12.0) * 440.0; // formula from wikipedia
+                double frequency = Math.Pow(2.0, (double)(n - 49.0) / 12.0) * 440.0; // formula from Wikipedia
                 if (i < 80)
                 {
                     // calculate low-frequency timer value
@@ -159,7 +159,7 @@ namespace MIDIConverter
                 }
                 else // if (noteEvent.Amplitude == 0)
                 {
-                    // unassign note event from tone generator
+                    // remove note event from tone generator
                     bool unassigned = false;
 
                     for (int i = 0; i < toneGenerators.Length; i++)

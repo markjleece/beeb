@@ -201,7 +201,7 @@
         INC scrnAddr+1
     .skip2
 
-    \ draw tile character left of the gamebar
+    \ draw tile character left of the game bar
     JSR drawTileLeftOfGamebar
 
     \ fall through to update screen

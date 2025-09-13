@@ -31,9 +31,9 @@
 \
 .titles
 {
-    JSR showTitleScreen
     JSR initializeVariables
     JSR playMusic
+    JSR showTitleScreen
     JSR initializeDFSRoutines
     JSR initializeSidewaysRAM
     JSR showTitleScreenPrompt
@@ -41,8 +41,6 @@
     JSR stopMusic
     JSR initializeInGameInterrupts
     JSR initializeEnvelopes
-    JSR relocateBlackPalette
-    JSR setBlackPalette
     JMP initializeLevel \ implicit RTS
 }
 
@@ -70,53 +68,7 @@ ENDMACRO
     DEFINE_ENVELOPE 1
     DEFINE_ENVELOPE 2
     DEFINE_ENVELOPE 3
-}
-
-\
-\ relocate black palette
-\
-MACRO PALETTE_ENTRY logicalColor, physicalColor
-    EQUB logicalColor + &00 + physicalColor
-    EQUB logicalColor + &10 + physicalColor
-    EQUB logicalColor + &40 + physicalColor
-    EQUB logicalColor + &50 + physicalColor
-ENDMACRO
-
-.relocateBlackPalette
-{
-    \ black palette
-    LDA #LO(blackPaletteLocal) : STA srcAddr
-    LDA #HI(blackPaletteLocal) : STA srcAddr+1
-
-    LDA #LO(blackPalette) : STA dstAddr
-    LDA #HI(blackPalette) : STA dstAddr+1
-
-    LDX #LO(16)
-    LDY #HI(16)
-
-    JMP memcpy \ implicit RTS
-
-    \ logical colors
-    PAL_color_0 = &00
-    PAL_color_1 = &20
-    PAL_color_2 = &80
-    PAL_color_3 = &A0
-
-    \ phycical colors
-    PAL_black   = (0 EOR 7)
-    PAL_red     = (1 EOR 7)
-    PAL_green   = (2 EOR 7)
-    PAL_yellow  = (3 EOR 7)
-    PAL_blue    = (4 EOR 7)
-    PAL_magenta = (5 EOR 7)
-    PAL_cyan    = (6 EOR 7)
-    PAL_white   = (7 EOR 7)
-
-.blackPaletteLocal
-    PALETTE_ENTRY PAL_color_0, PAL_black
-    PALETTE_ENTRY PAL_color_1, PAL_black
-    PALETTE_ENTRY PAL_color_2, PAL_black
-    PALETTE_ENTRY PAL_color_3, PAL_black
+    RTS
 }
 
 \
@@ -128,7 +80,8 @@ ENDMACRO
 {
     titlesMinusPromptSize = (1000 - 40)
 
-    \ switch to mode 7
+    \ switch to mode 7 after v-sync
+    JSR waitForNextVSync
     JSR setMode7  
 
     \ populate mode 7 screen memory (minus prompt line)
@@ -170,8 +123,8 @@ INCBIN "data\titles.bin"
 {
     INTERNAL_KEY_SPACE = &62
 
-    \ switch to mode 7
-    JSR setMode7  
+    \ wait for next v-sync
+    JSR waitForNextVSync
 
     \ populate mode 7 screen memory
     LDA #LO(instructions) : STA srcAddr
@@ -193,7 +146,7 @@ INCBIN "data\titles.bin"
 
     \ toggle key bindings every 1/2 second
     .loop2
-        JSR waitForVSync
+        JSR waitForNextVSync
         INC frameCount
         JSR toggleControlKeys
 
@@ -257,7 +210,7 @@ INCBIN "data\instructions.bin"
 \ 
 .initializeVariables
 {
-    \ zero zero-page variables
+    \ clear zero-page variables
     LDX #(zeroPageMOS - 1)
     LDA #0
     .loop
@@ -308,13 +261,13 @@ INCBIN "data\instructions.bin"
 \
 .initializeInGameInterrupts
 {
-    SEI \ disable interupts
+    SEI \ disable interrupts
 
     \ remember MOS IRQ1V
     LDA IRQ1V : STA mosIRQ1V
     LDA IRQ1V+1 : STA mosIRQ1V+1
 
-    \ set IRQ1V vector to ingame interrupt IRQ
+    \ set IRQ1V vector to in-game interrupt IRQ
     LDA primarySamplesROMSEL
     ORA secondarySamplesROMSEL
     BEQ else
@@ -350,7 +303,7 @@ INCBIN "data\instructions.bin"
     LDA primarySamplesROMSEL
     ORA secondarySamplesROMSEL
     BEQ skip
-        \ set User-VIA Timer1 to continous mode
+        \ set User-VIA Timer1 to continuous mode
         LDA #&40
         STA &FE6B
     
@@ -361,11 +314,11 @@ INCBIN "data\instructions.bin"
         LDA #HI(125 - 2) : STA &FE67
     .skip
 
-    \ disable all User-VIA interupts
+    \ disable all User-VIA interrupts
     LDA #&3F
     STA &FE6E
 
-    CLI \ reenable interrupts
+    CLI \ enable interrupts
 
     RTS
 }
