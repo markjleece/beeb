@@ -652,8 +652,9 @@ ENDIF
 \ within the visible screen but can lie anywhere within the tile.
 \
 \ params:
-\   leftLo      Screen X coordinate (0..255)
-\   topLo       Screen Y coordinate (0..255)
+\   accumulator     0 = draw normal, -1 = draw with lasered effect
+\   leftLo          Screen X coordinate (0..255)
+\   topLo           Screen Y coordinate (0..255)
 \
 \ modifies: 
 \   X, Y, index, dstAddr, srcAddr, leftLo, topLo, stride
@@ -1666,6 +1667,7 @@ ENDIF
 
             \ srcAddr += 8
             TXA
+            CLC
             ADC srcAddr
             BCC nocarry11
                 INC srcAddr+1
@@ -1675,7 +1677,6 @@ ENDIF
 
             \ dstAddr += 512
             LDA #2
-            CLC
             ADC dstAddr+1
             BPL nowrap \ if (dstAddr >= &8000) dstAddr -= &4000
                 SEC
