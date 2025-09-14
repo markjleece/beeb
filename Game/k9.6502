@@ -217,6 +217,9 @@
     JSR nextAnimationFrame
     BNE rts_2 \ next keyframe?
 
+    \ sound effect
+    JSR moveSoundEffect
+
     \ advance keyframe
     DEC objectSpriteIndex
 
@@ -238,6 +241,9 @@
     LDA #FRAME_COUNT_K9_TURN
     JSR nextAnimationFrame
     BNE rts_2 \ next keyframe?
+
+    \ sound effect
+    JSR moveSoundEffect
 
     \ advance keyframe
     INC objectSpriteIndex
@@ -287,8 +293,40 @@
     LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9) : STA flags
 
     LDA objectType \ <-- animation
+    CMP #ANIMATE_MOVE_LEFT : BNE else1
+
+        \ if next to left tile...
+        LDA objectXLo
+        AND #&F
+        BNE playMoveSoundEffect
+
+            \ can we move left?
+            JSR querySetObjectLeftTileGridFlags
+            BEQ playMoveSoundEffect
+
+            \ blocked, so determine next action, defaulting to looking left
+            LDX #ANIMATE_LOOK_LEFT
+            BEQ nextAction
+
+    .else1
+    CMP #ANIMATE_MOVE_RIGHT : BNE else2
+
+        \ if next to right tile...
+        LDA objectXLo
+        AND #&F
+        CMP #8 : BNE playMoveSoundEffect
+
+            \ can we move right?
+            JSR querySetObjectRightTileGridFlags
+            BEQ playMoveSoundEffect
+
+            \ blocked, so determine next action, defaulting to looking right
+            LDX #ANIMATE_LOOK_RIGHT
+            BNE nextAction
+
+    .else2
     CMP #ANIMATE_TURN_LEFT_TO_RIGHT : BEQ then
-    CMP #ANIMATE_TURN_RIGHT_TO_LEFT : BNE else1
+    CMP #ANIMATE_TURN_RIGHT_TO_LEFT : BNE rts_2
     .then
 
         \ set frame counter
@@ -301,48 +339,10 @@
         \ clear blocked sound effect flag
         LDA #0 : STA blockedSoundEffectOn
 
-        \ sound effect
-        JMP moveSoundEffect \ implicit RTS
+        \ fall through to play move sound effect
 
-    .else1
-    CMP #ANIMATE_MOVE_LEFT : BNE else2
-
-        \ if next to left tile...
-        LDA objectXLo
-        AND #&F
-        BNE skip2
-
-            \ can we move left?
-            JSR querySetObjectLeftTileGridFlags
-            BEQ skip2
-
-            \ blocked, so determine next action, defaulting to looking left
-            LDX #ANIMATE_LOOK_LEFT
-            BEQ nextAction
-        .skip2
-
-        \ sound effect
-        JMP moveSoundEffect \ implicit RTS
-
-    .else2
-    CMP #ANIMATE_MOVE_RIGHT : BNE rts_2
-
-        \ if next to right tile...
-        LDA objectXLo
-        AND #&F
-        CMP #8 : BNE skip3
-
-            \ can we move right?
-            JSR querySetObjectRightTileGridFlags
-            BEQ skip3
-
-            \ blocked, so determine next action, defaulting to looking right
-            LDX #ANIMATE_LOOK_RIGHT
-            BNE nextAction
-        .skip3
-
-        \ sound effect
-        JMP moveSoundEffect \ implicit RTS
+.playMoveSoundEffect
+    JMP moveSoundEffect \ implicit RTS
 
 .nextAction
     \ determine next action based on adjacent type-type (in accumulator)
