@@ -31,7 +31,7 @@
     EQUB HI(-8 * 64)            \ transitionUpperTimerDelta
     EQUB HI(16 * 64)            \ transitionLowerTimerDelta
     EQUB 32                     \ transitionCounter
-    EQUB TRANSITION_RUNNING     \ transitionState
+    EQUB TRANSITION_PLAYING     \ transitionState
 
 .transitionCloseConstants
     EQUW VSYNC_DELAY + 4 * 64   \ transitionUpperTimer
@@ -39,28 +39,7 @@
     EQUB HI(8 * 64)             \ transitionLowerTimerDelta
     EQUB HI(-16 * 64)           \ transitionLowerTimerDelta
     EQUB 32                     \ transitionCounter
-    EQUB TRANSITION_RUNNING     \ transitionState
-
-\
-\ completeTransition
-\
-\ invoked by the game loop after the v-sync
-\
-\ The routine invokes the transition callback when 
-\ an crop open transition completes
-\
-.completeTransition
-{
-    \ if (transitionState != TRANSITION_COMPLETE) return
-    LDA transitionState : BPL rts_9
-
-    \ transitionState = TRANSITION_VOID
-    LDA #TRANSITION_VOID
-    STA transitionState
-
-    \ invoke callback
-    JMP (transitionCompleteCallback) \ implicit RTS
-}
+    EQUB TRANSITION_PLAYING     \ transitionState
 
 \
 \ cropCloseTransition
@@ -74,44 +53,23 @@
     LDY #HI(transitionCloseConstants)
     JSR startTransition
 
-    \ wait for until transitionState is TRANSITION_COMPLETE
+    \ wait for until transitionState is TRANSITION_NONE
     .loop
         LDA transitionState
-        BPL loop
-
-    \ transitionState = TRANSITION_VOID
-    LDA #TRANSITION_VOID
-    STA transitionState
-
-    \ fall through to RTS
-}
-
-\
-\ common RTS
-\
-.rts_9
-{
+        BNE loop
     RTS
 }
 
 \
-\ startCropOpenTransition(callback)
+\ startCropOpenTransition()
 \
-\ starts a crop open transition. The passed callback is invoked by 
-\ completeTransition routine when the transition completes
-\
-\ params:
-\   Accumulator     Callback address (low byte)
-\   Y register      Callback address (high byte)
+\ starts a crop open transition, returning immediately
 \
 .startCropOpenTransition
 {
-    \ store callback
-    STA transitionCompleteCallback
-    STY transitionCompleteCallback+1
-
     LDA #LO(transitionOpenConstants)
     LDY #HI(transitionOpenConstants)
+
     \ fall through to startTransition
 }
 
@@ -167,6 +125,9 @@
     \ save accumulator
     LDA &FC : PHA
 
+    \ save Y, as setLevelPalette and setBlackPalette modify Y
+    TYA : PHA
+
     \ System-VIA v-sync IRQ?
     LDA &FE4D 
     AND #2
@@ -194,16 +155,12 @@
     .skip_vsync
 
     \ System-VIA Timer1 IRQ?
-    .try_timer_one
     LDA &FE4D
     AND #&40
     BEQ skip_timer1
         \
         \ Handle Timer1
         \
-
-        \ save Y, as setLevelPalette and setBlackPalette modify Y
-        TYA : PHA
 
         \ decrement counter
         LDA transitionCounter
@@ -215,9 +172,6 @@
 
             \ set palette
             JSR setBlackPalette
-
-            \ restore Y
-            PLA : TAY
 
             \ set default timer (so no further interrupts occur this frame)
             LDA #&FF
@@ -247,11 +201,10 @@
             \ set palette
             JSR setLevelPalette
 
-            \ restore Y
-            PLA : TAY
-
-            \ fall through to let MOS process sounds at the top crop boundary
     .skip_timer1
+
+    \ restore Y
+    PLA : TAY
 
     \ restore accumulator, updating &FC
     PLA : STA &FC
@@ -261,6 +214,11 @@
 
 .stop_transition
 
+    \ set level palette when open transition completes
+    LDA transitionLowerTimerDelta : BMI skip
+        JSR setLevelPalette
+    .skip
+
     \ restore IRQ
     LDA transitionPreviousIRQ1V : STA IRQ1V
     LDA transitionPreviousIRQ1V+1 : STA IRQ1V+1
@@ -269,13 +227,15 @@
     LDA #0
     STA &FE4B
 
-    \ mark transition as complete (TRANSITION_RUNNING -> TRANSITION_COMPLETE)
-    DEC transitionState
-    DEC transitionState
+    \ transitionState = TRANSITION_NONE
+    LSR transitionState
 
     \ fall through to return RTI
 
 .return_rti
+
+    \ restore Y
+    PLA : TAY
 
     \ restore accumulator, updating &FC
     PLA : STA &FC

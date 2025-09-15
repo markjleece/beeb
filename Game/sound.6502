@@ -173,14 +173,14 @@
 .updateSoundEffects
 {
     \ release tone generator 3?
-    LDA playingSample : BPL skip \ CMP #SAMPLE_PLAYBACK_STOPPED : BNE skip
+    LDA playingSample : BPL skip1 \ CMP #SAMPLE_PLAYBACK_STOPPED : BNE skip
         
         \ playingSample = SAMPLE_PLAYBACK_NONE
         LDA #SAMPLE_PLAYBACK_NONE : STA playingSample
 
         \ release tone generator 3
         JSR releaseToneGenerator3
-    .skip
+    .skip1
 
     \ decrement inhibitMoveSoundEffect (used to inhibit move sound effect)
     LDA inhibitMoveSoundEffect : BEQ endif1
@@ -200,6 +200,13 @@
         LDA #SOUND_EFFECT_LOW_BATTERY
         BNE soundEffect \ implicit RTS
     .endif2
+
+    \ invoke begin level sound effect after level open transition completes
+    LDA playBeginLevelSoundEffect : BEQ skip2
+    LDA transitionState : BNE skip2
+        LSR playBeginLevelSoundEffect \ = 0
+        JMP (secondarySoundVector_beginLevel)
+    .skip2
 
     \ update pursuit sound effects
     JMP (primarySoundVector_updatePursuit) \ implicit RTS
@@ -342,6 +349,17 @@
     EOR #&FE
     STA soundEffectVolumeAddr
     RTS
+}
+
+\
+\ teleportSoundEffect
+\
+\ sound teleport sound effect
+\
+.teleportSoundEffect
+{
+    LDA #SOUND_EFFECT_TELEPORT
+    BNE soundEffect \ implicit RTS
 }
 
 \

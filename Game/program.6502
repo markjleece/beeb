@@ -362,16 +362,17 @@ VSYNC_SIGNAL_DELAY = VSYNC_DELAY + 32 * 8 * 64
 
 \ sound effects
 SOUND_EFFECT_PAIN = 0
-SOUND_EFFECT_LASER_ON = 4
-SOUND_EFFECT_LASER_OFF = 8
-SOUND_EFFECT_LOW_BATTERY = 12
-SOUND_EFFECT_FLAT_BATTERY = 16
-SOUND_EFFECT_LEVEL_COMPLETE = 20
-SOUND_EFFECT_ACHIEVEMENT = 24
-SOUND_EFFECT_BLOCKED = 28
-SOUND_EFFECT_MOVE = 32
-SOUND_EFFECT_PURSUIT_ON = 36
-SOUND_EFFECT_PURSUIT_OFF = 40
+SOUND_EFFECT_TELEPORT = 4
+SOUND_EFFECT_LASER_ON = 8
+SOUND_EFFECT_LASER_OFF = 12
+SOUND_EFFECT_LOW_BATTERY = 16
+SOUND_EFFECT_FLAT_BATTERY = 20
+SOUND_EFFECT_LEVEL_COMPLETE = 24
+SOUND_EFFECT_ACHIEVEMENT = 28
+SOUND_EFFECT_BLOCKED = 32
+SOUND_EFFECT_MOVE = 36
+SOUND_EFFECT_PURSUIT_ON = 40
+SOUND_EFFECT_PURSUIT_OFF = 44
 
 \ samples
 SAMPLE_DALEK_EXTERMINATE = 0
@@ -390,17 +391,16 @@ INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT = 30
 \ data structure sizes (bytes)
 PALETTE_SIZE = 16                   \ palette size
 TILE_GRID_SIZE = 2048               \ tile grid size
-SOUND_EFFECTS_SIZE = 44             \ sound effects size
+SOUND_EFFECTS_SIZE = 48             \ sound effects size
 SWITCH_PAIRINGS_SIZE = 48           \ switch pairings size
-DRAW_OBJECT_JUMP_TABLE_SIZE = 10    \ draw object jump tables size
+DRAW_OBJECT_JUMP_TABLE_SIZE = 9     \ draw object jump table size
 ENEMY_HEALTH_BAR_TABLE_SIZE = 12    \ health bar table size
 ENEMY_HEALTH_BAR_ATLAS_SIZE = 30    \ health bar atlas size
 PCM_DATA_LOAD_BUFFER_SIZE = &C9A    \ PCM data load buffer size
 
 \ crop transition flags
-TRANSITION_VOID = 0
-TRANSITION_RUNNING = 1
-TRANSITION_COMPLETE = -1
+TRANSITION_NONE = 0
+TRANSITION_PLAYING = 1
 
 \ sample playback flags
 SAMPLE_PLAYBACK_NONE = 0
@@ -434,7 +434,7 @@ gamebarAtlas_sidewaysRAM = &BF20        \ location when 16K or 32K of sideways R
 healthBarAtlas = &0D02                  \ 30 byte atlas (re-purposes NMI workspace)
 
 \ sound effects location
-soundEffects = &1090                    \ 44 byte sound effect data (re-purposes DFS &1090-&10BF workspace)
+soundEffects = &1090                    \ 48 byte sound effect data (re-purposes DFS &1090-&10BF workspace)
 
 \ tile and sprite address table locations
 tileAddrTblLo = &0880                   \ 28 byte tile address table (low-bytes) (repurposes MOS printer buffer)
@@ -463,9 +463,8 @@ levelEnemyTypeLoaded = &4032            \ level enemy type (relocated to enemyTy
 levelObjectsLoaded = &4033              \ level object descriptors (used to populate game objects)
 levelSwitchPairingsLoaded = &40F3       \ level switch pairings (relocated to switchPairings)
 
-\ drawObject head and tail jump offset tables
-drawObject_headJumpTbl = &10EC          \ 10 byte head jump offset table (repurposes DFS &10E0-&10FF workspace)
-drawObject_tailJumpTbl = &10F6          \ 10 byte tail jump offset table (repurposes DFS &10E0-&10FF workspace)
+\ drawObject jump offset tables
+drawObject_jumpTbl = &10EC              \ 10 byte jump offset table (repurposes DFS &10E0-&10FF workspace)
 
 \ DFS page backup (used to store page &17 or &1C that DFS modifies)
 dfsPageBackup = &7B00
@@ -486,6 +485,7 @@ ORG 0
 .mosIRQ1V                   SKIP 2  \ MOS IRQ vector
 .pcmDataAddr                SKIP 2  \ PCM data address
 .scrnAddr                   SKIP 2  \ top left screen address
+.horzTileCount              SKIP 1  \ horizontal tile count
 .godMode                    SKIP 1  \ see comment at top of file
 .level                      SKIP 1  \ 1..LEVEL_COUNT
 .objectCount                SKIP 1  \ number of game objects (<= MAX_OBJECT_COUNT)
@@ -519,6 +519,7 @@ ORG 0
 .blockedSoundEffectOn       SKIP 1  \ sound effect flag. Used to ignore duplicate requests
 .inhibitMoveSoundEffect     SKIP 1  \ sound effect flag. Used to inhibit move sound effects
 .groanInhibited             SKIP 1  \ sound effect flag. Used to inhibit groan sample
+.playBeginLevelSoundEffect  SKIP 1  \ sound effect flag. Used to play the begin level sound effect
 .enemyHitTestLastFound      SKIP 1  \ cached hit test result (hit-test optimization)
 .doorScrollRedrawCount      SKIP 1  \ used to redraw all doors after scrolling
 .enemyWeaponStrengthLo      SKIP 1  \ enemy weapon strength
@@ -539,9 +540,8 @@ ORG 0
 .transitionUpperTimerDelta  SKIP 1  \ delta time for adjusting upper position timer
 .transitionLowerTimerDelta  SKIP 1  \ delta time for adjusting lower position timer
 .transitionCounter          SKIP 1  \ transition counter
-.transitionState            SKIP 1  \ transition state: TRANSITION_VOID, TRANSITION_RUNNING, TRANSITION_COMPLETE
+.transitionState            SKIP 1  \ transition state: TRANSITION_VOID or TRANSITION_RUNNING
 .transitionPreviousIRQ1V    SKIP 2  \ IRQ1V prior to invoking transition
-.transitionCompleteCallback SKIP 2  \ transition callback, invoked when crop open transition completes
 .laseredTileLeft            SKIP 1  \ lasered tile screen position
 .laseredTileTop             SKIP 1
 .laseredTileStrength        SKIP 1  \ lasered tile strength
@@ -617,7 +617,6 @@ ORG &1100
     .gameLoop
         JSR waitOnVSync
         INC frameCount
-        JSR completeTransition
         JSR inflictK9Damage
         JSR scrollScreen
         JSR drawObjects
@@ -635,6 +634,8 @@ ORG &1100
 \
 \ includes...
 \
+INCLUDE "sound.6502"
+INCLUDE "scroll.6502"
 INCLUDE "draw.6502"
 INCLUDE "k9.6502"
 INCLUDE "enemy.6502"
@@ -645,8 +646,6 @@ INCLUDE "tilegrid.6502"
 INCLUDE "transition.6502"
 INCLUDE "switch.6502"
 INCLUDE "utils.6502"
-INCLUDE "sound.6502"
-INCLUDE "scroll.6502"
 
 \
 \ in-game interrupt service routine
@@ -704,16 +703,7 @@ INCLUDE "scroll.6502"
     JSR drawTileBackground
 
     \ start crop open transition
-    LDA #LO(callback)
-    LDY #HI(callback)
     JMP startCropOpenTransition \ implicit RTS
-
-.callback
-    \ set level palette
-    JSR setLevelPalette
-
-    \ invoke sound effect
-    JMP (secondarySoundVector_beginLevel) \ implicit RTS
 }
 
 \

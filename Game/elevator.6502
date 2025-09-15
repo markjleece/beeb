@@ -534,6 +534,15 @@
 
     \ elevator not found
     LDX #0
+
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_11
+{
     RTS
 }
 
@@ -566,7 +575,6 @@
     \ restore elevator position (stored in frame counter)
     LDA objectFrameCounter, X : AND #&F0 : STA objectYLo, X
     LDA objectFrameCounter, X : AND #&0F : STA objectYHi, X
-    LDA #0 : LDA objectFrameCounter, X
 
     \ mark tiles above elevator (original position) as unoccupied
     LDA #(TILE_GRID_FLAGS_OPAQUE OR TILE_GRID_FLAGS_K9 OR TILE_GRID_FLAGS_ENEMY) : STA flags
@@ -589,14 +597,6 @@
     \ if passenger is an enemy, determine what to do next
     CPX #0 : BEQ rts_11
     JMP enemyElevatorStop \ implicit RTS
-}
-
-\
-\ common RTS
-\
-.rts_11
-{
-    RTS
 }
 
 \ end file

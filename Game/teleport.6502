@@ -80,8 +80,8 @@
         JMP success
     .skip1
 
-    \ sound achievement effect
-    JSR achievementSoundEffect
+    \ teleport sound effect
+    JSR teleportSoundEffect
 
     \ perform crop close transition
     JSR cropCloseTransition
@@ -135,9 +135,7 @@
     LDX #0 \ <-- k9's index
     JSR setRedrawFlag
 
-    \ start crop open transition, setting level palette on completion
-    LDA #LO(setLevelPalette)
-    LDY #HI(setLevelPalette)
+    \ start crop open transition
     JSR startCropOpenTransition
 
     \ return success

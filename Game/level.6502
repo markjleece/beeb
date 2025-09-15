@@ -61,7 +61,7 @@
     JSR relocateSoundEffectData
     JSR initializeSound
     JSR relocateLevelData
-    JSR relocateDrawObjectJumpTbls
+    JSR relocateDrawObjectJumpTbl
     JSR setCustomScreenMode
     JMP showLevel \ implicit RTS
 }
@@ -113,10 +113,11 @@
 
     LDA #12 : STA healthHi
     LDA #&FF : STA healthLo : STA enemyHealthLo
-
-    \ make sure the space key is lifted
-    INC laserInhibited
     
+    LDA #1
+    STA laserInhibited \ make sure space key is lifted
+    STA playBeginLevelSoundEffect
+            
     \ set level settings
     LDA levelEnemyWeaponStrengthLoaded : STA enemyWeaponStrengthLo
     LDA levelLaserStrengthLoaded : STA laserStrength
@@ -203,10 +204,8 @@
     STX jsr_inst+1
     STY jsr_inst+2
 
-    \ patch ADC and SBC operands in tileGridAddr_add_horzTileCount and tileGridAddr_sub_horzTileCount (tilegrid.6502)
-    LDA levelHorzTileCountLoaded
-    STA adc_inst+1
-    STA sbc_inst+1
+    \ horzTileCount = levelHorzTileCountLoaded
+    LDA levelHorzTileCountLoaded : STA horzTileCount
 
     \ set scrolling limits
     LSR A : LSR A : LSR A : LSR A
@@ -574,41 +573,26 @@
 }
 
 \
-\ relocateDrawObjectJumpTbls()
+\ relocateDrawObjectJumpTbl()
 \
-\ relocate drawObject jump tables
+\ relocate drawObject jump table
 \
-.relocateDrawObjectJumpTbls
+.relocateDrawObjectJumpTbl
 {
-    \ relocate tail jump table
-    LDA #LO(headJumpTbl) : STA srcAddr
-    LDA #HI(headJumpTbl) : STA srcAddr+1
+    \ relocate jump table
+    LDA #LO(jumpTbl) : STA srcAddr
+    LDA #HI(jumpTbl) : STA srcAddr+1
 
-    LDA #LO(drawObject_headJumpTbl) : STA dstAddr
-    LDA #HI(drawObject_headJumpTbl) : STA dstAddr+1
-
-    LDX #LO(DRAW_OBJECT_JUMP_TABLE_SIZE)
-    LDY #HI(DRAW_OBJECT_JUMP_TABLE_SIZE)
-
-    JSR memcpy
-
-    \ relocate head jump table
-    LDA #LO(tailJumpTbl) : STA srcAddr
-    LDA #HI(tailJumpTbl) : STA srcAddr+1
-
-    LDA #LO(drawObject_tailJumpTbl) : STA dstAddr
-    LDA #HI(drawObject_tailJumpTbl) : STA dstAddr+1
+    LDA #LO(drawObject_jumpTbl) : STA dstAddr
+    LDA #HI(drawObject_jumpTbl) : STA dstAddr+1
 
     LDX #LO(DRAW_OBJECT_JUMP_TABLE_SIZE)
     LDY #HI(DRAW_OBJECT_JUMP_TABLE_SIZE)
 
-    JMP memcpy \ implicit RTS
+    JMP memcpy
 
-.headJumpTbl
-    EQUB 0, 5, 10, 15, 20, 25, 30, 35, 40, 0
-
-.tailJumpTbl
-    EQUB 40, 35, 30, 25, 20, 15, 10, 5, 0, 0
+.jumpTbl
+    EQUB 40, 35, 30, 25, 20, 15, 10, 5, 0
 }
 
 \
@@ -631,7 +615,8 @@
     JMP memcpy \ implicit RTS
 
 .soundEffectsLocal
-    EQUB &10, &F7, &2C, &02 \ SOUND_EFFECT_PAIN 
+    EQUB &10, &F7, &04, &02 \ SOUND_EFFECT_PAIN 
+    EQUB &10, &FC, &06, &0A \ SOUND_EFFECT_TELEPORT
     EQUB &11, &01, &00, &01 \ SOUND_EFFECT_LASER_ON
     EQUB &11, &00, &00, &00 \ SOUND_EFFECT_LASER_OFF
     EQUB &11, &F7, &60, &01 \ SOUND_EFFECT_LOW_BATTERY
