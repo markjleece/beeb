@@ -1196,7 +1196,7 @@ ENDIF
         STA dstAddr+1
     .nowrap1
 
-    \ fall through TO RTS
+    \ fall through to RTS
 }
 
 \
@@ -1231,12 +1231,10 @@ ENDIF
 \   dstBaseAddr     base address of screen (advanced every column)
 \   srcAddr         address of sprite data (advanced drawing column)
 \   dstAddr         address of screen (advanced drawing column)
-\   outerCount      number of columns to draw
+\   outerCount      number of columns to draw (decremented every column)
 \   headCount       number of head loop iterations
-\   temp            number of tail iterations
-\   count           number of head loop iterations
-\   innerCount      number of inner head loop iterations
-\   offset          holds topLo MOD 8
+\   temp            holds various values
+\   offset          holds top MOD 8
 \
 .drawObject
 {
@@ -1257,25 +1255,29 @@ ENDIF
     \ expand extents if object is ascending or descending, setting
     \ flags to erase above or below
     LDA objectState, X
-    AND #OBJECT_STATE_FLAGS_DESCENDING : BEQ skipExpandAbove
-        LDA topLo
-        BNE skip_1
-            DEC topHi
-        .skip_1
-        DEC topLo
+    AND #(OBJECT_STATE_FLAGS_ASCENDING OR OBJECT_STATE_FLAGS_DESCENDING) : BEQ else_1
+        \ expand extents
         INC height
         INC heightMinusOne
-        LDA #1
-    .skipExpandAbove
-    STA eraseAbove
-    
-    LDA objectState, X
-    AND #OBJECT_STATE_FLAGS_ASCENDING : BEQ skipExpandBelow
-        INC height
-        INC heightMinusOne
-        LDA #1
-    .skipExpandBelow
-    STA eraseBelow
+
+        \ if descending expand-above otherwise expand below
+        AND #OBJECT_STATE_FLAGS_DESCENDING : BEQ skip
+            \ top -= 1
+            LDA topLo
+            BNE skip_1
+                DEC topHi
+            .skip_1
+            DEC topLo
+            LDA #1 \ erase above
+        .skip
+        STA eraseAbove
+        EOR #1
+        STA eraseBelow
+        BPL endif_1
+    .else_1
+        STA eraseAbove \ = 0
+        STA eraseBelow \ = 0
+    .endif_1
 
     \
     \ convert to screen space (with broad clipping)
@@ -1390,35 +1392,53 @@ ENDIF
         STY eraseBelow
     .endif_9
 
-    \
-    \ adjust source base address
-    \ 
-
     \ outerCount = width / 4
     LDA width
     LSR A: LSR A
     STA outerCount
 
-    \ offset = top % 8 
-    LDA topLo
-    AND #7
-    STA offset
+    \
+    \ adjust source base address
+    \ 
 
-    \ srcBaseAddr -= (top % 8)
-    LDA srcBaseAddr
-    SEC
-    SBC offset \ (top % 8)
-    BCS noborrow1
-        DEC srcBaseAddr+1
-    .noborrow1
+    \ if (index < 0) then
+    LDA index : BPL else_10
+    
+        \ blank sprite
+        ASSERT(LO(zeroMemory32) == 0 AND HI(zeroMemory32) == 0)
+        STY srcBaseAddr
+        STY srcBaseAddr+1
+        STY stride
+        STY offset
+        BMI endif_10
+    
+    .else_10
 
-    \ srcBaseAddr -= eraseAbove
-    SEC
-    SBC eraseAbove
-    BCS noborrow2
-        DEC srcBaseAddr+1
-    .noborrow2
-    STA srcBaseAddr
+        \ offset = top % 8 
+        LDA topLo
+        AND #7
+        STA offset
+
+        \ if (offset != 0 || eraseAbove != 0) ...
+        ORA eraseAbove : BEQ endif_10
+
+            \ srcBaseAddr -= (top % 8)
+            LDA srcBaseAddr
+            SEC
+            SBC offset \ (top % 8)
+            BCS noborrow1
+                DEC srcBaseAddr+1
+            .noborrow1
+
+            \ srcBaseAddr -= eraseAbove
+            SEC
+            SBC eraseAbove
+            BCS noborrow2
+                DEC srcBaseAddr+1
+            .noborrow2
+            STA srcBaseAddr
+
+    .endif_10
 
     \ calc screen dstAddr
     JSR calcScreenDstAddr
@@ -1427,22 +1447,16 @@ ENDIF
     LDA dstAddr : STA dstBaseAddr
     LDA dstAddr+1 : STA dstBaseAddr+1
 
-    \ render lasered?
-    TYA \ <-- A = zero
-    CPX enemyCount : BEQ then10 : BCS endif10 \ if k9 or enemy ...
-    .then10
-        \ is lasered flag set?
-        LDA objectState, X
-        AND #OBJECT_STATE_FLAGS_LASERED
-        BEQ endif10
-
-        \ clear lasered flag and set redraw flag, so sprite is rendered normally the next frame
+    \ is lasered flag set?
+    LDA objectState, X
+    AND #OBJECT_STATE_FLAGS_LASERED : BEQ endif_11
+        \ replace lasered flag with redraw flag, so sprite is rendered normally the next frame
         LDA objectState, X
         AND #LO(NOT(OBJECT_STATE_FLAGS_LASERED))
         ORA #OBJECT_STATE_FLAGS_REDRAW
         STA objectState, X
-    .endif10
-    STA temp \ <-- 'lasered'
+    .endif_11
+    STA temp \ --> 'lasered'
 
     \
     \ calculate headCount, 'innerHeadCount' (X register), and 'tailCount' (Y register)
@@ -1450,7 +1464,7 @@ ENDIF
     LDA offset \ (top % 8)
     CLC
     ADC height
-    CMP #9 : BCC else_11 \ sprite spans multiple character rows?
+    CMP #9 : BCC else_12 \ sprite spans multiple character rows?
 
         \ 'full-height' = (top % 8) + height - eraseBelow
         SEC
@@ -1473,9 +1487,9 @@ ENDIF
         SBC eraseAbove
         TAX \ --> 'headInnerCount'
 
-        JMP endif_11
+        JMP endif_12
 
-    .else_11 \ sprite fits within a single character row
+    .else_12 \ sprite fits within a single character row
 
         \ headCount = zero
         STY headCount
@@ -1486,22 +1500,12 @@ ENDIF
         SBC eraseAbove
         SBC eraseBelow
         TAY \ -> 'tailCount'
-    .endif_11
-
-    \ handle lasered and blank effects
-    LDA index : BMI else_12 \ blank?
-        LDA temp : BEQ endif_12 \ lasered?
-            \ draw lasered object
-            JMP drawLaseredObject \ implicit RTS
-    .else_12
-        \ draw blank object
-        ASSERT(LO(zeroMemory32) == 0 AND HI(zeroMemory32) == 0)
-        LDA #0
-        STA srcBaseAddr
-        STA srcBaseAddr+1
-        STA stride
-        STA offset
     .endif_12
+
+    \ draw lasered effect?
+    LDA temp : BEQ endif_13
+        JMP drawLaseredObject \ implicit RTS
+    .endif_13
 
     \ set head jump instruction
     LDA drawObject_jumpTbl, X
@@ -1628,11 +1632,28 @@ ENDIF
 }
 
 \
-\ drawLaseredObject
+\ drawLaseredObject(...)
+\
+\ invoked by drawObject to draw the sprite with a laser effect applied
 \
 \ params:
-\   X register  'headInnerCount'
-\   Y register  'tailCount'
+\   X register      number of head inner loop iterations
+\   Y register      number of tail loop iterations
+\   stride          the stride across sprite data (original height)
+\   eraseAbove      erase scan-line above (false|true)
+\   eraseBelow      erase scan-line below (false|true)
+\   srcBaseAddr     base address of sprite data (advanced every column)
+\   dstBaseAddr     base address of screen (advanced every column)
+\   outerCount      number of columns to draw (decremented every column)
+\   headCount       number of head loop iterations
+\   offset          holds top MOD 8
+\
+\ modifies:
+\   innerCount      number of head inner loop iterations
+\   temp            number of tail loop iterations
+\   count           number of head loop iterations (decremented drawing column)
+\   srcAddr         address of sprite data (advanced drawing column)
+\   dstAddr         address of screen (advanced drawing column)
 \
 .drawLaseredObject
 {
