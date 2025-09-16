@@ -793,7 +793,8 @@ ENDIF
     \ redraw tile when laser beam is erased
     INC laseredTileRedraw
    
-    \ if (laseredTileTop/Left == top/left) ..
+    \ if (laseredTileStrength != 0 && laseredTileTop/Left == top/left) ..
+    LDA laseredTileStrength : BEQ else
     LDA leftLo : CMP laseredTileLeft : BNE else
     LDA topLo : CMP laseredTileTop : BNE else
 
@@ -803,17 +804,19 @@ ENDIF
             \ stop laser
             INC laserInhibited
 
-            \ sound effect
-            JSR achievementSoundEffect
-
             \ replace lasered tile with new one
             LDY #0
             LDA outerIndex \ <-- replacement tile
             STA (tileGridAddr), Y
 
-            \ activate switch?
+            \ is switch?
             BEQ endif
-            JMP activateSwitch \ implicit RTS
+                
+                \ sound effect
+                JSR achievementSoundEffect
+
+                \ activate switch
+                JMP activateSwitch \ implicit RTS
     .else
         \ remember tile's position
         LDA leftLo : STA laseredTileLeft
