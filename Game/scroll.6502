@@ -233,13 +233,12 @@
     LDA scrnAddr+1 : BPL elseif \ if (scrnAddr >= &8000)
         SEC     
         SBC #&40 \ scrnAddr -= &4000
-        STA scrnAddr+1
         BNE endif
     .elseif
     CMP #HI(&4000) : BCS endif \ else if (scrnAddr < &4000)
         ADC #&40 \ scrnAddr += &4000
-        STA scrnAddr+1
     .endif
+    STA scrnAddr+1
 
     \ temp:accumulator = scrnAddr / 8
     STA temp

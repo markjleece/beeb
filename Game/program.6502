@@ -463,7 +463,7 @@ levelEnemyTypeLoaded = &4032            \ level enemy type (relocated to enemyTy
 levelObjectsLoaded = &4033              \ level object descriptors (used to populate game objects)
 levelSwitchPairingsLoaded = &40F3       \ level switch pairings (relocated to switchPairings)
 
-\ drawObject jump offset tables
+\ drawObject jump offset table
 drawObject_jumpTbl = &10EC              \ 10 byte jump offset table (repurposes DFS &10E0-&10FF workspace)
 
 \ DFS page backup (used to store page &17 or &1C that DFS modifies)

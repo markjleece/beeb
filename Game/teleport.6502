@@ -80,6 +80,9 @@
         JMP success
     .skip1
 
+    \ end all enemy pursuit (we don't want samples to sound during teleport)
+    JSR enemyEndAllPursuit
+
     \ teleport sound effect
     JSR teleportSoundEffect
 
@@ -89,8 +92,8 @@
     \ erase K9 from the screen
     LDA objectSpriteIndex : PHA
 
-    LDA #&FF : STA objectSpriteIndex
-    LDX #0 \ <-- k9's index
+    LDX #&FF : STX objectSpriteIndex
+    INX \ <-- k9's index
     JSR drawObject
 
     PLA : STA objectSpriteIndex

@@ -214,6 +214,9 @@
 
 .stop_transition
 
+    \ restore System-VIA Timer1 to one-shot mode
+    STA &FE4B \ <-- zero
+
     \ set level palette when open transition completes
     LDA transitionLowerTimerDelta : BMI skip
         JSR setLevelPalette
@@ -222,10 +225,6 @@
     \ restore IRQ
     LDA transitionPreviousIRQ1V : STA IRQ1V
     LDA transitionPreviousIRQ1V+1 : STA IRQ1V+1
-
-    \ restore System-VIA Timer1 to one-shot mode
-    LDA #0
-    STA &FE4B
 
     \ transitionState = TRANSITION_NONE
     LSR transitionState

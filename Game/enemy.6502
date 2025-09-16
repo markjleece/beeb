@@ -59,11 +59,11 @@
 \
 
 \
-\ enemyEndAllPursuit
+\ enemyEvaluateEndAllPursuit
 \
 \ evaluate whether to end all enemy pursuit
 \
-.enemyEndAllPursuit
+.enemyEvaluateEndAllPursuit
 {
     \ if (endPursuitCounter == 0) return
     LDA endPursuitCounter : BEQ rts_14
@@ -71,7 +71,17 @@
     \ if (--endPursuitCounter != 0) return
     DEC endPursuitCounter : BNE rts_14
 
-    \ end all enemy pursuit
+    \ fall through to enemyEndAllPursuit
+}
+
+\
+\ enemyEndAllPursuit
+\
+\ end all enemy pursuit
+\
+.enemyEndAllPursuit
+{
+    \ end all enemy pursuits
     LDX enemyCount
     .loop
         LDA objectType, X : BPL skip2
@@ -83,7 +93,10 @@
         DEX
         BNE loop
 
-    \ silence the sound effect
+    \ end all pursuit
+    STY endPursuitCounter \ = 0
+    
+    \ silence the pursuit sound effect
     JMP silencePursuitSoundEffect \ implicit RTS
 }
 
@@ -137,7 +150,7 @@
     \ evaluate whether to end all pursuit every sixteen frames
     LDA frameCount
     AND #&0F
-    BEQ enemyEndAllPursuit \ implicit RTS
+    BEQ enemyEvaluateEndAllPursuit \ implicit RTS
 
     \ evaluate what action an individual enemy should take every sixteen frames
     CMP enemyCount
@@ -1038,7 +1051,7 @@
     CMP #ANIMATE_TURN_LEFT_TO_RIGHT : BEQ then1
     CMP #ANIMATE_TURN_RIGHT_TO_LEFT : BNE endif1
     .then1
-        JSR roundFourObjectPosition \ implicit RTS
+        JMP roundFourObjectPosition \ implicit RTS
     .endif1
     RTS
 
