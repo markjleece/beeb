@@ -48,19 +48,13 @@ AND_OPCODE = &29 \ AND immediate
         \ Play sample (invoked 8000 times a second)
         \
 
-        \ mark interrupt as handled
-        LDA &FE64
-
-        \ save Y
-        TYA : PHA
-
         \ set data direction register A (write &FF to &FE43)
-        LDY #&FF
-        STY &FE43
+        LDA #&FF
+        STA &FE43
         
         \ load sample (amplitude will be in high or low nibble)
-        INY \ Y = 0
-        LDA (pcmDataAddr), Y
+        .^pcmDataMinusOne
+        LDA &FFFF
 
         \ extract low or high nibble E.g. 'A &= 0xF' or 'A >>= 4'
         .^irq_inst1 NOP : NOP : NOP : NOP
@@ -72,17 +66,18 @@ AND_OPCODE = &29 \ AND immediate
         STA &FE4F
 
         \ output register B, prepping write by setting chip write enable pin low (write 0 to &FE40)
-        STY &FE40
+        LDA #0
+        STA &FE40
         
         \ note: we need to keep the write enable line low for 8 us (16 cycles)
 
         \ increment pcmDataAddr
-        INC pcmDataAddr \ 5 cycles
-        BNE skip        \ 3 cycles (branch)
-            INC pcmDataAddr+1
+        INC pcmDataMinusOne+1 \ 6 cycles
+        BNE skip              \ 3 cycles (branch)
+            INC pcmDataMinusOne+2
 
             \ have we reached the end of the first half or second half?
-            LDA pcmDataAddr+1
+            LDA pcmDataMinusOne+2
             .^irq_inst2 CMP #0
             BNE skip
 
@@ -96,8 +91,8 @@ AND_OPCODE = &29 \ AND immediate
                 STA irq_inst1+3
 
                 \ reset pcmDataAddr
-                .^irq_inst3 LDA #0 : STA pcmDataAddr
-                .^irq_inst4 LDA #0 : STA pcmDataAddr+1
+                .^irq_inst3 LDA #0 : STA pcmDataMinusOne+1
+                .^irq_inst4 LDA #0 : STA pcmDataMinusOne+2
 
                 BNE endif \ always branch
             .else
@@ -106,8 +101,8 @@ AND_OPCODE = &29 \ AND immediate
             .endif
         .skip
 
-        \ restore Y
-        PLA : TAY   \ 6 cycles
+        \ mark interrupt as handled 
+        LDA &FE64   \ 4 cycles
 
         \ complete write by setting chip write pin high (write 8 to &FE40)
         LDA #8      \ 2 cycles
@@ -141,7 +136,7 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ sample_play(A, Y)
+\ playSample(A, Y)
 \
 \ plays a sample
 \
@@ -149,7 +144,7 @@ AND_OPCODE = &29 \ AND immediate
 \   Accumulator     primarySamplesROMSEL or secondarySamplesROMSEL
 \   Y register      SAMPLE_DALEK_EXTERMINATE, SAMPLE_DALEK_GROAN, SAMPLE_DALEK_WEAPON, SAMPLE_AFFIRMATIVE
 \
-.sample_play
+.playSample
 {
     SEI \ disable interrupts
 
@@ -158,8 +153,8 @@ AND_OPCODE = &29 \ AND immediate
 
     \ rewrite IRQ instructions to play first half of sample
     LDA pcmDataEndAddrHiTbl, Y : STA irq_inst2+1
-    LDA pcmDataStartAddrLoTbl, Y : STA irq_inst3+1 : STA pcmDataAddr \ also set pcmDataAddr
-    LDA pcmDataStartAddrHiTbl, Y : STA irq_inst4+1  : STA pcmDataAddr+1
+    LDA pcmDataStartAddrLoTbl, Y : STA irq_inst3+1 : STA pcmDataMinusOne+1 \ also set pcmDataAddr
+    LDA pcmDataStartAddrHiTbl, Y : STA irq_inst4+1  : STA pcmDataMinusOne+2
 
     \ rewrite IRQ instructions to extract low nibbles
     LDA #AND_OPCODE : STA irq_inst1+0 : STA irq_inst1+2
@@ -211,8 +206,7 @@ AND_OPCODE = &29 \ AND immediate
 .sample_levelStart
 {
     LDY #SAMPLE_K9_INSUFFICIENT_DATA
-    LDA secondarySamplesROMSEL
-    BNE sample_play \ implicit RTS
+    BNE playSecondarySample \ implicit RTS
 }
 
 \
@@ -223,8 +217,7 @@ AND_OPCODE = &29 \ AND immediate
 .sample_enemyDestroyed
 {
     LDY #SAMPLE_K9_AFFIRMATIVE
-    LDA secondarySamplesROMSEL
-    BNE sample_play \ implicit RTS
+    BNE playSecondarySample \ implicit RTS
 }
 
 \
@@ -235,8 +228,20 @@ AND_OPCODE = &29 \ AND immediate
 .sample_levelComplete
 {
     LDY #SAMPLE_TARDIS_DOOR
+
+    \ fall through`
+}
+
+\
+\ playSecondarySample(Y register)
+\
+\ params:
+\  Y Register   SAMPLE_K9_INSUFFICIENT_DATA, SAMPLE_K9_AFFIRMATIVE, SAMPLE_TARDIS_DOOR
+\
+.playSecondarySample
+{
     LDA secondarySamplesROMSEL
-    BNE sample_play \ implicit RTS
+    BNE playSample \ implicit RTS
 }
 
 \
@@ -256,8 +261,7 @@ AND_OPCODE = &29 \ AND immediate
 
         \ play sample
         LDY #SAMPLE_DALEK_GROAN
-        LDA primarySamplesROMSEL
-        BNE sample_play \ implicit RTS
+        BNE playPrimarySample \ implicit RTS
 }
 
 \
@@ -268,8 +272,7 @@ AND_OPCODE = &29 \ AND immediate
 .sample_weaponFired
 {
     LDY #SAMPLE_DALEK_WEAPON
-    LDA primarySamplesROMSEL
-    BNE sample_play \ implicit RTS
+    BNE playPrimarySample \ implicit RTS
 }
 
 \
@@ -299,8 +302,20 @@ AND_OPCODE = &29 \ AND immediate
 .sample_beginPursuit
 {
     LDY #SAMPLE_DALEK_EXTERMINATE
+
+    \ fall through to playPrimarySample
+}
+
+\
+\ playPrimarySample(Y register)
+\
+\ params:
+\  Y Register  SAMPLE_DALEK_EXTERMINATE, SAMPLE_DALEK_WEAPON, SAMPLE_DALEK_GROAN
+\
+.playPrimarySample
+{
     LDA primarySamplesROMSEL
-    BNE sample_play \ implicit RTS
+    BNE playSample \ implicit RTS
 }
 
 \ end file

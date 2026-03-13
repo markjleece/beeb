@@ -483,7 +483,6 @@ ORG 0
 \ persistent data (values persist across frames)
 .zeroMemory32               SKIP 32 \ 32-byte zero memory (located here to catch errant writes)
 .mosIRQ1V                   SKIP 2  \ MOS IRQ vector
-.pcmDataAddr                SKIP 2  \ PCM data address
 .scrnAddr                   SKIP 2  \ top left screen address
 .horzTileCount              SKIP 1  \ horizontal tile count
 .godMode                    SKIP 1  \ see comment at top of file
