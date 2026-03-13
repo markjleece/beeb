@@ -1322,13 +1322,8 @@ INCLUDE "utils.6502"
 \
 .setLevelPalette
 {
-    LDY #15
-    .loop
-        LDA levelPalette, Y
-        STA &FE21
-        DEY
-        BPL loop
-    RTS
+    LDY #0
+    BEQ setPalette
 }
 
 \
@@ -1336,14 +1331,8 @@ INCLUDE "utils.6502"
 \
 .setBlackPalette
 {
-    LDY #15
-    .loop
-        LDA levelPalette, Y
-        ORA #7 \ make color black
-        STA &FE21
-        DEY
-        BPL loop
-    RTS
+    LDY #1
+    BNE setPalette
 }
 
 \
@@ -1351,14 +1340,40 @@ INCLUDE "utils.6502"
 \
 .setInvertedLevelPalette
 {
+    LDY #2
+
+    \ fall through to setPalette
+}
+
+\
+\ setPalette(Y register)
+\
+\ params:
+\   Y Register  
+\       0 = level palette
+\       1 = black palette, 
+\       2 = inverted level palette
+\
+\ note that carry flag is cleared
+\
+.setPalette
+{
+    LDA paletteOpTbl, Y : STA paletteOp
+    CLC
     LDY #15
     .loop
         LDA levelPalette, Y
-        EOR #7 \ invert color
+        .paletteOp
+        ORA #7
         STA &FE21
         DEY
         BPL loop
     RTS
+
+.paletteOpTbl
+    EQUB &B0 \ BCS
+    EQUB &09 \ ORA
+    EQUB &49 \ EOR
 }
 
 \
