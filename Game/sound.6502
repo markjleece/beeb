@@ -338,6 +338,20 @@
 }
 
 \
+\ moveSoundToggle
+\
+\ toggle move sound effect volume
+\
+.moveSoundToggle
+{
+    soundEffectVolumeAddr = soundEffects + SOUND_EFFECT_MOVE + 1
+    LDA soundEffectVolumeAddr
+    EOR #&FE
+    STA soundEffectVolumeAddr
+    RTS
+}
+
+\
 \ teleportSoundEffect
 \
 \ sound teleport sound effect
