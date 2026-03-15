@@ -104,7 +104,10 @@ namespace BMPConverter
 
                         data = ConvertBMPFile(folderPath + "gamebar.bmp", spriteCount: 1, spriteWidth: 112, spriteHeight: 8, palette);
                         fs.Write(data, 0, data.Length);
+
+                        Console.WriteLine($"Level {level} BMP files successfully converted. Created altas file: {outputFileName}");
                     }
+
                 }
             }
             catch (Exception e)

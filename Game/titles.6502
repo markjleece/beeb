@@ -221,8 +221,10 @@ INCBIN "data\instructions.bin"
         BNE loop
     STA 0
 
-    \ set level
-    LDA #1 : STA level
+    \ set level & startup
+    LDA #1
+    STA level
+    STA startup
 
     \ set god mode (disabled)
     LDA #&80 : STA godMode
@@ -402,13 +404,28 @@ ASSERT (HI(P%) > &1C) \ ensure populateSidewaysRAM is assembled after page &17 a
     \ set file qualifier
     STX cmdLoadPCMData+8
 
+    \ first copy lasered atlas to sideways RAM. We need to do 
+    \ this here because PCM data will overwrite the atlas data
+    JSR selectROM
+
+    LDA #LO(levelLaseredEnemyAtlasLoaded) : STA srcAddr
+    LDA #HI(levelLaseredEnemyAtlasLoaded) : STA srcAddr+1
+    
+    LDA #LO(laseredEnemyAtlas) : STA dstAddr
+    LDA #HI(laseredEnemyAtlas) : STA dstAddr+1
+    
+    LDX #LO(LASERED_EMEMY_ATLAS_SIZE)
+    LDY #HI(LASERED_EMEMY_ATLAS_SIZE)
+    
+    JSR memcpy
+
     \ switch to DFS
     JSR selectDFS
 
     \ save DFS ROM selector
     LDA &F4 : STA dfsROMSEL
 
-    \ load pcm1..pcm5 files into sideways RAM
+    \ load pcm1..pcm6 files into sideways RAM
     LDA #LO(&8000) : STA dstAddr
     LDA #HI(&8000) : STA dstAddr+1
 
@@ -443,7 +460,7 @@ ASSERT (HI(P%) > &1C) \ ensure populateSidewaysRAM is assembled after page &17 a
         \ loop while index < '6'
         INC index
         LDA index
-        CMP #'6'
+        CMP #'7'
         BNE loop
 
     \ release DFS

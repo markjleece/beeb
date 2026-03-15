@@ -1420,13 +1420,48 @@ ENDIF
 
     TXA : PHA \ save X register
 
-    \ srcBaseAddr = spriteAddrTbl[index]
+    \
+    \ srcBaseAddr = spriteAddrTbl[index] or laseredSpriteAddrTblLo[index]
+    \ type = render lasered path
+    \
     LDY objectSpriteIndex, X
     STY index \ --> sprite index
-    LDA spriteAddrTblLo, Y : STA srcBaseAddr
-    LDA spriteAddrTblHi, Y : STA srcBaseAddr+1
-    
-    LDY #0 \ --> zero
+
+    \ is object lasered?
+    LDA objectState, X
+    AND #OBJECT_STATE_FLAGS_LASERED
+    BEQ else_2
+        \ replace lasered flag with redraw flag, so sprite is rendered normally the next frame
+        LDA objectState, X
+        AND #LO(NOT(OBJECT_STATE_FLAGS_LASERED))
+        ORA #OBJECT_STATE_FLAGS_REDRAW
+        STA objectState, X
+
+        \ use lazered sprites in sideways RAM?
+        LDA primarySamplesROMSEL
+        ORA secondarySamplesROMSEL
+        BEQ endif_3
+            \ srcBaseAddr = laseredSpriteAddrTb[index]
+            LDA laseredSpriteAddrTblLo, Y : STA srcBaseAddr
+            LDA laseredSpriteAddrTblHi, Y : STA srcBaseAddr+1
+            
+            LDY #0 \ --> zero
+            STY type \ <-- nornal draw path (faster)
+            BEQ endif_2
+        .endif_3
+
+        LDA #1 \ lasered draw path (slower)
+
+        \ fall through
+    .else_2
+        STA type \ <-- draw path (normal or lasered)
+
+        \ srcBaseAddr = spriteAddrTbl[index]
+        LDA spriteAddrTblLo, Y : STA srcBaseAddr
+        LDA spriteAddrTblHi, Y : STA srcBaseAddr+1
+
+        LDY #0 \ --> zero
+    .endif_2
 
     \ clip left edge?
     LDA leftHi : BPL endif_6
@@ -1575,17 +1610,6 @@ ENDIF
     LDA dstAddr : STA dstBaseAddr
     LDA dstAddr+1 : STA dstBaseAddr+1
 
-    \ is lasered flag set?
-    LDA objectState, X
-    AND #OBJECT_STATE_FLAGS_LASERED : BEQ endif_11
-        \ replace lasered flag with redraw flag, so sprite is rendered normally the next frame
-        LDA objectState, X
-        AND #LO(NOT(OBJECT_STATE_FLAGS_LASERED))
-        ORA #OBJECT_STATE_FLAGS_REDRAW
-        STA objectState, X
-    .endif_11
-    STA temp \ --> 'lasered'
-
     \
     \ calculate headCount, 'innerHeadCount' (X register), and 'tailCount' (Y register)
     \
@@ -1606,7 +1630,7 @@ ENDIF
         \ 'tailCount' (Y register) = 'full height' % 8
         TXA \ <-- 'full height'
         AND #7
-        TAY \ -> 'tailCount'
+        TAY \ --> 'tailCount'
 
         \ 'innerHeadCount' (X register) = 8 - (top % 8) - eraseAbove
         LDA #8
@@ -1627,11 +1651,11 @@ ENDIF
         SEC
         SBC eraseAbove
         SBC eraseBelow
-        TAY \ -> 'tailCount'
+        TAY \ --> 'tailCount'
     .endif_12
 
     \ draw lasered effect?
-    LDA temp : BEQ endif_13
+    LDA type : BEQ endif_13
         JMP drawLaseredObject \ implicit RTS
     .endif_13
 

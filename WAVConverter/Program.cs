@@ -58,9 +58,10 @@ namespace WAVConverter
             WriteData(startIndices, endIndices, pcmDataSamples, outputFolder + "pcm_secondary.dat");
 
             // write address tables (copied to sound.6502)
-            WriteAddressTable("pcmDataStartAddrLoTbl", startIndices, (int value) => LO(value));
-            WriteAddressTable("pcmDataStartAddrHiTbl", startIndices, (int value) => HI(value));
-            WriteAddressTable("pcmDataEndAddrHiTbl  ", endIndices, (int value) => HI(value));
+            Console.WriteLine("Paste following lines into relocateSampleParams at the bottom of level.6502");
+            WriteAddressTable("pcmDataStartAddrLoTblLocal", startIndices, (int value) => LO(value));
+            WriteAddressTable("pcmDataStartAddrHiTblLocal", startIndices, (int value) => HI(value));
+            WriteAddressTable("pcmDataEndAddrHiTblLocal  ", endIndices, (int value) => HI(value));
 
             // create 4-bit resolution WAV files for comparison
             // ConvertWAVtoWAV(inputFolder + "dalek_exterminate.wav", inputFolder + "dalek_exterminate_4bit.wav");

@@ -64,6 +64,9 @@
     JSR relocateLevelData
     JSR relocateDrawObjectJumpTbl
     JSR setCustomScreenMode
+    JSR initializeSidewaysRam
+    JSR relocateSampleParams
+    LDA #0 : STA startup
     JMP showLevel \ implicit RTS
 }
 
@@ -710,8 +713,8 @@
     \
 
     \ first enemy sprite at enemyAtlas1
-    LDA #LO(levelSpriteDataLoaded) : STA srcAddr
-    LDA #HI(levelSpriteDataLoaded) : STA srcAddr+1
+    LDA #LO(levelAltasLoaded) : STA srcAddr
+    LDA #HI(levelAltasLoaded) : STA srcAddr+1
 
     LDA #LO(enemyAtlas1) : STA dstAddr
     LDA #HI(enemyAtlas1) : STA dstAddr+1
@@ -722,7 +725,7 @@
     JSR memcpy
 
     \ next enemy sprite at enemyAtlas2
-    srcAddr1 = levelSpriteDataLoaded + ENEMY_SPRITE_SIZE
+    srcAddr1 = levelAltasLoaded + ENEMY_SPRITE_SIZE
 
     LDA #LO(srcAddr1) : STA srcAddr
     LDA #HI(srcAddr1) : STA srcAddr+1
@@ -1298,6 +1301,166 @@
     STA &F4 : STA &FE30 \ ROMSEL
     CLI
     RTS
+}
+
+\
+\ initializeSidewaysRam()
+\
+ASSERT (HI(P%) > &1C) \ ensure initializeSidewaysRam is assembled after page &17 and &1C
+
+.initializeSidewaysRam
+{
+IF DEBUG_DISABLE_SIDEWAYS_RAM != 0
+    RTS
+    SKIP 32 \ ensure disabled routine uses same code space
+ELSE
+    \ relocate lasered enemy atlas to sideways RAM, but not
+    \ during startup as the atlas was relocated in titles.6502
+    LDA startup
+    BNE skip
+        LDA primarySamplesROMSEL : BEQ skip1
+            JSR relocateLaseredEnemyAtlas
+        .skip1
+
+        LDA secondarySamplesROMSEL : BEQ skip2
+            JSR relocateLaseredEnemyAtlas
+        .skip2
+    .skip
+
+    \ relocate lasered sprite address table
+    LDA primarySamplesROMSEL : BEQ skip3
+        JSR relocateLaseredSpriteAddressTbl
+    .skip3
+
+    LDA secondarySamplesROMSEL : BEQ skip4
+        JSR relocateLaseredSpriteAddressTbl
+    .skip4
+
+    RTS
+ENDIF
+}
+
+\
+\ loadLaseredSpriteData(Accumulator)
+\
+\ params:
+\   Accumulator ROM selector
+\
+.relocateLaseredEnemyAtlas
+{
+    JSR selectROM
+
+    LDA #LO(levelLaseredEnemyAtlasLoaded) : STA srcAddr
+    LDA #HI(levelLaseredEnemyAtlasLoaded) : STA srcAddr+1
+
+    LDA #LO(laseredEnemyAtlas) : STA dstAddr
+    LDA #HI(laseredEnemyAtlas) : STA dstAddr+1
+
+    LDX #LO(LASERED_EMEMY_ATLAS_SIZE)
+    LDY #HI(LASERED_EMEMY_ATLAS_SIZE)
+
+    JMP memcpy \ implcit RTS
+}
+
+\
+\ populateSpriteAddressTbl(Accumulator)
+\
+\ params:
+\   Accumulator ROM selector
+\
+.relocateLaseredSpriteAddressTbl
+{
+    JSR selectROM
+
+    LDA #LO(spriteAddrTblLoLocal) : STA srcAddr
+    LDA #HI(spriteAddrTblLoLocal) : STA srcAddr+1
+
+    LDA #LO(laseredSpriteAddrTblLo) : STA dstAddr
+    LDA #HI(laseredSpriteAddrTblLo) : STA dstAddr+1
+
+    LDX #LO(LASERED_ENEMY_SPRITE_COUNT)
+    LDY #HI(LASERED_ENEMY_SPRITE_COUNT)
+
+    JSR memcpy
+
+    LDA #LO(spriteAddrTblHiLocal) : STA srcAddr
+    LDA #HI(spriteAddrTblHiLocal) : STA srcAddr+1
+
+    LDA #LO(laseredSpriteAddrTblHi) : STA dstAddr
+    LDA #HI(laseredSpriteAddrTblHi) : STA dstAddr+1
+
+    LDX #LO(LASERED_ENEMY_SPRITE_COUNT)
+    LDY #HI(LASERED_ENEMY_SPRITE_COUNT)
+
+    JMP memcpy \ implicit RTS
+
+.spriteAddrTblLoLocal
+    FOR addr, laseredEnemyAtlas, laseredEnemyAtlas + ((LASERED_ENEMY_SPRITE_COUNT - 1) * ENEMY_SPRITE_SIZE), ENEMY_SPRITE_SIZE
+        EQUB LO(addr)
+    NEXT
+
+.spriteAddrTblHiLocal
+    FOR addr, laseredEnemyAtlas, laseredEnemyAtlas + ((LASERED_ENEMY_SPRITE_COUNT - 1) * ENEMY_SPRITE_SIZE), ENEMY_SPRITE_SIZE
+        EQUB HI(addr)
+    NEXT
+}
+
+\
+\ relocateSampleParams
+\
+\ we relocate the params on top of the drawLaserObject routine
+\
+
+pcmDataStartAddrLoTbl = drawLaseredObject
+pcmDataStartAddrHiTbl = drawLaseredObject+6
+pcmDataEndAddrHiTbl = drawLaseredObject+12
+
+.relocateSampleParams
+{
+    LDA primarySamplesROMSEL
+    ORA secondarySamplesROMSEL
+    BEQ return \ no sideways RAM, so no samples
+
+    LDA #LO(pcmDataStartAddrLoTblLocal) : STA srcAddr
+    LDA #HI(pcmDataStartAddrLoTblLocal) : STA srcAddr+1
+
+    LDA #LO(pcmDataStartAddrLoTbl) : STA dstAddr
+    LDA #HI(pcmDataStartAddrLoTbl) : STA dstAddr+1
+
+    LDX #LO(6)
+    LDY #HI(6)
+
+    JSR memcpy
+
+    LDA #LO(pcmDataStartAddrHiTblLocal) : STA srcAddr
+    LDA #HI(pcmDataStartAddrHiTblLocal) : STA srcAddr+1
+
+    LDA #LO(pcmDataStartAddrHiTbl) : STA dstAddr
+    LDA #HI(pcmDataStartAddrHiTbl) : STA dstAddr+1
+
+    LDX #LO(6)
+    LDY #HI(6)
+
+    JSR memcpy
+
+    LDA #LO(pcmDataEndAddrHiTblLocal) : STA srcAddr
+    LDA #HI(pcmDataEndAddrHiTblLocal) : STA srcAddr+1
+
+    LDA #LO(pcmDataEndAddrHiTbl) : STA dstAddr
+    LDA #HI(pcmDataEndAddrHiTbl) : STA dstAddr+1
+
+    LDX #LO(6)
+    LDY #HI(6)
+
+    JSR memcpy 
+
+    .return
+    RTS
+
+\ pasted from WAVConverter console app
+.pcmDataStartAddrLoTblLocal EQUB &9D, &66, &82, &26, &96, &C5
+.pcmDataStartAddrHiTblLocal EQUB &A1, &95, &80, &AC, &9E, &81
+.pcmDataEndAddrHiTblLocal   EQUB &B6, &A1, &95, &B6, &AC, &9E
 }
 
 \ end file
