@@ -140,8 +140,9 @@ INCBIN "data\titles.bin"
 
     \ wait for space key release
     .loop1
-        LDA #INTERNAL_KEY_SPACE
-        JSR scanKey
+        LDX #SCAN_KEYS_SPACE
+        JSR scanKeys
+        LDA keyTbl + KEY_SPACE
         BMI loop1
 
     \ toggle key bindings every 1/2 second
@@ -151,8 +152,9 @@ INCBIN "data\titles.bin"
         JSR toggleControlKeys
 
         \ loop until space key pressed
-        LDA #INTERNAL_KEY_SPACE
-        JSR scanKey
+        LDX #SCAN_KEYS_SPACE
+        JSR scanKeys
+        LDA keyTbl + KEY_SPACE
         BPL loop2
 
     \ reset frameCount        
