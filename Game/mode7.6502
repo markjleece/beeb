@@ -98,16 +98,13 @@
 {
     \ wait for release
     .releaseLoop
-        LDX #SCAN_KEYS_SPACE
-        JSR scanKeys
-        LDA keyTbl + KEY_SPACE
+        LDA #&62 \ space key scan code
+        JSR scanKey
         BMI releaseLoop
 
     \ wait for press
     .pressLoop
-        LDX #SCAN_KEYS_SPACE
-        JSR scanKeys
-        LDA keyTbl + KEY_SPACE
+        JSR scanKey
         BPL pressLoop
     RTS
 }

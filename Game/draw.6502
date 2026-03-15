@@ -646,6 +646,99 @@ ENDIF
 }
 
 \
+\ drawTile(Accumulator, leftLo, topLo)
+\
+\ draws a tile at screen location [leftLo, topLo]. The coordinates must lie
+\ within the visible screen but can lie anywhere within the tile.
+\
+\ params:
+\   accumulator     0 = draw normal, -1 = draw with lasered effect
+\   leftLo          Screen X coordinate (0..255)
+\   topLo           Screen Y coordinate (0..255)
+\
+\ modifies: 
+\   X, Y, index, dstAddr, srcAddr, leftLo, topLo, stride
+\
+.drawTile
+{
+    STA index \ --> lasered
+
+    \ get tile grid address at leftLo, topLo
+    JSR getScreenTileGridAddr
+
+    \ get screen address of tile
+    JSR getTileScreenAddr
+
+    \ get tile source address
+    LDA #0 : STA offset
+    JSR getTileSrcAddr
+    
+    \ stride = 0 or 32
+    BEQ skip1
+        LDA #32
+    .skip1
+    STA stride 
+
+    \ update code to render regular or lasered
+    LDA #LO(innerLoop_regular)
+    LDY #HI(innerLoop_regular)
+    BIT index : BPL skip2
+        LDA #LO(innerLoop_lasered)
+        LDY #HI(innerLoop_lasered)
+    .skip2
+    STA innerLoop+1
+    STY innerLoop+2
+
+    \ render the tile
+    LDX #2
+    .outerLoop
+
+        \ draw character row
+        LDY #31
+        .innerLoop JSR &FFFF
+
+        \ terminate loop?
+        DEX
+        BEQ return
+
+        \ srcAddr += stride
+        LDA srcAddr
+        CLC
+        ADC stride
+        STA srcAddr
+        BCC nocarry
+            INC srcAddr+1
+        .nocarry
+
+        \ dstAddr += 512
+        JSR dstAddr_add_512
+
+        BNE outerLoop
+
+    .return
+    RTS
+
+.innerLoop_regular
+    .innerLoop1
+        LDA (srcAddr), Y
+        STA (dstAddr), Y
+        DEY
+        BPL innerLoop1
+    RTS
+
+.innerLoop_lasered
+    .innerLoop2
+        LDA (srcAddr), Y
+        STA flags
+        LSR A : LSR A : LSR A : LSR A
+        AND flags
+        STA (dstAddr), Y
+        DEY
+        BPL innerLoop2
+    RTS
+}
+
+\
 \ laserHitTest(leftLo, topLo)
 \
 \ params:
@@ -950,104 +1043,11 @@ ENDIF
         LDA laseredTileLeft : STA leftLo
         LDA laseredTileTop : STA topLo
         LDA #0 : STA laseredTileRedraw
-        BEQ drawTile \ implicit RTS
+        JMP drawTile \ implicit RTS
     .else
         \ restore last pixels
         LDA laserLastPixels
         STA (dstAddr), Y
-    RTS
-}
-
-\
-\ drawTile(Accumulator, leftLo, topLo)
-\
-\ draws a tile at screen location [leftLo, topLo]. The coordinates must lie
-\ within the visible screen but can lie anywhere within the tile.
-\
-\ params:
-\   accumulator     0 = draw normal, -1 = draw with lasered effect
-\   leftLo          Screen X coordinate (0..255)
-\   topLo           Screen Y coordinate (0..255)
-\
-\ modifies: 
-\   X, Y, index, dstAddr, srcAddr, leftLo, topLo, stride
-\
-.drawTile
-{
-    STA index \ --> lasered
-
-    \ get tile grid address at leftLo, topLo
-    JSR getScreenTileGridAddr
-
-    \ get screen address of tile
-    JSR getTileScreenAddr
-
-    \ get tile source address
-    LDA #0 : STA offset
-    JSR getTileSrcAddr
-    
-    \ stride = 0 or 32
-    BEQ skip1
-        LDA #32
-    .skip1
-    STA stride 
-
-    \ update code to render regular or lasered
-    LDA #LO(innerLoop_regular)
-    LDY #HI(innerLoop_regular)
-    BIT index : BPL skip2
-        LDA #LO(innerLoop_lasered)
-        LDY #HI(innerLoop_lasered)
-    .skip2
-    STA innerLoop+1
-    STY innerLoop+2
-
-    \ render the tile
-    LDX #2
-    .outerLoop
-
-        \ draw character row
-        LDY #31
-        .innerLoop JSR &FFFF
-
-        \ terminate loop?
-        DEX
-        BEQ return
-
-        \ srcAddr += stride
-        LDA srcAddr
-        CLC
-        ADC stride
-        STA srcAddr
-        BCC nocarry
-            INC srcAddr+1
-        .nocarry
-
-        \ dstAddr += 512
-        JSR dstAddr_add_512
-
-        BNE outerLoop
-
-    .return
-    RTS
-
-.innerLoop_regular
-    .innerLoop1
-        LDA (srcAddr), Y
-        STA (dstAddr), Y
-        DEY
-        BPL innerLoop1
-    RTS
-
-.innerLoop_lasered
-    .innerLoop2
-        LDA (srcAddr), Y
-        STA flags
-        LSR A : LSR A : LSR A : LSR A
-        AND flags
-        STA (dstAddr), Y
-        DEY
-        BPL innerLoop2
     RTS
 }
 
@@ -1082,7 +1082,7 @@ ENDIF
     LDA leftHi
     SBC scrnLeftHi
     BEQ skip_1
-    BPL return \ fully clipped (left > 255)
+    BPL fullyClipped \ if (left > 255)
     .skip_1
     STA leftHi
 
@@ -1094,7 +1094,7 @@ ENDIF
     LDA topHi
     SBC scrnTopHi
     BEQ skip_2
-    BPL return \ fully clipped (top > 255)
+    BPL fullyClipped \ if (top > 255)
     .skip_2
     STA topHi
 
@@ -1106,7 +1106,7 @@ ENDIF
 
     LDA leftHi
     ADC #0
-    BMI return \ fully clipped (right < 0)
+    BMI fullyClipped \ if (right < 0)
     STA rightHi
 
     \ bottom = top + height - 1
@@ -1117,13 +1117,15 @@ ENDIF
 
     LDA topHi
     ADC #0
-    BMI return \ fully clipped (bottom < 0)
+    BMI fullyClipped \ if (bottom < 0)
     STA bottomHi
 
-    \ mark as visible
+    \ success!
     LDA #0
+    RTS
 
-    .return
+    .fullyClipped
+    LDA #1
     RTS
 }
 
@@ -1209,133 +1211,6 @@ ENDIF
 }
 
 \
-\ drawEnemyHealthBar(X register)
-\
-\ draws the enemy health bar within the appropriate sprite
-\
-\ params:
-\   X register      Enemy index
-\
-.drawEnemyHealthBar
-{
-    \ use srcAddr to store the left and right pixel quads
-    leftPixelQuad = srcAddr
-    rightPixelQuad = srcAddr+1
-
-    \ check if health is not full or empty
-    LDA objectState, X
-    AND #ENEMY_STATE_HEALTH_MASK : BEQ rts_5
-    CMP #7 : BEQ rts_5
-    STA temp \ --> health
-
-    \ left = objectX & &FFFC
-    LDA objectXHi, X : STA leftHi
-    LDA objectXLo, X : AND #&FC : STA leftLo
-
-    \ top = objectY
-    LDA objectYHi, X : STA topHi
-    LDA objectYLo, X : STA topLo
-
-    \ offset = top MOD 8
-    AND #7
-    STA offset
-
-    \ look up sprite health bar position and offset
-    LDY objectSpriteIndex, X
-    LDA spriteHealthBarTbl, Y
-    TAX \ --> health bar position & offset 
-    ASL A \ top bit denotes offset
-    BCC skip1
-        \ left += 16
-        LDA leftLo
-        ADC #15
-        STA leftLo
-        BCC nocarry
-            INC leftHi
-        .nocarry
-    .skip1
-
-    \ width, height, widthMinusOne, heightMinusOne (used by convertToScreenSpace)
-    LDY #8 : STY width
-    DEY : STY widthMinusOne
-    LDY #1 : STY height
-    DEY : STY heightMinusOne
-
-    \ convert to screen space, performing broad clipping
-    JSR convertToScreenSpace
-    BNE rts_5 \ fully clipped
-
-    \ lookup left and right pixels, which we store in leftPixelQuad and rightPixelQuad
-    LDA temp \ <-- health
-    SEC
-    SBC #1
-    AND #&FE \ DIV 2 MUL 2
-    STA temp \ --> (health - 1) DIV 2 MUL 2
-
-    TXA \ <-- health bar position & offset
-    AND #&7F \ mask out offset
-    CLC
-    ADC temp
-    TAY
-    LDA healthBarAtlas, Y
-    STA leftPixelQuad
-    LDA healthBarAtlas+1, Y
-    STA rightPixelQuad
-
-    \ clip right edge
-    LDY #&FF
-    LDA rightHi : BEQ endif_6
-        STY rightPixelQuad \ mark right pixels clipped
-    .endif_6
-
-    \ clip left edge
-    LDA leftHi : BPL endif_7
-        STY leftPixelQuad \ mark left pixels clipped
-        INY
-        STY leftLo \ left = 0
-    .endif_7
-
-    \ calculate destination screen address
-    JSR calcScreenDstAddr
-
-    \ dstAddr += (topLo MOD 8)
-    LDA dstAddr
-    CLC
-    ADC offset
-    STA dstAddr
-
-    \
-    \ finally, render the left and right pixels
-    \
-
-    \ write left pixels, if not clipped
-    LDY #0
-    LDA leftPixelQuad
-    CMP #&FF : BEQ skip2
-        STA (dstAddr), Y
-    .skip2
-
-    \ dstAddr += 8, if neither left or right pixels are clipped
-    ORA rightPixelQuad
-    CMP #&FF : BEQ skip3
-        JSR dstAddr_add_8
-    .skip3
-
-    \ write right pixels, if not clipped
-    LDA rightPixelQuad
-    CMP #&FF : BEQ skip5
-        STA (dstAddr), Y
-    .skip5
-
-    \ fall through to rts_6
-}
-
-.rts_6
-{
-    RTS
-}
-
-\
 \ drawObject(X register)
 \ 
 \ draws an object to the screen (clipped if needed).  The routine draws the object column by column. The 
@@ -1412,7 +1287,7 @@ ENDIF
     \
     
     JSR convertToScreenSpace
-    BNE rts_6 \ fully clipped
+    BNE rts_5 \ fully clipped
 
     \
     \ at this point we know we are going to render something
@@ -1903,6 +1778,137 @@ ENDIF
 
 .return
     PLA : TAX \ restore X register
+
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_6
+{
+    RTS
+}
+
+\
+\ drawEnemyHealthBar(X register)
+\
+\ draws the enemy health bar within the appropriate sprite
+\
+\ params:
+\   X register      Enemy index
+\
+.drawEnemyHealthBar
+{
+    \ use srcAddr to store the left and right pixel quads
+    leftPixelQuad = srcAddr
+    rightPixelQuad = srcAddr+1
+
+    \ check if health is not full or empty
+    LDA objectState, X
+    AND #ENEMY_STATE_HEALTH_MASK : BEQ rts_6
+    CMP #7 : BEQ rts_6
+    STA temp \ --> health
+
+    \ left = objectX & &FFFC
+    LDA objectXHi, X : STA leftHi
+    LDA objectXLo, X : AND #&FC : STA leftLo
+
+    \ top = objectY
+    LDA objectYHi, X : STA topHi
+    LDA objectYLo, X : STA topLo
+
+    \ offset = top MOD 8
+    AND #7
+    STA offset
+
+    \ look up sprite health bar position and offset
+    LDY objectSpriteIndex, X
+    LDA spriteHealthBarTbl, Y
+    TAX \ --> health bar position & offset 
+    ASL A \ top bit denotes offset
+    BCC skip1
+        \ left += 16
+        LDA leftLo
+        ADC #15
+        STA leftLo
+        BCC nocarry
+            INC leftHi
+        .nocarry
+    .skip1
+
+    \ width, height, widthMinusOne, heightMinusOne (used by convertToScreenSpace)
+    LDY #8 : STY width
+    DEY : STY widthMinusOne
+    LDY #1 : STY height
+    DEY : STY heightMinusOne
+
+    \ convert to screen space, performing broad clipping
+    JSR convertToScreenSpace
+    BNE rts_6 \ fully clipped
+
+    \ lookup left and right pixels, which we store in leftPixelQuad and rightPixelQuad
+    LDA temp \ <-- health
+    SEC
+    SBC #1
+    AND #&FE \ DIV 2 MUL 2
+    STA temp \ --> (health - 1) DIV 2 MUL 2
+
+    TXA \ <-- health bar position & offset
+    AND #&7F \ mask out offset
+    CLC
+    ADC temp
+    TAY
+    LDA healthBarAtlas, Y
+    STA leftPixelQuad
+    LDA healthBarAtlas+1, Y
+    STA rightPixelQuad
+
+    \ clip right edge
+    LDY #&FF
+    LDA rightHi : BEQ endif_6
+        STY rightPixelQuad \ mark right pixels clipped
+    .endif_6
+
+    \ clip left edge
+    LDA leftHi : BPL endif_7
+        STY leftPixelQuad \ mark left pixels clipped
+        INY
+        STY leftLo \ left = 0
+    .endif_7
+
+    \ calculate destination screen address
+    JSR calcScreenDstAddr
+
+    \ dstAddr += (topLo MOD 8)
+    LDA dstAddr
+    CLC
+    ADC offset
+    STA dstAddr
+
+    \
+    \ finally, render the left and right pixels
+    \
+
+    \ write left pixels, if not clipped
+    LDY #0
+    LDA leftPixelQuad
+    CMP #&FF : BEQ skip2
+        STA (dstAddr), Y
+    .skip2
+
+    \ dstAddr += 8, if neither left or right pixels are clipped
+    ORA rightPixelQuad
+    CMP #&FF : BEQ skip3
+        JSR dstAddr_add_8
+    .skip3
+
+    \ write right pixels, if not clipped
+    LDA rightPixelQuad
+    CMP #&FF : BEQ skip5
+        STA (dstAddr), Y
+    .skip5
+
     RTS
 }
 
