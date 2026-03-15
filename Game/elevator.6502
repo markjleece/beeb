@@ -54,7 +54,7 @@
     JSR findNextElevator : BNE failure
 
     \ find elevator that passed object is on (result index returned in X)
-    JSR findObjectsElevator : TXA : BEQ failure
+    JSR findObjectsElevator : CPX #0 : BEQ failure
 
     \ check if elevator is disabled
     LDA objectState, X
@@ -326,7 +326,7 @@
     LDA objectYLo, X : AND #&0F : BNE notEnd
 
     \ check if tile at aligned position is an elevator
-    STA offsetX : STA offsetY \ = 0
+    LDA #0 : STA offsetX : STA offsetY
     JSR getObjectTileGridValue
     AND #TILE_GRID_INDEX_MASK
     TAY

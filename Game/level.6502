@@ -54,7 +54,6 @@
 {
     JSR acquireNMImemory
     JSR initializeLevelVariables
-    JSR relocateObjectExtents
     JSR initializeObjects
     JSR relocateTileAddrTbl
     JSR relocateSpriteAddrTbl
@@ -594,30 +593,6 @@
 
 .jumpTbl
     EQUB 40, 35, 30, 25, 20, 15, 10, 5, 0
-}
-
-
-\
-\ relocateObjectExtents()
-\
-\ relocate object extents table
-\
-.relocateObjectExtents
-{
-    LDA #LO(extentsTbl) : STA srcAddr
-    LDA #HI(extentsTbl) : STA srcAddr+1
-
-    LDA #LO(objectExtents) : STA dstAddr
-    LDA #HI(objectExtents) : STA dstAddr+1
-
-    LDX #LO(OBJECT_EXTENTS_SIZE)
-    LDY #HI(OBJECT_EXTENTS_SIZE)
-
-    JMP memcpy
-
-.extentsTbl
-    EQUB K9_SPRITE_WIDTH, ENEMY_SPRITE_WIDTH, ELEVATOR_SPRITE_WIDTH, DOOR_SPRITE_WIDTH
-    EQUB K9_SPRITE_HEIGHT, ENEMY_SPRITE_HEIGHT, ELEVATOR_SPRITE_HEIGHT, DOOR_SPRITE_HEIGHT
 }
 
 \

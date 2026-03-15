@@ -103,8 +103,7 @@
 \   &1090    48    Sound effects* (repurposed transient DFS memory)
 \   &10C0    32    DFS workspace
 \   &10E0    12    Sprite health bar table* (repurposed transient DFS memory)
-\   &10EC    9     Draw object jump tables* (repurposed transient DFS memory)
-\   &10F5    8     Object extents* (repurposed transient DFS memory)
+\   &10EC    20    Draw object jump tables* (repurposed transient DFS memory)
 \   &1100    7072  Program code
 \   &2CA0    768   8 K9 sprites*
 \   &2FA0    96    4 elevator sprites*
@@ -326,13 +325,13 @@ TILE_COUNT = 28
 MAX_OBJECT_COUNT = 48
 
 \ sprite sizes (fixed)
-K9_SPRITE_WIDTH = 24
-K9_SPRITE_HEIGHT = 16 
-K9_SPRITE_SIZE = K9_SPRITE_WIDTH * K9_SPRITE_HEIGHT / 4
-
 ENEMY_SPRITE_WIDTH = 24
 ENEMY_SPRITE_HEIGHT = 32
 ENEMY_SPRITE_SIZE = ENEMY_SPRITE_WIDTH * ENEMY_SPRITE_HEIGHT / 4
+
+K9_SPRITE_WIDTH = 24
+K9_SPRITE_HEIGHT = 16 
+K9_SPRITE_SIZE = K9_SPRITE_WIDTH * K9_SPRITE_HEIGHT / 4
 
 ELEVATOR_SPRITE_WIDTH = 32
 ELEVATOR_SPRITE_HEIGHT = 3
@@ -399,7 +398,6 @@ INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT = 30
 PALETTE_SIZE = 16                   \ palette size
 TILE_GRID_SIZE = 2048               \ tile grid size
 SOUND_EFFECTS_SIZE = 48             \ sound effects size
-OBJECT_EXTENTS_SIZE = 8             \ object extents
 SWITCH_PAIRINGS_SIZE = 48           \ switch pairings size
 DRAW_OBJECT_JUMP_TABLE_SIZE = 9     \ draw object jump table size
 ENEMY_HEALTH_BAR_TABLE_SIZE = 12    \ health bar table size
@@ -444,9 +442,6 @@ healthBarAtlas = &0D02                  \ 30 byte atlas (re-purposes NMI workspa
 \ sound effects location
 soundEffects = &1090                    \ 48 byte sound effect data (re-purposes DFS &1090-&10BF workspace)
 
-\ object extents
-objectExtents = &10F5                   \ 4 widths and 4 heights
-
 \ tile and sprite address table locations
 tileAddrTblLo = &0880                   \ 28 byte tile address table (low-bytes) (repurposes MOS printer buffer)
 tileAddrTblHi = &0D20                   \ 28 byte tile address table (high-bytes) (repurposes NMI workspace)
@@ -475,7 +470,7 @@ levelObjectsLoaded = &4033              \ level object descriptors (used to popu
 levelSwitchPairingsLoaded = &40F3       \ level switch pairings (relocated to switchPairings)
 
 \ drawObject jump offset table
-drawObject_jumpTbl = &10EC              \ 9 byte jump offset table (repurposes DFS &10E0-&10FF workspace)
+drawObject_jumpTbl = &10EC              \ 10 byte jump offset table (repurposes DFS &10E0-&10FF workspace)
 
 \ DFS page backup (used to store page &17 or &1C that DFS modifies)
 dfsPageBackup = &7B00
@@ -578,7 +573,6 @@ ORG 0
 .bottomHi                   SKIP 1
 .offsetX                    SKIP 1
 .offsetY                    SKIP 1
-.type                       SKIP 1
 .index                      SKIP 1
 .outerIndex                 SKIP 1
 .stride                     SKIP 1
@@ -680,7 +674,7 @@ INCLUDE "utils.6502"
         LDA #LO(VSYNC_SIGNAL_DELAY) : STA &FE44
         LDA #HI(VSYNC_SIGNAL_DELAY) : STA &FE45
 
-        \ restore accumulator, updating &FC
+         \ restore accumulator, updating &FC
         PLA : STA &FC
 
         \ just return (we don't want MOS to process SYSTEM-VIA v-sync IRQ)
@@ -722,19 +716,12 @@ INCLUDE "utils.6502"
 \
 .updateObjects
 {
-    LDX #0 : STX outerIndex
-    DEX : STX type
+    LDA #0 : STA outerIndex
     .loop
         LDX outerIndex
 
-        \ cache object extents, if the object type changes
-        LDA objectType, X
-        AND #OBJECT_TYPE_MASK
-        CMP type
-        BEQ skip
-            STA type
-            JSR cacheObjectTypeExtents
-        .skip
+        \ cache extents
+        JSR cacheObjectExtents
 
         \ JSR (frameCallbackTbl[objectFrameCallback[X]])
         LDY objectFrameCallback, X
@@ -1051,34 +1038,27 @@ INCLUDE "utils.6502"
 {
     LDA objectType, X
     AND #OBJECT_TYPE_MASK
-
-    \ fall through to cacheObjectTypeExtents
-}
-
-\
-\ cacheObjectTypeExtents(accumulator)
-\
-\ cache object's width, widthMinusOne, height, and heightMinusOne
-\
-\ params:
-\   Accumulator  Object type (OBJECT_TYPE_K9, OBJECT_TYPE_ENEMY, OBJECT_TYPE_ELEVATOR, OBJECT_TYPE_DOOR)
-\
-.cacheObjectTypeExtents
-{
     TAY
 
-    LDA objectExtents, Y
+    LDA objectTypeWidths, Y
     STA width
-    SEC
+    SEC 
     SBC #1
     STA widthMinusOne
-    
-    LDA objectExtents+4, Y
+
+    LDA objectTypeHeights, Y
     STA height
     SBC #1
     STA heightMinusOne
-    
+
     RTS
+
+.objectTypeWidths
+    EQUB K9_SPRITE_WIDTH, ENEMY_SPRITE_WIDTH, ELEVATOR_SPRITE_WIDTH, DOOR_SPRITE_WIDTH
+
+.objectTypeHeights
+    EQUB K9_SPRITE_HEIGHT, ENEMY_SPRITE_HEIGHT, ELEVATOR_SPRITE_HEIGHT, DOOR_SPRITE_HEIGHT
+
 }
 
 \
@@ -1159,7 +1139,7 @@ INCLUDE "utils.6502"
     RTS
 
 \ array holding object indices, in draw order (top to bottom)
-.^objectDrawOrder SKIP MAX_OBJECT_COUNT
+.^objectDrawOrder SKIP MAX_OBJECT_COUNT   
 }
 
 \
@@ -1532,7 +1512,7 @@ ASSERT (HI(P%) > &1C) \ ensure loadLevelFile is assembled after page &17 and &1C
 
 .loadLevelFile
 {
-    \ patch level number 'N' in file name
+    \ patch level number in file name
     CLC
     ADC #'0'
     STA cmdLoadLevel+10
@@ -1549,7 +1529,7 @@ ASSERT (HI(P%) > &1C) \ ensure loadLevelFile is assembled after page &17 and &1C
     JMP releaseDFS
 
 .cmdLoadLevel
-    EQUS "LOAD levelN", 13
+    EQUS "LOAD levelX", 13
 }
 
 \
