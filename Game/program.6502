@@ -144,33 +144,39 @@ DEBUG_DISABLE_SIDEWAYS_RAM = 0 \ disable sideways RAM (useful to speed up startu
 \ number of levels
 LEVEL_COUNT = 6 \ max supported levels is 9
 
-\ keys (keyTbl indices)
-KEY_A = 0
-KEY_D = 1
-KEY_G = 2
-KEY_O = 3
-KEY_R = 4
-KEY_S = 5
-KEY_T = 6
-KEY_W = 7
-KEY_X = 8
-KEY_Z = 9
-KEY_1 = 10
-KEY_2 = 11
-KEY_3 = 12
-KEY_4 = 13
-KEY_5 = 14
-KEY_6 = 15
-KEY_7 = 16
-KEY_8 = 17
-KEY_9 = 18
-KEY_COLON = 19
-KEY_DIVIDE = 20
-KEY_SPACE = 21
+\ keys 
+KEY_SPACE = 0
+KEY_W = 1
+KEY_A = 2
+KEY_S = 3
+KEY_D = 4
+KEY_Z = 5
+KEY_X = 6
+KEY_COLON = 7
+KEY_DIVIDE = 8
+KEY_G = 9
+KEY_O = 10
+KEY_R = 11
+KEY_T = 12
+KEY_1 = 13
+KEY_2 = 14
+KEY_3 = 15
+KEY_4 = 16
+KEY_5 = 17
+KEY_6 = 18
+KEY_7 = 19
+KEY_8 = 20
+KEY_9 = 21
 KEY_UP = 22
-KEY_DOWN = 23 
+KEY_DOWN = 23
 KEY_LEFT = 24
 KEY_RIGHT = 25
+
+\ scan keys
+SCAN_KEYS_SPACE = 0
+SCAN_KEYS_CORE = 8
+SCAN_KEYS_ALL = 12
+SCAN_KEYS_GOD_MODE_ALL = 25
 
 \ object types (objectType bits 0,1)
 OBJECT_TYPE_MASK = %00000011
@@ -786,7 +792,14 @@ INCLUDE "utils.6502"
 \
 .keyboardInputHandlers
 {
-    \ scan keys populating top bits in keyTbl
+    \ scan keys
+    LDY #SCAN_KEYS_CORE
+    LDA frameCount
+    AND #3 : BNE endif
+        LDY #SCAN_KEYS_ALL \ every four frames
+        LDA godMode : BNE endif
+            LDY #SCAN_KEYS_GOD_MODE_ALL
+    .endif
     JSR scanKeys
 
     \ set god mode?
@@ -837,12 +850,16 @@ INCLUDE "utils.6502"
     \ 'T' key...
     LDA keyTbl + KEY_T
     BPL nopress_t
-        JSR moveSoundToggle
+        \ toggle move sound effect's volume
+        LDA soundEffects + SOUND_EFFECT_MOVE + 1
+        EOR #&FE
+        STA soundEffects + SOUND_EFFECT_MOVE + 1
          
         \ wait for key release
         .loop
-            LDA #&23 \ KEY_T
-            JSR scanKey
+            LDY #SCAN_KEYS_ALL \ includes 'T' key
+            JSR scanKeys
+            LDA keyTbl + KEY_T
             BMI loop
     .nopress_t
 
@@ -892,7 +909,6 @@ INCLUDE "utils.6502"
         BPL nopress2
             LDA directionTbl, X : STA scrollDirection
             LDA #2 : STA scrollCounter
-            RTS
         .nopress2
         DEX
         BPL loop2

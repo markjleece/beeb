@@ -25,81 +25,66 @@
 \
 
 \
-\ scanKey(A)
+\ scanKeys(keySet)
 \
-\ params:
-\   Accumulator     Key scan code
+\ scans the passed key set populating the corresponding top bit in the 
+\ key table(keyTbl)
 \
-\ returns:
-\   Accumulator contains key scan code, bit 7 set if key pressed
+\ param:
+\  Y Register  The key set to scan (SCAN_KEYS_SPACE, SCAN_KEYS_CORE, SCAN_KEYS_ALL, SCAN_KEYS_GOD_MODE_ALL)
 \
-ASSERT (HI(P%) > &17) \ ensure scanKey is assembled after &17FF
-
-.scanKey
+.scanKeys
 {
-    TAY \ --> key scan code
-
     SEI \ disable interrupts
 
     \ stop auto-scan
     LDA #%00000011
     STA &FE40
 
-    \ set data direction
-    LDA #%01111111
-    STA &FE43
+    \ scan keys
+    .loop
+        \ read scan code, masking out top bit
+        LDA keyTbl, Y
+        AND #&7F
 
-    \ scan keyboard
-    STY &FE4F
-    LDY &FE4F
-    
+        \ scan key
+        STA &FE4F
+        LDA &FE4F
+
+        \ write scan code back, with top bit set if key is down
+        STA keyTbl, Y
+
+        DEY
+        BPL loop
+
     \ restart auto-scan
     LDA #%00001011
     STA &FE40
 
     CLI \ re-enable interrupts
 
-    TYA \ <-- key scan code (bit 7 set if key is down)
-    
-    RTS
-}
-
-\
-\ scanKeys
-\
-\ scans keys KEY_A..KEY_9 populating top bit of keyTbl
-\
-.scanKeys
-{
-    \ scan keys
-    LDX #25
-    .loop
-        \ read scan code, masking out top bit
-        LDA keyTbl, X
-        AND #&7F
-
-        \ scan key
-        JSR scanKey
-
-        \ write scan code back, with top bit set if key is down
-        STA keyTbl, X
-
-        DEX
-        BPL loop
     RTS
 
 \ key table containing key scan codes. The top bit is set if the key is down
-.^keyTbl 
+.^keyTbl
+    \ primary keys
+    EQUB &62 \ KEY_SPACE
+    EQUB &21 \ KEY_W
     EQUB &41 \ KEY_A
+    EQUB &51 \ KEY_S
     EQUB &32 \ KEY_D
+    EQUB &61 \ KEY_Z
+    EQUB &42 \ KEY_X
+    EQUB &48 \ KEY_COLON
+    EQUB &68 \ KEY_DIVIDE
+    
+    \ secondary keys
     EQUB &53 \ KEY_G
     EQUB &36 \ KEY_O
     EQUB &33 \ KEY_R
-    EQUB &51 \ KEY_S
     EQUB &23 \ KEY_T
-    EQUB &21 \ KEY_W
-    EQUB &42 \ KEY_X
-    EQUB &61 \ KEY_Z
+
+    \ god mode keys
     EQUB &30 \ KEY_1
     EQUB &31 \ KEY_2
     EQUB &11 \ KEY_3
@@ -109,9 +94,6 @@ ASSERT (HI(P%) > &17) \ ensure scanKey is assembled after &17FF
     EQUB &24 \ KEY_7
     EQUB &15 \ KEY_8
     EQUB &26 \ KEY_9
-    EQUB &48 \ KEY_COLON
-    EQUB &68 \ KEY_DIVIDE
-    EQUB &62 \ KEY_SPACE
     EQUB &39 \ KEY_UP
     EQUB &29 \ KEY_DOWN
     EQUB &19 \ KEY_LEFT
