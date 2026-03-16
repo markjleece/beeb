@@ -1209,11 +1209,12 @@ ENDIF
 }
 
 \
-\ drawEnemyHealthBar(X register)
+\ drawEnemyHealthBar(Accumulator, X register)
 \
 \ draws the enemy health bar within the appropriate sprite
 \
 \ params:
+\   Accumulator     Enemy health (1..6)
 \   X register      Enemy index
 \
 .drawEnemyHealthBar
@@ -1222,10 +1223,6 @@ ENDIF
     leftPixelQuad = srcAddr
     rightPixelQuad = srcAddr+1
 
-    \ check if health is not full or empty
-    LDA objectState, X
-    AND #ENEMY_STATE_HEALTH_MASK : BEQ rts_5
-    CMP #7 : BEQ rts_5
     STA temp \ --> health
 
     \ left = objectX & &FFFC

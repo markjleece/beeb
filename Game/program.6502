@@ -735,10 +735,10 @@ INCLUDE "switch.6502"
 \
 .updateObjects
 {
-    LDX #0 : STX outerIndex
-    DEX : STX type
+    LDX #&FF : STX type
+    INX \ = 0
     .loop
-        LDX outerIndex
+        STX outerIndex \ save X
 
         \ cache object extents, if the object type changes
         LDA objectType, X
@@ -752,12 +752,12 @@ INCLUDE "switch.6502"
         \ JSR (frameCallbackTbl[objectFrameCallback[X]])
         LDY objectFrameCallback, X
         LDA frameCallbackTbl+0, Y : STA jsr_inst+1
-        LDA frameCallbackTbl+1, Y : STA jsr_inst+2
+        LDA frameCallbackTbl+1, Y : STA jsr_inst+2        
         .jsr_inst JSR &FFFF
 
-        INC outerIndex
-        LDA outerIndex
-        CMP objectCount
+        LDX outerIndex \ restore X
+        INX
+        CPX objectCount
         BNE loop
 
     .return
@@ -950,11 +950,13 @@ INCLUDE "switch.6502"
 .drawObjects
 {
     \ draw objects, in draw order (except descending objects)
-    LDA #0 : STA outerIndex
+    LDY objectCount
+    DEY
     .loop
-        LDY outerIndex
-        LDX objectDrawOrder, Y
+        LDX objectReverseDrawOrder, Y
         LDA objectState, X : BPL skipDraw \ redraw flag clear?
+
+            STY outerIndex \ save Y
 
             \ to avoid rendering artifacts we draw descending elevators and 
             \ their passengers in reverse order
@@ -963,7 +965,7 @@ INCLUDE "switch.6502"
                 \ is the object an elevator?
                 LDA objectType, X
                 AND #OBJECT_TYPE_MASK
-                CMP #OBJECT_TYPE_ELEVATOR : BNE skipDraw
+                CMP #OBJECT_TYPE_ELEVATOR : BNE skipDraw_restoreY
 
                 \ get elevator's passenger index
                 LDA objectState, X
@@ -986,15 +988,19 @@ INCLUDE "switch.6502"
             \ render enemy health bar
             LDA objectType, X
             AND #OBJECT_TYPE_MASK
-            CMP #OBJECT_TYPE_ENEMY : BNE skipDraw
-                JSR drawEnemyHealthBar
+            CMP #OBJECT_TYPE_ENEMY : BNE skipDraw_restoreY \ is enemy?
+                LDA objectState, X
+                AND #ENEMY_STATE_HEALTH_MASK : BEQ skipDraw_restoreY \ destroyed?
+                CMP #ENEMY_STATE_HEALTH_MASK : BEQ skipDraw_restoreY \ max health?
+                    JSR drawEnemyHealthBar
 
+        .skipDraw_restoreY
+            LDY outerIndex \ restore Y
+        
         .skipDraw
 
-        INC outerIndex 
-        LDA outerIndex
-        CMP objectCount
-        BNE loop
+        DEY
+        BPL loop
 
     \ fall through to RTS
 }
@@ -1097,7 +1103,7 @@ INCLUDE "switch.6502"
 \
 \ refreshObjectDrawOrder()
 \
-\ resort the objectDrawOrder array every 32 frames, using a bubble sort
+\ resort the objectReverseDrawOrder array every 32 frames
 \
 .refreshObjectDrawOrder
 {
@@ -1114,12 +1120,14 @@ INCLUDE "switch.6502"
 \
 \ sortObjectDrawOrder()
 \
-\ Sorts the objectDrawOrder array using a bubble sort
+\ sorts the objectReverseDrawOrder array using a bubble sort
 \
 .sortObjectDrawOrder
 {
-    \ outerCount = objectCount
-    LDA objectCount : STA outerCount
+    \ outerCount = objectCount - 1 (exclude K9 so he's drawn first) 
+    LDX objectCount
+    DEX
+    STX outerCount
 
     .outerLoop
         \ innerCount, count = 1
@@ -1131,23 +1139,23 @@ INCLUDE "switch.6502"
 
             \ X, Y = adjacent object indices
             LDY innerCount
-            LDX objectDrawOrder-1, Y
-            LDA objectDrawOrder, Y  
+            LDX objectReverseDrawOrder-1, Y
+            LDA objectReverseDrawOrder, Y  
             TAY
 
-            \ if (objectY[X] > object[Y]) swap
-            LDA objectYLo, Y
-            CMP objectYLo, X
-            LDA objectYHi, Y
-            SBC objectYHi, X
+            \ if (objectY[X] < object[Y]) swap
+            LDA objectYLo, X
+            CMP objectYLo, Y
+            LDA objectYHi, X
+            SBC objectYHi, Y
             BCS noswap
 
                 \ swap adjacent indices
                 TYA
                 LDY innerCount
-                STA objectDrawOrder-1, Y
+                STA objectReverseDrawOrder-1, Y
                 TXA
-                STA objectDrawOrder, Y
+                STA objectReverseDrawOrder, Y
 
                 \ count = innerCount
                 STY count
@@ -1171,8 +1179,9 @@ INCLUDE "switch.6502"
 
     RTS
 
-\ array holding object indices, in draw order (top to bottom)
-.^objectDrawOrder SKIP MAX_OBJECT_COUNT
+\ array holding object indices, in reverse draw order (bottom to top)
+\ last index is always K9, so he's always drawn first
+.^objectReverseDrawOrder SKIP MAX_OBJECT_COUNT
 }
 
 \

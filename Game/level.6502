@@ -1147,11 +1147,14 @@
     .loop_exit
     STX objectCount
 
-    \ initialize object draw order array
+    \ initialize object reverse draw order array
     DEX
+    LDY #0
     .loop2
+        \ objectReverseDrawOrder[Y] = X
         TXA
-        STA objectDrawOrder, X
+        STA objectReverseDrawOrder, Y
+        INY
         DEX
         BPL loop2
 
