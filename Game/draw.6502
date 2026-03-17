@@ -29,10 +29,11 @@
 \
 .refreshGameBar
 {
-    \ update game bar every 8 frames, offset by 2
+    \ update game bar every 8 frames, offset by 2, but not if a sample is being played
     LDA frameCount
     AND #7
     CMP #2
+    ORA playingSample
     BEQ drawGameBar
     RTS
 }
