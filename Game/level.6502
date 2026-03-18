@@ -460,7 +460,9 @@
     EQUB LO(doorAtlas3)
 
     \ 4 elevator sprites
-    FOR addr, elevatorAtlas, elevatorAtlas + (3 * ELEVATOR_SPRITE_SIZE), ELEVATOR_SPRITE_SIZE
+    EQUB LO(elevatorAtlas1)
+
+    FOR addr, elevatorAtlas2, elevatorAtlas2 + (2 * ELEVATOR_SPRITE_SIZE), ELEVATOR_SPRITE_SIZE
         EQUB LO(addr)
     NEXT
 
@@ -510,7 +512,9 @@
     EQUB HI(doorAtlas3)
 
     \ 4 elevator sprites
-    FOR addr, elevatorAtlas, elevatorAtlas + (3 * ELEVATOR_SPRITE_SIZE), ELEVATOR_SPRITE_SIZE
+    EQUB HI(elevatorAtlas1)
+
+    FOR addr, elevatorAtlas2, elevatorAtlas2 + (2 * ELEVATOR_SPRITE_SIZE), ELEVATOR_SPRITE_SIZE
         EQUB HI(addr)
     NEXT
 
@@ -822,25 +826,39 @@
 
     JSR memcpy
 
-    \ four elevator sprites at elevatorAtlas
+    \ first elevator sprite at elevatorAtlas1
     srcAddr8 = srcAddr7 + DOOR_SPRITE_SIZE
 
     LDA #LO(srcAddr8): STA srcAddr
     LDA #HI(srcAddr8): STA srcAddr+1
 
-    LDA #LO(elevatorAtlas) : STA dstAddr
-    LDA #HI(elevatorAtlas) : STA dstAddr+1
+    LDA #LO(elevatorAtlas1) : STA dstAddr
+    LDA #HI(elevatorAtlas1) : STA dstAddr+1
 
-    LDX #LO(ELEVATOR_SPRITE_SIZE * 4)
-    LDY #HI(ELEVATOR_SPRITE_SIZE * 4)
+    LDX #LO(ELEVATOR_SPRITE_SIZE)
+    LDY #HI(ELEVATOR_SPRITE_SIZE)
+
+    JSR memcpy
+
+    \ remaining three elevator sprites at elevatorAtlas2
+    srcAddr9 = srcAddr8 + ELEVATOR_SPRITE_SIZE
+
+    LDA #LO(srcAddr9): STA srcAddr
+    LDA #HI(srcAddr9): STA srcAddr+1
+
+    LDA #LO(elevatorAtlas2) : STA dstAddr
+    LDA #HI(elevatorAtlas2) : STA dstAddr+1
+
+    LDX #LO(ELEVATOR_SPRITE_SIZE * 3)
+    LDY #HI(ELEVATOR_SPRITE_SIZE * 3)
 
     JSR memcpy
 
     \ four teleport sprites at teleportAtlas
-    srcAddr9 = srcAddr8 + (ELEVATOR_SPRITE_SIZE * 4)
+    srcAddr10 = srcAddr9 + (ELEVATOR_SPRITE_SIZE * 3)
 
-    LDA #LO(srcAddr9): STA srcAddr
-    LDA #HI(srcAddr9): STA srcAddr+1
+    LDA #LO(srcAddr10): STA srcAddr
+    LDA #HI(srcAddr10): STA srcAddr+1
 
     LDA #LO(teleportAtlas) : STA dstAddr
     LDA #HI(teleportAtlas) : STA dstAddr+1
@@ -851,10 +869,10 @@
     JSR memcpy
 
     \ first two k9 sprites at k9Atlas1
-    srcAddr10 = srcAddr9 + (ELEVATOR_SPRITE_SIZE * 4)
+    srcAddr11 = srcAddr10 + (ELEVATOR_SPRITE_SIZE * 4)
 
-    LDA #LO(srcAddr10) : STA srcAddr
-    LDA #HI(srcAddr10) : STA srcAddr+1
+    LDA #LO(srcAddr11) : STA srcAddr
+    LDA #HI(srcAddr11) : STA srcAddr+1
 
     LDA #LO(k9Atlas1) : STA dstAddr
     LDA #HI(k9Atlas1) : STA dstAddr+1
@@ -865,10 +883,10 @@
     JSR memcpy
 
     \ next k9 sprite at k9Atlas2
-    srcAddr11 = srcAddr10 + (K9_SPRITE_SIZE * 2)
+    srcAddr12 = srcAddr11 + (K9_SPRITE_SIZE * 2)
 
-    LDA #LO(srcAddr11) : STA srcAddr
-    LDA #HI(srcAddr11) : STA srcAddr+1
+    LDA #LO(srcAddr12) : STA srcAddr
+    LDA #HI(srcAddr12) : STA srcAddr+1
 
     LDA #LO(k9Atlas2) : STA dstAddr
     LDA #HI(k9Atlas2) : STA dstAddr+1
@@ -879,10 +897,10 @@
     JSR memcpy
 
     \ remaining eight k9 sprites at k9Atlas3
-    srcAddr12 = srcAddr11 + K9_SPRITE_SIZE
+    srcAddr13 = srcAddr12 + K9_SPRITE_SIZE
 
-    LDA #LO(srcAddr12) : STA srcAddr
-    LDA #HI(srcAddr12) : STA srcAddr+1
+    LDA #LO(srcAddr13) : STA srcAddr
+    LDA #HI(srcAddr13) : STA srcAddr+1
 
     LDA #LO(k9Atlas3) : STA dstAddr
     LDA #HI(k9Atlas3) : STA dstAddr+1
@@ -893,7 +911,7 @@
     JSR memcpy
 
     \ copy game bar atlas...
-    srcAddr13 = srcAddr12 + (K9_SPRITE_SIZE * 8)
+    srcAddr14 = srcAddr13 + (K9_SPRITE_SIZE * 8)
 
     LDA primarySamplesROMSEL
     ORA secondarySamplesROMSEL
@@ -927,8 +945,8 @@
         \ fall through to copyGamebarAsset
 
 .copyGamebarAsset
-    LDA #LO(srcAddr13) : STA srcAddr
-    LDA #HI(srcAddr13) : STA srcAddr+1
+    LDA #LO(srcAddr14) : STA srcAddr
+    LDA #HI(srcAddr14) : STA srcAddr+1
 
     LDX #LO(GAMEBAR_SPRITE_SIZE)
     LDY #HI(GAMEBAR_SPRITE_SIZE)
@@ -1238,25 +1256,55 @@
 \
 .initializeSound
 {
-    \ set primary sound vectors
-    LDX #9
+    \ set primary sounds vectors (write JMP addresses)
+    LDX #8
     .loop1
-        LDA primarySoundVectors_Regular, X
+        LDA primarySoundVectors, X : STA dstAddr
+        LDA primarySoundVectors+1, X : STA dstAddr+1
+
+        LDA primarySounds_Regular, X
         LDY primarySamplesEnabled : BEQ skip1
-            LDA primarySoundVectors_SampleBased, X
+            LDA primarySounds_SampleBased, X
         .skip1
-        STA primarySoundVectors, X
+
+        LDY #1
+        STA (dstAddr), Y
+
+        LDA primarySounds_Regular+1, X
+        LDY primarySamplesEnabled : BEQ skip2
+            LDA primarySounds_SampleBased+1, X
+        .skip2
+
+        LDY #2
+        STA (dstAddr), Y
+
+        DEX
         DEX
         BPL loop1
 
-    \ set secondary sound vectors
-    LDX #5
+    \ set secondary sounds vectors (write JMP addresses)
+    LDX #4
     .loop2
-        LDA secondarySoundVectors_Regular, X
-        LDY secondarySamplesEnabled : BEQ skip2
-            LDA secondarySoundVectors_SampleBased, X
-        .skip2
-        STA secondarySoundVectors, X
+        LDA secondarySoundVectors, X : STA dstAddr
+        LDA secondarySoundVectors+1, X : STA dstAddr+1
+
+        LDA secondarySounds_Regular, X
+        LDY secondarySamplesEnabled : BEQ skip3
+            LDA secondarySounds_SampleBased, X
+        .skip3
+
+        LDY #1
+        STA (dstAddr), Y
+
+        LDA secondarySounds_Regular+1, X
+        LDY secondarySamplesEnabled : BEQ skip4
+            LDA secondarySounds_SampleBased+1, X
+        .skip4
+
+        LDY #2
+        STA (dstAddr), Y
+
+        DEX
         DEX
         BPL loop2
 
@@ -1264,30 +1312,44 @@
     JMP releaseToneGenerator3 \ implicit RTS
 
 \ primary sound vectors
-.primarySoundVectors_Regular
-    EQUW soundEffect_updatePursuit      \ updatePursuit
-    EQUW soundEffect_beginPursuit       \ beginPursuit 
-    EQUW soundEffect_endPursuit         \ endPursuit   
-    EQUW soundEffect_enemyLasered       \ enemyLasered 
-    EQUW soundEffect_weaponFired        \ weaponFired  
-                                        
-.primarySoundVectors_SampleBased
-    EQUW sample_updatePursuit           \ updatePursuit
-    EQUW sample_beginPursuit            \ beginPursuit 
-    EQUW sample_endPursuit              \ endPursuit   
-    EQUW sample_enemyLasered            \ enemyLasered 
-    EQUW sample_weaponFired             \ weaponFired  
+.primarySoundVectors
+    EQUW primarySoundVector_updatePursuit
+    EQUW primarySoundVector_beginPursuit
+    EQUW primarySoundVector_endPursuit
+    EQUW primarySoundVector_enemyLasered
+    EQUW primarySoundVector_weaponFired
 
 \ secondary sound vectors
-.secondarySoundVectors_Regular
-    EQUW soundEffect_enemyDestroyed     \ enemyDestroyed
-    EQUW soundEffect_levelStart         \ levelStart
-    EQUW soundEffect_levelComplete      \ levelComplete
+.secondarySoundVectors
+    EQUW secondarySoundVector_enemyDestroyed
+    EQUW secondarySoundVector_levelStart
+    EQUW secondarySoundVector_levelComplete
 
-.secondarySoundVectors_SampleBased 
-    EQUW sample_enemyDestroyed          \ enemyDestroyed
-    EQUW sample_levelStart              \ levelStart
-    EQUW sample_levelComplete           \ levelComplete 
+\ primary sound effect implementations
+.primarySounds_Regular
+    EQUW primarySoundEffect_updatePursuit       \ updatePursuit
+    EQUW primarySoundEffect_beginPursuit        \ beginPursuit 
+    EQUW primarySoundEffect_endPursuit          \ endPursuit   
+    EQUW primarySoundEffect_enemyLasered        \ enemyLasered 
+    EQUW primarySoundEffect_weaponFired         \ weaponFired  
+                                        
+.primarySounds_SampleBased
+    EQUW primarySoundSample_updatePursuit       \ updatePursuit
+    EQUW primarySoundSample_beginPursuit        \ beginPursuit 
+    EQUW primarySoundSample_endPursuit          \ endPursuit   
+    EQUW primarySoundSample_enemyLasered        \ enemyLasered 
+    EQUW primarySoundSample_weaponFired         \ weaponFired  
+
+\ secondary sound effect implementations
+.secondarySounds_Regular
+    EQUW secondarySoundEffect_enemyDestroyed    \ enemyDestroyed
+    EQUW secondarySoundEffect_levelStart        \ levelStart
+    EQUW secondarySoundEffect_levelComplete     \ levelComplete
+
+.secondarySounds_SampleBased 
+    EQUW secondarySoundSample_enemyDestroyed    \ enemyDestroyed
+    EQUW secondarySoundSample_levelStart        \ levelStart
+    EQUW secondarySoundSample_levelComplete     \ levelComplete 
 }
 
 \

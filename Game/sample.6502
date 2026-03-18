@@ -175,11 +175,11 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ sample_endPursuit()
+\ primarySoundSample_endPursuit()
 \
 \ invoked via primarySoundVector_endPursuit
 \
-.sample_endPursuit
+.primarySoundSample_endPursuit
 {
     SEI \ disable interrupts
 
@@ -199,33 +199,33 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ sample_levelStart()
+\ secondarySoundSample_levelStart()
 \
 \ invoked via secondarySoundVector_startLevel
 \
-.sample_levelStart
+.secondarySoundSample_levelStart
 {
     LDY #SAMPLE_K9_INSUFFICIENT_DATA
     BNE playSecondarySample \ implicit RTS
 }
 
 \
-\ sample_enemyDestroyed()
+\ secondarySoundSample_enemyDestroyed()
 \
 \ invoked via secondarySoundVector_enemyDestroyed
 \
-.sample_enemyDestroyed
+.secondarySoundSample_enemyDestroyed
 {
     LDY #SAMPLE_K9_AFFIRMATIVE
     BNE playSecondarySample \ implicit RTS
 }
 
 \
-\ sample_levelComplete()
+\ secondarySoundSample_levelComplete()
 \
 \ invoked via secondarySoundVector_levelComplete
 \
-.sample_levelComplete
+.secondarySoundSample_levelComplete
 {
     LDY #SAMPLE_TARDIS_DOOR
 
@@ -245,11 +245,11 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ sample_enemyLasered()
+\ primarySoundSample_enemyLasered()
 \
 \ invoked via primarySoundVector_enemyLasered
 \
-.sample_enemyLasered
+.primarySoundSample_enemyLasered
 {
     LDA groanInhibited : BNE rts_7
 
@@ -265,22 +265,22 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ sample_weaponFired()
+\ primarySoundSample_weaponFired()
 \
 \ invoked via primarySoundVector_weaponFired
 \
-.sample_weaponFired
+.primarySoundSample_weaponFired
 {
     LDY #SAMPLE_DALEK_WEAPON
     BNE playPrimarySample \ implicit RTS
 }
 
 \
-\ sample_updatePursuit()
+\ primarySoundSample_updatePursuit()
 \
 \ invoked via primarySoundVector_updatePursuit
 \
-.sample_updatePursuit
+.primarySoundSample_updatePursuit
 {
     \ is pursuit in progress?
     LDA pursuitSoundEffectCounter : BEQ rts_7
@@ -295,11 +295,11 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ sample_beginPursuit()
+\ primarySoundSample_beginPursuit()
 \
 \ invoked via primarySoundVector_beginPursuit
 \
-.sample_beginPursuit
+.primarySoundSample_beginPursuit
 {
     LDY #SAMPLE_DALEK_EXTERMINATE
 

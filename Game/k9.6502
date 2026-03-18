@@ -448,7 +448,7 @@
 .getK9Direction
 {
     LDA objectType
-    JMP getObjectDirectionInternal \ implicit RTS
+    JMP getObjectTypeDirection \ implicit RTS
 }    
 
 \ end file

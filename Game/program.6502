@@ -63,8 +63,8 @@
 \   +---------------------------------+ &0300
 \   | MOS general workspace           |
 \   +---------------------------------+ &0200
-\   | Stack (64 bytes)                | 
-\   +---------------------------------+ &01C0
+\   | Stack (40 bytes)                | 
+\   +---------------------------------+ &01D8
 \   | Game data (portions reloaded)   |
 \   +---------------------------------+ &0100
 \   | Zero page MOS variables         |
@@ -79,7 +79,8 @@
 \   &0000    144   Zero-page game variables
 \   &0090    112   zero-page MOS variables      
 \   &0100    192   1 enemy sprite*
-\   &01C0    64    Program stack
+\   &01C0    24    1 elevator sprite*
+\   &01D8    40    Program stack
 \   &0200    256   MOS general workspace
 \   &0300    192   1 enemy sprite*
 \   &03C0    32    1 door sprite*
@@ -105,9 +106,9 @@
 \   &10E0    12    Sprite health bar table* (repurposed transient DFS memory)
 \   &10EC    9     Draw object jump tables* (repurposed transient DFS memory)
 \   &10F5    8     Object extents* (repurposed transient DFS memory)
-\   &1100    7072  Program code
-\   &2CA0    768   8 K9 sprites*
-\   &2FA0    96    4 elevator sprites*
+\   &1100    7096  Program code
+\   &2CB8    768   8 K9 sprites*
+\   &2FB8    72    3 elevator sprites*
 \   &3000    96    4 teleport sprites*
 \   &3060    224   Game bar sprites* (or sample.6502 if 16K+ of sideways RAM exists)
 \   &3140    1728  Level tiles*
@@ -436,11 +437,12 @@ enemyAtlas5 = &E00
 doorAtlas1 = &3C0
 doorAtlas2 = &CC0
 doorAtlas3 = &F80
-elevatorAtlas = &2FA0
+elevatorAtlas1 = &1C0
+elevatorAtlas2 = &2FB8
 teleportAtlas = &3000
 k9Atlas1 = &730
 k9Atlas2 = &FA0
-k9Atlas3 = &2CA0
+k9Atlas3 = &2CB8
 gamebarAtlas = &3060
 gamebarAtlas_sidewaysRAM = &BF20        \ location when 16K or 32K of sideways RAM is detected
 laseredEnemyAtlas = &B600               \ location when 16K or 32K of sideways RAM is detected
@@ -819,12 +821,12 @@ INCLUDE "switch.6502"
 .keyboardInputHandlers
 {
     \ scan keys
-    LDY #SCAN_KEYS_CORE
+    LDY #SCAN_KEYS_CORE \ 9 keys
     LDA frameCount
     AND #3 : BNE endif
-        LDY #SCAN_KEYS_ALL \ every four frames
+        LDY #SCAN_KEYS_ALL \ 13 keys
         LDA godMode : BNE endif
-            LDY #SCAN_KEYS_GOD_MODE_ALL
+            LDY #SCAN_KEYS_GOD_MODE_ALL \ 26 keys
     .endif
     JSR scanKeys
 
@@ -1045,7 +1047,21 @@ INCLUDE "switch.6502"
 {
     LDA objectType, X
 
-.^getObjectDirectionInternal \ invoked from getK9Direction (k9.6502)
+    \ fall through to getObjectTypeDirection
+}
+
+\
+\ getObjectTypeDirection(Accumulator)
+\
+\ params:
+\   Accumulator objectType[...] value
+\
+\ returns:
+\  accumulator   -1 (left), 0 (none), 1 (right)
+\  Y register    0 (ANIMATE_LOOK_LEFT) .. 5 (ANIMATE_TURN_RIGHT_TO_LEFT)
+\
+.getObjectTypeDirection
+{
     AND #ANIMATE_MASK
     LSR A : LSR A
     TAY
@@ -1450,7 +1466,7 @@ INCLUDE "switch.6502"
     \ JSR setInvertedLevelPalette or JSR setBlackPalette
     .^jsr_inst JSR &FFFF \ address patched in initializeLevelVariables (level.6502)
 
-    JMP (primarySoundVector_weaponFired) \ implicit RTS
+    JMP weaponFiredSoundEffect \ implicit RTS
 }
 
 \

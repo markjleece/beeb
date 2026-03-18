@@ -1420,7 +1420,7 @@ ENDIF
 
     \
     \ srcBaseAddr = spriteAddrTbl[index] or laseredSpriteAddrTblLo[index]
-    \ type = render lasered path
+    \ type = render lasered path?
     \
     LDY objectSpriteIndex, X
     STY index \ --> sprite index
@@ -1611,10 +1611,29 @@ ENDIF
     \
     \ calculate headCount, 'innerHeadCount' (X register), and 'tailCount' (Y register)
     \
+    LDA height
+    ORA offset
+    AND #7
+    BNE else_12 \ height and offset are multiples of 8? (common case)
+
+        \ 'tailCount' = 0
+        TAY
+
+        \ headCount = height DIV 4
+        LDA height
+        LSR A: LSR A: LSR A
+        STA headCount
+
+        \ 'headInnerCount' = 8
+        LDX #8
+
+        BNE endif_12
+
+    .else_12
     LDA offset \ (top % 8)
     CLC
     ADC height
-    CMP #9 : BCC else_12 \ sprite spans multiple character rows?
+    CMP #9 : BCC else_13 \ sprite spans multiple character rows?
 
         \ 'full-height' = (top % 8) + height - eraseBelow
         SEC
@@ -1639,7 +1658,7 @@ ENDIF
 
         JMP endif_12
 
-    .else_12 \ sprite fits within a single character row
+    .else_13 \ sprite fits within a single character row
 
         \ headCount = zero
         STY headCount
@@ -1664,6 +1683,15 @@ ENDIF
     \ set tail jump instruction
     LDA drawObject_jumpTbl, Y
     STA tail_jump_inst+1
+
+    \ patch erase above and below render code below
+    LDX eraseAbove
+    LDA eraseInstTbl, X
+    STA inst_eraseAbove
+
+    LDX eraseBelow
+    LDA eraseInstTbl, X
+    STA inst_eraseBelow
 
     \ finally, render the sprite
     .outerLoop
@@ -1697,8 +1725,8 @@ ENDIF
         \ initialize indexer
         LDY offset \ (top % 8)
 
-        \ erase above?
-        LDA eraseAbove : BEQ skipEraseAbove
+        .inst_eraseAbove
+        BCC skipEraseAbove \ erase above? (instruction patched above)
             LDA #0
             STA (dstAddr), Y
             INY
@@ -1765,9 +1793,9 @@ ENDIF
         .tail1 LDA (srcAddr), Y : STA (dstAddr), Y: INY
         .tail0
 
-        \ erase below?
-        LDA eraseBelow : BEQ skipEraseBelow
-            LSR A \ A = 0
+        .inst_eraseBelow
+        BCC skipEraseBelow \ erase below? (instruction patched above)
+            LDA #0
             STA (dstAddr), Y
         .skipEraseBelow
 
@@ -1779,6 +1807,10 @@ ENDIF
 .return
     PLA : TAX \ restore X register
     RTS
+
+.eraseInstTbl
+    EQUB &90 \ BCC
+    EQUB &B0 \ BCS
 }
 
 \

@@ -24,19 +24,6 @@
 \ Sound routines (sound definitions are defined in titles.6502)
 \
 
-\ sound effect vectors (set in initializeSound)
-.primarySoundVectors                        \ REGULAR SOUNDS             SAMPLE-BASED SOUNDS
-.primarySoundVector_updatePursuit    SKIP 2 \ soundEffect_updatePursuit  sample_updatePursuit
-.primarySoundVector_beginPursuit     SKIP 2 \ soundEffect_beginPursuit   sample_beginPursuit
-.primarySoundVector_endPursuit       SKIP 2 \ soundEffect_endPursuit     sample_endPursuit
-.primarySoundVector_enemyLasered     SKIP 2 \ soundEffect_enemyLasered   sample_enemyLasered
-.primarySoundVector_weaponFired      SKIP 2 \ soundEffect_weaponFired    sample_weaponFired
-                                            
-.secondarySoundVectors                      \ REGULAR SOUNDS             SAMPLE-BASED SOUNDS
-.secondarySoundVector_enemyDestroyed SKIP 2 \ soundEffect_enemyDestroyed sample_enemyDestroyed
-.secondarySoundVector_beginLevel     SKIP 2 \ soundEffect_levelStart     sample_levelStart
-.secondarySoundVector_levelComplete  SKIP 2 \ soundEffect_levelComplete  sample_levelComplete
-
 \ sound API params
 .soundParams EQUB 0, 0, 0, 0, 0, 0, 0, 0
 
@@ -47,7 +34,7 @@
 {
     LDA #SOUND_EFFECT_LASER_OFF
     JSR soundEffect
-    JMP (primarySoundVector_endPursuit) \ implicit RTS
+    JMP endPursuitSoundEffect
 }
 
 \
@@ -60,7 +47,9 @@
     \ sound pursuit sound effect once
     LDA pursuitSoundEffectCounter : BNE rts_3
         LDA #SAMPLE_EXTERMINATE_FRAME_COUNT : STA pursuitSoundEffectCounter
-        JMP (primarySoundVector_beginPursuit) \ implicit RTS
+
+        .^primarySoundVector_beginPursuit \ address patched in initializeSound (level.6502)
+        JMP &FFFF \ implicit RTS
 }
 
 \
@@ -70,26 +59,27 @@
 \
 .levelCompleteSoundEffect
 {
-    JMP (secondarySoundVector_levelComplete) \ implicit RTS
+    .^secondarySoundVector_levelComplete \ address patched in initializeSound (level.6502)
+    JMP &FFFF \ implicit RTS
 }
 
 \
-\ soundEffect_levelComplete()
+\ secondarySoundEffect_levelComplete()
 \
 \ invoked via secondarySoundVector_levelComplete
 \
-.soundEffect_levelComplete
+.secondarySoundEffect_levelComplete
 {
     LDA #SOUND_EFFECT_LEVEL_COMPLETE
     BNE soundEffect \ implicit RTS
 }
 
 \
-\ soundEffect_beginPursuit()
+\ primarySoundEffect_beginPursuit()
 \
-\ invoked via primarySoundVector_beginPursuit
+\ invoked by primarySoundVector_beginPursuit
 \
-.soundEffect_beginPursuit
+.primarySoundEffect_beginPursuit
 {
     \ ignore if a sample is playing
     LDA playingSample : BNE rts_3
@@ -99,63 +89,63 @@
 }
 
 \
-\ soundEffect_endPursuit()
+\ primarySoundEffect_endPursuit()
 \
 \ invoked via primarySoundVector_endPursuit
 \
-.soundEffect_endPursuit
+.primarySoundEffect_endPursuit
 {
     LDA #SOUND_EFFECT_PURSUIT_OFF
     BNE soundEffect \ implicit RTS
 }
 
 \
-\ soundEffect_weaponFired()
+\ primarySoundEffect_weaponFired()
 \
 \ invoked via primarySoundVector_weaponFired
 \
-.soundEffect_weaponFired
+.primarySoundEffect_weaponFired
 {
     LDA #SOUND_EFFECT_PAIN
     BEQ soundEffect \ implicit RTS
 }
 
 \
-\ soundEffect_updatePursuit()
+\ primarySoundEffect_updatePursuit()
 \
 \ invoked via primarySoundVector_updatePursuit
 \
-.soundEffect_updatePursuit
+.primarySoundEffect_updatePursuit
 {
     \ fall through to RTS
 }
 
 \
-\ soundEffect_enemyLasered()
+\ primarySoundEffect_enemyLasered()
 \
 \ invoked via primarySoundVector_enemyLasered
 \
-.soundEffect_enemyLasered
+.primarySoundEffect_enemyLasered
 {
     \ fall through to RTS
 }
 
 \
-\ soundEffect_enemyDestroyed()
+\ secondarySoundEffect_enemyDestroyed()
 \
 \ invoked via secondarySoundVector_enemyDestroyed
 \
-.soundEffect_enemyDestroyed
+.secondarySoundEffect_enemyDestroyed
 {
     \ fall through to RTS
 }
 
 \
-\ soundEffect_levelStart()
+\ secondarySoundEffect_levelStart()
 \
 \ invoked via secondarySoundVector_levelStart
 \
-.soundEffect_levelStart
+.secondarySoundEffect_levelStart
 {
     RTS
 }
@@ -200,11 +190,14 @@
     LDA playBeginLevelSoundEffect : BEQ skip2
     LDA transitionState : BNE skip2
         LSR playBeginLevelSoundEffect \ = 0
-        JMP (secondarySoundVector_beginLevel)
+
+        .^secondarySoundVector_levelStart \ address patched in initializeSound (level.6502)
+        JMP &FFFF \ implicit RTS
     .skip2
 
     \ update pursuit sound effects
-    JMP (primarySoundVector_updatePursuit) \ implicit RTS
+    .^primarySoundVector_updatePursuit \ address patched in initializeSound (level.6502)
+    JMP &FFFF \ implicit RTS
 }
 
 \
@@ -302,7 +295,51 @@
 {
     LDA pursuitSoundEffectCounter : BEQ rts_3
         LDA #0 : STA pursuitSoundEffectCounter
-        JMP (primarySoundVector_endPursuit) \ implicit RTS
+        \ fall through to endPursuitSoundEffect
+}
+
+\
+\ endPursuitSoundEffect
+\
+\ silence the end pursuit sound effect
+\
+.endPursuitSoundEffect
+{
+   .^primarySoundVector_endPursuit \ address patched in initializeSound (level.6502)
+   JMP &FFFF \ implicit RTS
+}
+
+\
+\ enemyDestroyedSoundEffect()
+\
+\ sound enemy destroyed sound effect
+\
+.enemyDestroyedSoundEffect
+{
+    .^secondarySoundVector_enemyDestroyed \ address patched in initializeSound (level.6502)
+    JMP &FFFF \ implicit RTS
+}
+
+\
+\ enemyLaseredSoundEffect()
+\
+\ sound enemy lasered sound effect
+\
+.enemyLaseredSoundEffect
+{
+    .^primarySoundVector_enemyLasered \ address patched in initializeSound (level.6502)
+    JMP &FFFF \ implicit RTS
+}
+
+\
+\ weaponFiredSoundEffect()
+\
+\ sound weapon fired sound effect
+\
+.weaponFiredSoundEffect
+{
+    .^primarySoundVector_weaponFired \ address patched in initializeSound (level.6502)
+    JMP &FFFF \ implicit RTS
 }
 
 \
@@ -371,7 +408,7 @@
     \
     LDA primarySamplesEnabled : BNE rts_3
     LDA pursuitSoundEffectCounter : BEQ rts_3
-    JMP soundEffect_endPursuit \ implicit RTS
+    JMP primarySoundEffect_endPursuit \ implicit RTS
 }
 
 \
@@ -402,9 +439,9 @@
     \
     LDA primarySamplesEnabled : BNE rts_3
     LDA pursuitSoundEffectCounter : BEQ else
-        JMP soundEffect_beginPursuit \ implicit RTS
+        JMP primarySoundEffect_beginPursuit \ implicit RTS
     .else
-        JMP soundEffect_endPursuit \ implicit RTS
+        JMP primarySoundEffect_endPursuit \ implicit RTS
 }
 
 \
