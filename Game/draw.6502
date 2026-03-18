@@ -1417,15 +1417,12 @@ ENDIF
     \
 
     TXA : PHA \ save X register
-
-    \
-    \ srcBaseAddr = spriteAddrTbl[index] or laseredSpriteAddrTblLo[index]
-    \ type = render lasered path?
-    \
+    
+    \ lookup sprite index
     LDY objectSpriteIndex, X
     STY index \ --> sprite index
 
-    \ is object lasered?
+    \ srcBaseAddr = spriteAddrTbl[index] or laseredSpriteAddrTblLo[index]
     LDA objectState, X
     AND #OBJECT_STATE_FLAGS_LASERED
     BEQ else_2
@@ -1435,7 +1432,9 @@ ENDIF
         ORA #OBJECT_STATE_FLAGS_REDRAW
         STA objectState, X
 
-        \ use lazered sprites in sideways RAM?
+        \ lasered sprites are rendered in one of two ways. If sideways RAM is available, lasered
+        \ sprites are rendered from sideways RAM, otherwise regular sprites have a lasered effect
+        \ applied to them (see drawLaseredObject)
         LDA primarySamplesROMSEL
         ORA secondarySamplesROMSEL
         BEQ endif_3
@@ -1444,15 +1443,16 @@ ENDIF
             LDA laseredSpriteAddrTblHi, Y : STA srcBaseAddr+1
             
             LDY #0 \ --> zero
-            STY type \ <-- nornal draw path (faster)
+            STY type \ use regular draw path (faster)
+            
             BEQ endif_2
         .endif_3
 
-        LDA #1 \ lasered draw path (slower)
+        LDA #1 \ use lasered effect draw path (slower)
 
         \ fall through
     .else_2
-        STA type \ <-- draw path (normal or lasered)
+        STA type \ <-- draw path (regular or lasered effect)
 
         \ srcBaseAddr = spriteAddrTbl[index]
         LDA spriteAddrTblLo, Y : STA srcBaseAddr
@@ -1558,10 +1558,6 @@ ENDIF
     LSR A: LSR A
     STA outerCount
 
-    \
-    \ adjust source base address
-    \ 
-
     \ if (index < 0) then
     LDA index : BPL else_10
     
@@ -1601,16 +1597,12 @@ ENDIF
 
     .endif_10
 
-    \ calc screen dstAddr
+    \ calc screen dstBaseAddr
     JSR calcScreenDstAddr
-
-    \ dstBaseAddr = dstAddr
     LDA dstAddr : STA dstBaseAddr
     LDA dstAddr+1 : STA dstBaseAddr+1
 
-    \
-    \ calculate headCount, 'innerHeadCount' (X register), and 'tailCount' (Y register)
-    \
+    \ calculate outerCount,  headCount, 'innerHeadCount' (X register), and 'tailCount' (Y register)
     LDA height
     ORA offset
     AND #7
@@ -1619,7 +1611,7 @@ ENDIF
         \ 'tailCount' = 0
         TAY
 
-        \ headCount = height DIV 4
+        \ headCount = height / 4
         LDA height
         LSR A: LSR A: LSR A
         STA headCount
@@ -1671,7 +1663,7 @@ ENDIF
         TAY \ --> 'tailCount'
     .endif_12
 
-    \ draw lasered effect?
+    \ draw lasered effect? (if no sideway RAM is available)
     LDA type : BEQ endif_13
         JMP drawLaseredObject \ implicit RTS
     .endif_13
@@ -1684,14 +1676,14 @@ ENDIF
     LDA drawObject_jumpTbl, Y
     STA tail_jump_inst+1
 
-    \ patch erase above and below render code below
+    \ set erase above and below bcc/bcs instructions
     LDX eraseAbove
     LDA eraseInstTbl, X
-    STA inst_eraseAbove
+    STA erarseAbove_inst
 
     LDX eraseBelow
     LDA eraseInstTbl, X
-    STA inst_eraseBelow
+    STA erarseBelow_inst
 
     \ finally, render the sprite
     .outerLoop
@@ -1725,7 +1717,7 @@ ENDIF
         \ initialize indexer
         LDY offset \ (top % 8)
 
-        .inst_eraseAbove
+        .erarseAbove_inst
         BCC skipEraseAbove \ erase above? (instruction patched above)
             LDA #0
             STA (dstAddr), Y
@@ -1793,7 +1785,7 @@ ENDIF
         .tail1 LDA (srcAddr), Y : STA (dstAddr), Y: INY
         .tail0
 
-        .inst_eraseBelow
+        .erarseBelow_inst
         BCC skipEraseBelow \ erase below? (instruction patched above)
             LDA #0
             STA (dstAddr), Y
