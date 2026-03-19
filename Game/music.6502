@@ -28,8 +28,8 @@
 .musicData
 INCBIN "data\music.dat"
 
-\ music data cursor (reuses dstBaseAddr)
-musicDataAddr = dstBaseAddr
+\ music data cursor (reuses innerDstAddr)
+musicDataAddr = innerDstAddr
 
 \ music envelope definitions
 .musicEnvelopes

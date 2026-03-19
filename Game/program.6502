@@ -581,8 +581,8 @@ ORG 0
 .tileGridAddr               SKIP 2  
 .srcAddr                    SKIP 2 
 .dstAddr                    SKIP 2
-.srcBaseAddr                SKIP 2
-.dstBaseAddr                SKIP 2
+.innerSrcAddr               SKIP 2
+.innerDstAddr               SKIP 2
 .leftLo                     SKIP 1
 .leftHi                     SKIP 1
 .topLo                      SKIP 1
