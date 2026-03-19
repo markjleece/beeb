@@ -1262,6 +1262,7 @@
         LDA primarySoundVectors, X : STA dstAddr
         LDA primarySoundVectors+1, X : STA dstAddr+1
 
+        \ low byte
         LDA primarySounds_Regular, X
         LDY primarySamplesEnabled : BEQ skip1
             LDA primarySounds_SampleBased, X
@@ -1270,6 +1271,7 @@
         LDY #1
         STA (dstAddr), Y
 
+        \ high byte
         LDA primarySounds_Regular+1, X
         LDY primarySamplesEnabled : BEQ skip2
             LDA primarySounds_SampleBased+1, X
@@ -1288,6 +1290,7 @@
         LDA secondarySoundVectors, X : STA dstAddr
         LDA secondarySoundVectors+1, X : STA dstAddr+1
 
+        \ low byte
         LDA secondarySounds_Regular, X
         LDY secondarySamplesEnabled : BEQ skip3
             LDA secondarySounds_SampleBased, X
@@ -1296,6 +1299,7 @@
         LDY #1
         STA (dstAddr), Y
 
+        \ high byte
         LDA secondarySounds_Regular+1, X
         LDY secondarySamplesEnabled : BEQ skip4
             LDA secondarySounds_SampleBased+1, X
@@ -1311,7 +1315,7 @@
     \ ensure tone generator 3 is initialized correctly
     JMP releaseToneGenerator3 \ implicit RTS
 
-\ primary sound vectors
+\ primary sound vectors (JMP xxxx)
 .primarySoundVectors
     EQUW primarySoundVector_updatePursuit
     EQUW primarySoundVector_beginPursuit
@@ -1319,7 +1323,7 @@
     EQUW primarySoundVector_enemyLasered
     EQUW primarySoundVector_weaponFired
 
-\ secondary sound vectors
+\ secondary sound vectors (JMP xxxx)
 .secondarySoundVectors
     EQUW secondarySoundVector_enemyDestroyed
     EQUW secondarySoundVector_levelStart

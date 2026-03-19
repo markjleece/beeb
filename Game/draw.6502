@@ -1611,7 +1611,7 @@ ENDIF
         \ 'tailCount' = 0
         TAY
 
-        \ headCount = height / 4
+        \ headCount = height / 8
         LDA height
         LSR A: LSR A: LSR A
         STA headCount
@@ -1663,7 +1663,7 @@ ENDIF
         TAY \ --> 'tailCount'
     .endif_12
 
-    \ draw lasered effect? (if no sideway RAM is available)
+    \ draw lasered effect? (if no sideways RAM is available)
     LDA type : BEQ endif_13
         JMP drawLaseredObject \ implicit RTS
     .endif_13
