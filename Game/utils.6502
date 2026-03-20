@@ -41,6 +41,10 @@
     LDA #%00000011
     STA &FE40
 
+    \ set data direction
+    LDA #%01111111
+    STA &FE43
+    
     \ scan keys
     .loop
         \ read scan code, masking out top bit
