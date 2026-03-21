@@ -320,7 +320,7 @@ SPRITE_INDEX_K9_RIGHT = 27   \ 27..30
 SPRITE_INDEX_K9_TURN = 31    \ 31..33
 SPRITE_INDEX_GAMEBAR = 34    \ 34
 
-\ lasered enemy sprint count
+\ lasered enemy sprite count
 LASERED_ENEMY_SPRITE_COUNT = 11
 
 \ tile count
@@ -494,7 +494,7 @@ drawObject_jumpTbl = &10EC              \ 9 byte jump offset table (repurposes D
 \ DFS page backup (used to store page &17 or &1C that DFS modifies)
 dfsPageBackup = &7B00
 
-\ PCM data load address
+\ PCM data load address (reused levelLaseredEnemyAtlasLoaded)
 pcmDataLoadBuffer = &4FA3
 
 \ zero page MOS location
@@ -623,14 +623,14 @@ NEXT
 \
 ORG &400
 .objectType             SKIP MAX_OBJECT_COUNT \ object type (bits 0,1), animation (bits 2..4), enemy action (bits 5..7)
-.objectState            SKIP MAX_OBJECT_COUNT \ high nibble holds common flags, bottom nibble holds object specific information
+.objectState            SKIP MAX_OBJECT_COUNT \ high nibble holds common flags, bottom nibble holds object type specific information
 .objectXLo              SKIP MAX_OBJECT_COUNT \ object's top left position
 .objectXHi              SKIP MAX_OBJECT_COUNT
 .objectYLo              SKIP MAX_OBJECT_COUNT
 .objectYHi              SKIP MAX_OBJECT_COUNT
 .objectSpriteIndex      SKIP MAX_OBJECT_COUNT \ sprite index, or -1 (draw blank)
 .objectFrameCounter     SKIP MAX_OBJECT_COUNT \ frame counter used to time animation durations
-.objectFrameCallback    SKIP MAX_OBJECT_COUNT \ frame callbacks, called every frame
+.objectFrameCallback    SKIP MAX_OBJECT_COUNT \ frame callback, called every frame
 
 \
 \ entry point
@@ -1551,11 +1551,13 @@ INCLUDE "switch.6502"
 }
 
 \
+\ gameComplete(A = 0)
+\
 \ game completed
 \
 .gameComplete
 {
-    \ load finale experience (A = 0)
+    \ load finale experience
     JSR loadLevelFile
 
     \ invoke final experience
@@ -1565,7 +1567,7 @@ INCLUDE "switch.6502"
 \
 \ loadCurrentLevelFile()
 \
-\ Loads a the current level file
+\ Loads the current level file
 \
 .loadCurrentLevelFile
 {
@@ -1644,7 +1646,7 @@ ASSERT (HI(P%) > &1C) \ ensure selectDFS is assembled after page &17 and &1C
 
 .releaseDFS
 {
-    \ restore page &17 or &1C, which DFS uses
+    \ restore page &17 or &1C, which DFS used
     LDX #0
     .loop
         LDA dfsPageBackup, X
@@ -1695,11 +1697,6 @@ INCLUDE "mode7.6502" \ packaged mode 7 code
 INCLUDE "titles.6502"
 INCLUDE "music.6502"
 
-\ guard PCM data load buffer through &7FFF
-FOR addr, pcmDataLoadBuffer, &7FFF
-    GUARD addr
-NEXT
-
 .end
 
 \
@@ -1732,7 +1729,7 @@ SAVE "pcmP6", &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (6 * PCM_DATA_LOA
 \
 \ secondary PCM data --> SSD
 \
-CLEAR &8000, &CF00
+CLEAR &8000, &B600
 ORG &8000
 INCBIN "data\pcm_secondary.dat"
 
