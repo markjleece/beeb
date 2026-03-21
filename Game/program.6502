@@ -1707,7 +1707,6 @@ SAVE "program", start, end
 \
 \ finale --> SSD
 \
-
 CLEAR titles, titlesEnd
 ORG titles
 INCLUDE "finale.6502" \ replace titles code with finale code
