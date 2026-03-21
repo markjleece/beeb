@@ -1714,33 +1714,6 @@ INCLUDE "finale.6502" \ replace titles code with finale code
 SAVE "level0", modeSevenCode, end \ includes mode7.6502 and music.6502
 
 \
-\ primary PCM data --> SSD 
-\
-ORG &8000
-INCBIN "data\pcm_primary.dat"
-
-SAVE "pcmP1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-SAVE "pcmP2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-SAVE "pcmP3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-SAVE "pcmP4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-SAVE "pcmP5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-SAVE "pcmP6", &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (6 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-
-\
-\ secondary PCM data --> SSD
-\
-CLEAR &8000, &B600
-ORG &8000
-INCBIN "data\pcm_secondary.dat"
-
-SAVE "pcmS1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-SAVE "pcmS2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-SAVE "pcmS3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-SAVE "pcmS4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-SAVE "pcmS5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-SAVE "pcmS6", &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (6 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-
-\
 \ Level 1..N
 \
 CLEAR titles, titlesEnd
@@ -1805,6 +1778,33 @@ SAVE "level6", levelLoadAddr, levelEnd \ includes level.6502, mode7.6502, and in
 \
 \ Levels 7..9 can optionally be added here (LEVEL_COUNT will also need updating)
 \
+
+\
+\ primary PCM data --> SSD 
+\
+ORG &8000
+INCBIN "data\pcm_primary.dat"
+
+SAVE "pcmP1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmP2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmP3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmP4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmP5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmP6", &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (6 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+
+\
+\ secondary PCM data --> SSD
+\
+CLEAR &8000, &B600
+ORG &8000
+INCBIN "data\pcm_secondary.dat"
+
+SAVE "pcmS1", &8000 + (0 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmS2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmS3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmS4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmS5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmS6", &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (6 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 
 \ Report unused memory
 PRINT "Unused zero-page bytes: ", (zeroPageMOS - lastZeroPageAddr)
