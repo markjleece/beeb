@@ -23,7 +23,7 @@
 //
 // This console app converts 8/8k WAV files into two packed 4/8k PCM files which
 // are packaged within the game image.
-// 
+//
 // The app also prints address tables which are embedded in sound.6503.  If the 
 // WAV files change, the tables in sound.6502 will need updating.
 //
@@ -99,16 +99,28 @@ namespace WAVConverter
             byte[] pcmData = new byte[fileSize];
 
             int offset = fileSize;
-            for (int i = 0; i < pcmDataSamples.Length; i++)
+            foreach (var pcmDataSample in pcmDataSamples)
             {
-                int sampleLength = pcmDataSamples[i].Length;
+                int sampleLength = pcmDataSample.Length;
 
-                if (offset - sampleLength < 0)
+                int sampleOffset = offset - sampleLength;
+                if (sampleOffset < 0)
                     throw new Exception($"Error writing {filePath}. Samples is to large to fit in available {fileSize:X2} bytes. ");
 
-                Array.Copy(pcmDataSamples[i], 0, pcmData, offset - sampleLength, sampleLength);
+                // zero duplicate encoded entries which don't lie on a page boundary. These
+                // are skipped during playback
+                int lastValue = -1;
+                for (int i = 0; i < sampleLength; i++)
+                {
+                    if (pcmDataSample[i] == lastValue && ((sampleOffset + i) % 0x100) != 0xFF)
+                        pcmDataSample[i] = 0;
+                    else
+                        lastValue = pcmDataSample[i];
+                }
 
-                startIndices.Add(offset - sampleLength);
+                Array.Copy(pcmDataSample, 0, pcmData, sampleOffset, sampleLength);
+
+                startIndices.Add(sampleOffset);
                 endIndices.Add(offset);
 
                 offset -= RoundToNextPage(sampleLength);
