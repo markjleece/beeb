@@ -1678,11 +1678,11 @@ ENDIF
     \ set erase above and below bcc/bcs instructions
     LDX eraseAbove
     LDA eraseInstTbl, X
-    STA erarseAbove_inst
+    STA eraseAbove_inst
 
     LDX eraseBelow
     LDA eraseInstTbl, X
-    STA erarseBelow_inst
+    STA eraseBelow_inst
 
     \ finally, render the sprite
     .outerLoop
@@ -1716,7 +1716,7 @@ ENDIF
         \ initialize indexer
         LDY offset \ (top % 8)
 
-        .erarseAbove_inst
+        .eraseAbove_inst
         BCC skipEraseAbove \ erase above? (instruction patched above)
             LDA #0
             STA (innerDstAddr), Y
@@ -1784,7 +1784,7 @@ ENDIF
         .tail1 LDA (innerSrcAddr), Y : STA (innerDstAddr), Y: INY
         .tail0
 
-        .erarseBelow_inst
+        .eraseBelow_inst
         BCC skipEraseBelow \ erase below? (instruction patched above)
             LDA #0
             STA (innerDstAddr), Y
