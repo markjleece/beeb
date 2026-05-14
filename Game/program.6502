@@ -363,13 +363,22 @@ IRQ1V = &0204
 \ 39 character rows per frame
 \ 8 scan-lines per character row
 \ each scan-line is 64 micro seconds
-\ v-sync normally occurs at character row 35 
+\ v-sync normally occurs at character row 35
 \ v-sync interrupt occurs two scan-lines later
-\ delay to first scan-line is:
-VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
+\ delay from v-sync interrupt and first scan-line is:
+VSYNC_TO_FIRST_SCANLINE = ((39 - 34) * 8 * 64) - (2 * 64)
 
-\ delay to bottom of visible screen is:
-VSYNC_SIGNAL_DELAY = VSYNC_DELAY + 32 * 8 * 64
+\ time scanning screen memory
+SCREEN_MEMORY_SCAN = (32 * 8 * 64) - 32 \ account for half of the last scanline being visible
+
+\ time processing System-VIA v-sync interrupt
+VSYNC_PROCESSING = 39
+
+\ minimal time processing System-VIA Timer 1 interrupt (includes MOS processing)
+TIMER1_PROCESSING = 364
+
+\ timer delay so vsync is signalled after the last pixel is displayed is:
+VSYNC_SIGNAL_DELAY = VSYNC_TO_FIRST_SCANLINE + SCREEN_MEMORY_SCAN - VSYNC_PROCESSING - TIMER1_PROCESSING
 
 \ sound effects
 SOUND_EFFECT_PAIN = 0

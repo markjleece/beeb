@@ -345,12 +345,12 @@
 .crtcRegs
     EQUB 127            \ R0  horizontal total
     EQUB 64             \ R1  horizontal displayed
-    EQUB 90             \ R2  horizontal position
+    EQUB 90             \ R2  horizontal sync position
     EQUB 40             \ R3  sync width
     EQUB 38             \ R4  vertical total
     EQUB 0              \ R5  vertical total adjust
     EQUB 32             \ R6  vertical displayed
-    EQUB 34             \ R7  vertical position
+    EQUB 34             \ R7  vertical sync position
     EQUB 0              \ R8  interlace
     EQUB 7              \ R9  scan-lines per row
     EQUB 32             \ R10 cursor start
