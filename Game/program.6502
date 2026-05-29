@@ -377,7 +377,7 @@ VSYNC_PROCESSING = 39
 \ minimal time processing System-VIA Timer 1 interrupt (includes MOS processing)
 TIMER1_PROCESSING = 364
 
-\ timer delay so vsync is signalled after the last pixel is displayed is:
+\ timer delay so v-sync is signaled after the last pixel is displayed is:
 VSYNC_SIGNAL_DELAY = VSYNC_TO_FIRST_SCANLINE + SCREEN_MEMORY_SCAN - VSYNC_PROCESSING - TIMER1_PROCESSING
 
 \ sound effects
