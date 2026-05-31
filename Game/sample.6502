@@ -48,76 +48,88 @@ AND_OPCODE = &29 \ AND immediate
         \ Play sample (invoked 8000 times a second)
         \
 
-        \ mark interrupt as handled
-        LDA &FE64
-
-        \ save Y
-        TYA : PHA
-
         \ set data direction register A (write &FF to &FE43)
-        LDY #&FF
-        STY &FE43
-        
+        LDA #&FF
+        STA &FE43
+
         \ load sample (amplitude will be in high or low nibble)
-        INY \ Y = 0
-        LDA (pcmDataAddr), Y
+        .^pcmDataMinusOne
+        LDA &FFFF
 
-        \ extract low or high nibble E.g. 'A &= 0xF' or 'A >>= 4'
-        .^irq_inst1 NOP : NOP : NOP : NOP
+        \ is duplicate? During gameplay 22% of samples are duplicates
+        BEQ duplicate
 
-        \ add 'set tone-3 volume' control bits
-        ORA #&90
+            \ extract low or high nibble E.g. 'A &= 0xF' or 'A >>= 4'
+            .^irq_inst1 NOP : NOP : NOP : NOP
 
-        \ output register A (write sound sample to &FE4F)
-        STA &FE4F
+            \ add 'set tone-3 volume' control bits
+            ORA #&90
 
-        \ output register B, prepping write by setting chip write enable pin low (write 0 to &FE40)
-        STY &FE40
+            \ output register A (write sound sample to &FE4F)
+            STA &FE4F
+
+            \ output register B, prepping write by setting chip write enable pin low (write 0 to &FE40)
+            LDA #0
+            STA &FE40
         
-        \ note: we need to keep the write enable line low for 8 us (16 cycles)
+            \ note: we need to keep the write enable line low for 8 us (16 cycles)
 
-        \ increment pcmDataAddr
-        INC pcmDataAddr \ 5 cycles
-        BNE skip        \ 3 cycles (branch)
-            INC pcmDataAddr+1
+            \ increment pcmData address
+            INC pcmDataMinusOne+1 \ 6 cycles
+            BNE skip              \ 3 cycles (branch)
+                INC pcmDataMinusOne+2
 
-            \ have we reached the end of the first half or second half?
-            LDA pcmDataAddr+1
-            .^irq_inst2 CMP #0
-            BNE skip
+                \ have we reached the end of the first half or second half?
+                LDA pcmDataMinusOne+2
+                .^irq_inst2 CMP #&FF
+                BNE skip
 
-            \ have we played the first half or the second half?
-            LDA #LSR_OPCODE : CMP irq_inst1 : BEQ else
+                \ have we played the first half or the second half?
+                LDA #LSR_OPCODE : CMP irq_inst1 : BEQ else
 
-                \ at end of first half, so rewrite instructions to extract high nibbles
-                STA irq_inst1+0
-                STA irq_inst1+1
-                STA irq_inst1+2
-                STA irq_inst1+3
+                    \ at end of first half, so rewrite instructions to extract high nibbles
+                    STA irq_inst1+0
+                    STA irq_inst1+1
+                    STA irq_inst1+2
+                    STA irq_inst1+3
 
-                \ reset pcmDataAddr
-                .^irq_inst3 LDA #0 : STA pcmDataAddr
-                .^irq_inst4 LDA #0 : STA pcmDataAddr+1
+                    \ reset pcmData address
+                    .^irq_inst3 LDA #&FF : STA pcmDataMinusOne+1
+                    .^irq_inst4 LDA #&FF : STA pcmDataMinusOne+2
 
-                BNE endif \ always branch
-            .else
-                \ at end of second half, so stop sampling
-                JSR stopSampling
-            .endif
-        .skip
+                    BNE endif \ always branch
+                .else
+                    \ at end of second half, so stop sampling
+                    JSR stopSampling
+                .endif
+            .skip
 
-        \ restore Y
-        PLA : TAY   \ 6 cycles
+            \ mark interrupt as handled
+            LDA &FE64   \ 4 cycles
 
-        \ complete write by setting chip write pin high (write 8 to &FE40)
-        LDA #8      \ 2 cycles
-        STA &FE40
-   
-        \ restore accumulator, updating &FC
-        PLA : STA &FC
+            \ complete write by setting chip write pin high (write 8 to &FE40)
+            LDA #8      \ 2 cycles
+            STA &FE40
 
-        \ just return (we don't want MOS to process User-VIA Timer1 IRQ)
-        RTI
+            \ restore accumulator, updating &FC
+            PLA : STA &FC
+
+            \ just return (we don't want MOS to process User-VIA Timer1 IRQ)
+            RTI
+
+        .duplicate
+
+            \ mark interrupt as handled
+            LDA &FE64
+
+            \ increment pcmData addres. This doesn't overflow (see WavConverter)
+            INC pcmDataMinusOne+1
+
+            \ restore accumulator, updating &FC
+            PLA : STA &FC
+
+            \ just return (we don't want MOS to process User-VIA Timer1 IRQ)
+            RTI
 
     .skip_timer1
   
@@ -125,126 +137,11 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ stopSampling()
-\
-.stopSampling
-{
-    \ disable User-VIA Timer1
-    LDA #&40
-    STA &FE6E
-
-    \ playingSample = SAMPLE_PLAYBACK_STOPPED
-    LDA #LO(SAMPLE_PLAYBACK_STOPPED)
-    STA playingSample
-
-    RTS
-}
-
-\
-\ sample_play(A, Y)
-\
-\ plays a sample
-\
-\ params:
-\   Accumulator     primarySamplesROMSEL or secondarySamplesROMSEL
-\   Y register      SAMPLE_DALEK_EXTERMINATE, SAMPLE_DALEK_GROAN, SAMPLE_DALEK_WEAPON, SAMPLE_AFFIRMATIVE
-\
-.sample_play
-{
-    SEI \ disable interrupts
-
-    \ select sideways RAM bank
-    STA &F4 : STA &FE30
-
-    \ rewrite IRQ instructions to play first half of sample
-    LDA pcmDataEndAddrHiTbl, Y : STA irq_inst2+1
-    LDA pcmDataStartAddrLoTbl, Y : STA irq_inst3+1 : STA pcmDataAddr \ also set pcmDataAddr
-    LDA pcmDataStartAddrHiTbl, Y : STA irq_inst4+1  : STA pcmDataAddr+1
-
-    \ rewrite IRQ instructions to extract low nibbles
-    LDA #AND_OPCODE : STA irq_inst1+0 : STA irq_inst1+2
-    LDA #&0F : STA irq_inst1+1 : STA irq_inst1+3
-
-    \ enable User-VIA Timer1
-    LDA #&C0
-    STA &FE6E
-
-    \ playingSample = SAMPLE_PLAYBACK_PLAYING
-    LDA #SAMPLE_PLAYBACK_PLAYING
-    STA playingSample
-
-    CLI \ re-enable interrupts
-
-    \ acquire tone generator 3
-    JMP acquireToneGenerator3 \ implicit RTS
-}
-
-\
-\ sample_endPursuit()
-\
-\ invoked via primarySoundVector_endPursuit
-\
-.sample_endPursuit
-{
-    SEI \ disable interrupts
-
-    JSR stopSampling
-
-    CLI \ re-enable interrupts
-
-    \ fall through to RTS
-}
-
-\
-\ common RTS
-\
-.rts_7
-{
-    RTS
-}
-
-\
-\ sample_levelStart()
-\
-\ invoked via secondarySoundVector_startLevel
-\
-.sample_levelStart
-{
-    LDY #SAMPLE_K9_INSUFFICIENT_DATA
-    LDA secondarySamplesROMSEL
-    BNE sample_play \ implicit RTS
-}
-
-\
-\ sample_enemyDestroyed()
-\
-\ invoked via secondarySoundVector_enemyDestroyed
-\
-.sample_enemyDestroyed
-{
-    LDY #SAMPLE_K9_AFFIRMATIVE
-    LDA secondarySamplesROMSEL
-    BNE sample_play \ implicit RTS
-}
-
-\
-\ sample_levelComplete()
-\
-\ invoked via secondarySoundVector_levelComplete
-\
-.sample_levelComplete
-{
-    LDY #SAMPLE_TARDIS_DOOR
-    LDA secondarySamplesROMSEL
-    BNE sample_play \ implicit RTS
-}
-
-\
-\ sample_enemyLasered()
+\ primarySoundSample_enemyLasered()
 \
 \ invoked via primarySoundVector_enemyLasered
 \
-.sample_enemyLasered
+.primarySoundSample_enemyLasered
 {
     LDA groanInhibited : BNE rts_7
 
@@ -256,28 +153,26 @@ AND_OPCODE = &29 \ AND immediate
 
         \ play sample
         LDY #SAMPLE_DALEK_GROAN
-        LDA primarySamplesROMSEL
-        BNE sample_play \ implicit RTS
+        BNE playPrimarySample \ implicit RTS
 }
 
 \
-\ sample_weaponFired()
+\ primarySoundSample_weaponFired()
 \
 \ invoked via primarySoundVector_weaponFired
 \
-.sample_weaponFired
+.primarySoundSample_weaponFired
 {
     LDY #SAMPLE_DALEK_WEAPON
-    LDA primarySamplesROMSEL
-    BNE sample_play \ implicit RTS
+    BNE playPrimarySample \ implicit RTS
 }
 
 \
-\ sample_updatePursuit()
+\ primarySoundSample_updatePursuit()
 \
 \ invoked via primarySoundVector_updatePursuit
 \
-.sample_updatePursuit
+.primarySoundSample_updatePursuit
 {
     \ is pursuit in progress?
     LDA pursuitSoundEffectCounter : BEQ rts_7
@@ -292,15 +187,148 @@ AND_OPCODE = &29 \ AND immediate
 }
 
 \
-\ sample_beginPursuit()
+\ primarySoundSample_beginPursuit()
 \
 \ invoked via primarySoundVector_beginPursuit
 \
-.sample_beginPursuit
+.primarySoundSample_beginPursuit
 {
     LDY #SAMPLE_DALEK_EXTERMINATE
+
+    \ fall through to playPrimarySample
+}
+
+\
+\ playPrimarySample(Y register)
+\
+\ params:
+\  Y Register  SAMPLE_DALEK_EXTERMINATE, SAMPLE_DALEK_WEAPON, SAMPLE_DALEK_GROAN
+\
+.playPrimarySample
+{
     LDA primarySamplesROMSEL
-    BNE sample_play \ implicit RTS
+
+    \ fall through to playSample
+}
+
+\
+\ playSample(A, Y)
+\
+\ plays a sample
+\
+\ params:
+\   Accumulator     primarySamplesROMSEL or secondarySamplesROMSEL
+\   Y register      SAMPLE_DALEK_EXTERMINATE, SAMPLE_DALEK_GROAN, SAMPLE_DALEK_WEAPON, SAMPLE_AFFIRMATIVE
+\
+.playSample
+{
+    SEI \ disable interrupts
+
+    \ select sideways RAM bank
+    STA &F4 : STA &FE30
+
+    \ rewrite IRQ instructions to play first half of sample
+    LDA pcmDataEndAddrHiTbl, Y : STA irq_inst2+1
+    LDA pcmDataStartAddrLoTbl, Y : STA irq_inst3+1 : STA pcmDataMinusOne+1 \ also set pcmDataAddr
+    LDA pcmDataStartAddrHiTbl, Y : STA irq_inst4+1  : STA pcmDataMinusOne+2
+
+    \ rewrite IRQ instructions to extract low nibbles
+    LDA #AND_OPCODE : STA irq_inst1+0 : STA irq_inst1+2
+    LDA #&0F : STA irq_inst1+1 : STA irq_inst1+3
+
+    \ playingSample = SAMPLE_PLAYBACK_PLAYING
+    STA playingSample
+
+    \ enable User-VIA Timer1
+    LDA #&C0
+    STA &FE6E
+
+    CLI \ re-enable interrupts
+
+    \ acquire tone generator 3
+    JMP acquireToneGenerator3 \ implicit RTS
+}
+
+\
+\ primarySoundSample_endPursuit()
+\
+\ invoked via primarySoundVector_endPursuit
+\
+\ disable\enable interrupts around stopSampling because its not needed
+\
+.primarySoundSample_endPursuit
+{
+    \ fall through to stopSampling
+}
+
+\
+\ stopSampling()
+\ 
+.stopSampling
+{
+    \ disable User-VIA Timer1
+    LDA #&40
+    STA &FE6E
+
+    \ playingSample = SAMPLE_PLAYBACK_STOPPED
+    LDA #LO(SAMPLE_PLAYBACK_STOPPED)
+    STA playingSample
+
+    \ fall through to RTS
+}
+
+\
+\ common RTS
+\
+.rts_7
+{
+    RTS
+}
+
+\
+\ secondarySoundSample_levelStart()
+\
+\ invoked via secondarySoundVector_startLevel
+\
+.secondarySoundSample_levelStart
+{
+    LDY #SAMPLE_K9_INSUFFICIENT_DATA
+    BNE playSecondarySample \ implicit RTS
+}
+
+\
+\ secondarySoundSample_enemyDestroyed()
+\
+\ invoked via secondarySoundVector_enemyDestroyed
+\
+.secondarySoundSample_enemyDestroyed
+{
+    LDY #SAMPLE_K9_AFFIRMATIVE
+    BNE playSecondarySample \ implicit RTS
+}
+
+\
+\ secondarySoundSample_levelComplete()
+\
+\ invoked via secondarySoundVector_levelComplete
+\
+.secondarySoundSample_levelComplete
+{
+    LDY #SAMPLE_TARDIS_DOOR
+
+    \ fall through`
+}
+
+\
+\ playSecondarySample(Y register)
+\
+\ params:
+\  Y Register   SAMPLE_K9_INSUFFICIENT_DATA, SAMPLE_K9_AFFIRMATIVE, SAMPLE_TARDIS_DOOR
+\
+.playSecondarySample
+{
+    LDA secondarySamplesROMSEL
+    BNE playSample \ implicit RTS
 }
 
 \ end file

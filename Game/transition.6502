@@ -24,6 +24,8 @@
 \ transition routines
 \
 
+VSYNC_DELAY = VSYNC_TO_FIRST_SCANLINE
+
 \ transition constants
 .transitionOpenConstants
     EQUW VSYNC_DELAY + 124 * 64 \ transitionUpperTimer

@@ -63,8 +63,8 @@
 \   +---------------------------------+ &0300
 \   | MOS general workspace           |
 \   +---------------------------------+ &0200
-\   | Stack (64 bytes)                | 
-\   +---------------------------------+ &01C0
+\   | Stack (40 bytes)                | 
+\   +---------------------------------+ &01D8
 \   | Game data (portions reloaded)   |
 \   +---------------------------------+ &0100
 \   | Zero page MOS variables         |
@@ -79,7 +79,8 @@
 \   &0000    144   Zero-page game variables
 \   &0090    112   zero-page MOS variables      
 \   &0100    192   1 enemy sprite*
-\   &01C0    64    Program stack
+\   &01C0    24    1 elevator sprite*
+\   &01D8    40    Program stack
 \   &0200    256   MOS general workspace
 \   &0300    192   1 enemy sprite*
 \   &03C0    32    1 door sprite*
@@ -103,10 +104,11 @@
 \   &1090    48    Sound effects* (repurposed transient DFS memory)
 \   &10C0    32    DFS workspace
 \   &10E0    12    Sprite health bar table* (repurposed transient DFS memory)
-\   &10EC    20    Draw object jump tables* (repurposed transient DFS memory)
-\   &1100    7072  Program code
-\   &2CA0    768   8 K9 sprites*
-\   &2FA0    96    4 elevator sprites*
+\   &10EC    9     Draw object jump tables* (repurposed transient DFS memory)
+\   &10F5    8     Object extents* (repurposed transient DFS memory)
+\   &1100    7096  Program code
+\   &2CB8    768   8 K9 sprites*
+\   &2FB8    72    3 elevator sprites*
 \   &3000    96    4 teleport sprites*
 \   &3060    224   Game bar sprites* (or sample.6502 if 16K+ of sideways RAM exists)
 \   &3140    1728  Level tiles*
@@ -144,33 +146,39 @@ DEBUG_DISABLE_SIDEWAYS_RAM = 0 \ disable sideways RAM (useful to speed up startu
 \ number of levels
 LEVEL_COUNT = 6 \ max supported levels is 9
 
-\ keys (keyTbl indices)
-KEY_A = 0
-KEY_D = 1
-KEY_G = 2
-KEY_O = 3
-KEY_R = 4
-KEY_S = 5
-KEY_T = 6
-KEY_W = 7
-KEY_X = 8
-KEY_Z = 9
-KEY_1 = 10
-KEY_2 = 11
-KEY_3 = 12
-KEY_4 = 13
-KEY_5 = 14
-KEY_6 = 15
-KEY_7 = 16
-KEY_8 = 17
-KEY_9 = 18
-KEY_COLON = 19
-KEY_DIVIDE = 20
-KEY_SPACE = 21
+\ keys 
+KEY_SPACE = 0
+KEY_W = 1
+KEY_A = 2
+KEY_S = 3
+KEY_D = 4
+KEY_Z = 5
+KEY_X = 6
+KEY_COLON = 7
+KEY_DIVIDE = 8
+KEY_G = 9
+KEY_O = 10
+KEY_R = 11
+KEY_T = 12
+KEY_1 = 13
+KEY_2 = 14
+KEY_3 = 15
+KEY_4 = 16
+KEY_5 = 17
+KEY_6 = 18
+KEY_7 = 19
+KEY_8 = 20
+KEY_9 = 21
 KEY_UP = 22
-KEY_DOWN = 23 
+KEY_DOWN = 23
 KEY_LEFT = 24
 KEY_RIGHT = 25
+
+\ scan keys
+SCAN_KEYS_SPACE = 0
+SCAN_KEYS_CORE = 8
+SCAN_KEYS_ALL = 12
+SCAN_KEYS_GOD_MODE_ALL = 25
 
 \ object types (objectType bits 0,1)
 OBJECT_TYPE_MASK = %00000011
@@ -312,6 +320,9 @@ SPRITE_INDEX_K9_RIGHT = 27   \ 27..30
 SPRITE_INDEX_K9_TURN = 31    \ 31..33
 SPRITE_INDEX_GAMEBAR = 34    \ 34
 
+\ lasered enemy sprite count
+LASERED_ENEMY_SPRITE_COUNT = 11
+
 \ tile count
 TILE_COUNT = 28
 
@@ -319,13 +330,13 @@ TILE_COUNT = 28
 MAX_OBJECT_COUNT = 48
 
 \ sprite sizes (fixed)
-ENEMY_SPRITE_WIDTH = 24
-ENEMY_SPRITE_HEIGHT = 32
-ENEMY_SPRITE_SIZE = ENEMY_SPRITE_WIDTH * ENEMY_SPRITE_HEIGHT / 4
-
 K9_SPRITE_WIDTH = 24
 K9_SPRITE_HEIGHT = 16 
 K9_SPRITE_SIZE = K9_SPRITE_WIDTH * K9_SPRITE_HEIGHT / 4
+
+ENEMY_SPRITE_WIDTH = 24
+ENEMY_SPRITE_HEIGHT = 32
+ENEMY_SPRITE_SIZE = ENEMY_SPRITE_WIDTH * ENEMY_SPRITE_HEIGHT / 4
 
 ELEVATOR_SPRITE_WIDTH = 32
 ELEVATOR_SPRITE_HEIGHT = 3
@@ -352,13 +363,22 @@ IRQ1V = &0204
 \ 39 character rows per frame
 \ 8 scan-lines per character row
 \ each scan-line is 64 micro seconds
-\ v-sync normally occurs at character row 35 
+\ v-sync normally occurs at character row 35
 \ v-sync interrupt occurs two scan-lines later
-\ delay to first scan-line is:
-VSYNC_DELAY = ((39 - 35) * 8 * 64) - (2 * 64)
+\ delay from v-sync interrupt and first scan-line is:
+VSYNC_TO_FIRST_SCANLINE = ((39 - 34) * 8 * 64) - (2 * 64)
 
-\ delay to bottom of visible screen is:
-VSYNC_SIGNAL_DELAY = VSYNC_DELAY + 32 * 8 * 64
+\ time scanning screen memory
+SCREEN_MEMORY_SCAN = (32 * 8 * 64) - 32 \ account for half of the last scanline being visible
+
+\ time processing System-VIA v-sync interrupt
+VSYNC_PROCESSING = 39
+
+\ minimal time processing System-VIA Timer 1 interrupt (includes MOS processing)
+TIMER1_PROCESSING = 364
+
+\ timer delay so v-sync is signaled after the last pixel is displayed is:
+VSYNC_SIGNAL_DELAY = VSYNC_TO_FIRST_SCANLINE + SCREEN_MEMORY_SCAN - VSYNC_PROCESSING - TIMER1_PROCESSING
 
 \ sound effects
 SOUND_EFFECT_PAIN = 0
@@ -392,20 +412,22 @@ INHIBIT_MOVE_SOUND_EFFECT_FRAME_COUNT = 30
 PALETTE_SIZE = 16                   \ palette size
 TILE_GRID_SIZE = 2048               \ tile grid size
 SOUND_EFFECTS_SIZE = 48             \ sound effects size
+OBJECT_EXTENTS_SIZE = 8             \ object extents
 SWITCH_PAIRINGS_SIZE = 48           \ switch pairings size
 DRAW_OBJECT_JUMP_TABLE_SIZE = 9     \ draw object jump table size
 ENEMY_HEALTH_BAR_TABLE_SIZE = 12    \ health bar table size
 ENEMY_HEALTH_BAR_ATLAS_SIZE = 30    \ health bar atlas size
-PCM_DATA_LOAD_BUFFER_SIZE = &C9A    \ PCM data load buffer size
+PCM_DATA_LOAD_BUFFER_SIZE = &900    \ PCM data load buffer size
+LASERED_EMEMY_ATLAS_SIZE = &840     \ lasered enemy atlas size
 
 \ crop transition flags
 TRANSITION_NONE = 0
 TRANSITION_PLAYING = 1
 
 \ sample playback flags
-SAMPLE_PLAYBACK_NONE = 0
-SAMPLE_PLAYBACK_PLAYING = 1
-SAMPLE_PLAYBACK_STOPPED = -1
+SAMPLE_PLAYBACK_NONE = 0        \ zero
+SAMPLE_PLAYBACK_PLAYING = &0F   \ positive
+SAMPLE_PLAYBACK_STOPPED = &FF   \ negative
 
 \ MOS routines
 osbyte = &FFF4
@@ -424,23 +446,30 @@ enemyAtlas5 = &E00
 doorAtlas1 = &3C0
 doorAtlas2 = &CC0
 doorAtlas3 = &F80
-elevatorAtlas = &2FA0
+elevatorAtlas1 = &1C0
+elevatorAtlas2 = &2FB8
 teleportAtlas = &3000
 k9Atlas1 = &730
 k9Atlas2 = &FA0
-k9Atlas3 = &2CA0
+k9Atlas3 = &2CB8
 gamebarAtlas = &3060
 gamebarAtlas_sidewaysRAM = &BF20        \ location when 16K or 32K of sideways RAM is detected
+laseredEnemyAtlas = &B600               \ location when 16K or 32K of sideways RAM is detected
 healthBarAtlas = &0D02                  \ 30 byte atlas (re-purposes NMI workspace)
 
 \ sound effects location
 soundEffects = &1090                    \ 48 byte sound effect data (re-purposes DFS &1090-&10BF workspace)
+
+\ object extents
+objectExtents = &10F5                   \ 4 widths and 4 heights
 
 \ tile and sprite address table locations
 tileAddrTblLo = &0880                   \ 28 byte tile address table (low-bytes) (repurposes MOS printer buffer)
 tileAddrTblHi = &0D20                   \ 28 byte tile address table (high-bytes) (repurposes NMI workspace)
 spriteAddrTblLo = &089C                 \ 35 byte sprite address table (low-bytes) (repurposes MOS printer buffer)
 spriteAddrTblHi = &0D3C                 \ 35 byte sprite address table (high-bytes) (repurposes NMI workspace)
+laseredSpriteAddrTblLo = &BF00          \ 11 byte lasered sprite address table (low-bytes) (sideways RAM)
+laseredSpriteAddrTblHi = &BF10          \ 11 byte lasered sprite address table (high-bytes) (sideways RAM)
 spriteHealthBarTbl = &10E0              \ 12 byte sprite health bar table (re-purposes DFS &10E0-&10FF workspace)
 
 \ level data locations
@@ -462,15 +491,20 @@ levelJewelHealthGainHiLoaded = &4031    \ level jewel health gain (relocated to 
 levelEnemyTypeLoaded = &4032            \ level enemy type (relocated to enemyType)
 levelObjectsLoaded = &4033              \ level object descriptors (used to populate game objects)
 levelSwitchPairingsLoaded = &40F3       \ level switch pairings (relocated to switchPairings)
+levelAltasLoaded = &4123                \ level atlas (data relocated to lower memory)
+levelLaseredEnemyAtlasLoaded = &4FA3    \ level lasered sprite data (data relocated to laseredSpriteData)
+
+\ level code
+levelCode = &58A3                       
 
 \ drawObject jump offset table
-drawObject_jumpTbl = &10EC              \ 10 byte jump offset table (repurposes DFS &10E0-&10FF workspace)
+drawObject_jumpTbl = &10EC              \ 9 byte jump offset table (repurposes DFS &10E0-&10FF workspace)
 
 \ DFS page backup (used to store page &17 or &1C that DFS modifies)
 dfsPageBackup = &7B00
 
-\ PCM data load address (located below page backup)
-pcmDataLoadBuffer = &7B00 - PCM_DATA_LOAD_BUFFER_SIZE
+\ PCM data load address (reused levelLaseredEnemyAtlasLoaded)
+pcmDataLoadBuffer = &4FA3
 
 \ zero page MOS location
 zeroPageMOS = &90
@@ -483,7 +517,6 @@ ORG 0
 \ persistent data (values persist across frames)
 .zeroMemory32               SKIP 32 \ 32-byte zero memory (located here to catch errant writes)
 .mosIRQ1V                   SKIP 2  \ MOS IRQ vector
-.pcmDataAddr                SKIP 2  \ PCM data address
 .scrnAddr                   SKIP 2  \ top left screen address
 .horzTileCount              SKIP 1  \ horizontal tile count
 .godMode                    SKIP 1  \ see comment at top of file
@@ -547,6 +580,7 @@ ORG 0
 .laseredTileStrength        SKIP 1  \ lasered tile strength
 .laseredTileRedraw          SKIP 1  \ lasered tile redraw flag
 .switchOnTileGridValue      SKIP 1  \ switch-on tile grid value
+.startup                    SKIP 1  \ startup flag. cleared when first level is initialized
 
 \ transient data (values do not persist across frames)
 .deltaXLo                   SKIP 1
@@ -556,8 +590,8 @@ ORG 0
 .tileGridAddr               SKIP 2  
 .srcAddr                    SKIP 2 
 .dstAddr                    SKIP 2
-.srcBaseAddr                SKIP 2
-.dstBaseAddr                SKIP 2
+.innerSrcAddr               SKIP 2
+.innerDstAddr               SKIP 2
 .leftLo                     SKIP 1
 .leftHi                     SKIP 1
 .topLo                      SKIP 1
@@ -568,6 +602,7 @@ ORG 0
 .bottomHi                   SKIP 1
 .offsetX                    SKIP 1
 .offsetY                    SKIP 1
+.type                       SKIP 1
 .index                      SKIP 1
 .outerIndex                 SKIP 1
 .stride                     SKIP 1
@@ -597,14 +632,14 @@ NEXT
 \
 ORG &400
 .objectType             SKIP MAX_OBJECT_COUNT \ object type (bits 0,1), animation (bits 2..4), enemy action (bits 5..7)
-.objectState            SKIP MAX_OBJECT_COUNT \ high nibble holds common flags, bottom nibble holds object specific information
+.objectState            SKIP MAX_OBJECT_COUNT \ high nibble holds common flags, bottom nibble holds object type specific information
 .objectXLo              SKIP MAX_OBJECT_COUNT \ object's top left position
 .objectXHi              SKIP MAX_OBJECT_COUNT
 .objectYLo              SKIP MAX_OBJECT_COUNT
 .objectYHi              SKIP MAX_OBJECT_COUNT
 .objectSpriteIndex      SKIP MAX_OBJECT_COUNT \ sprite index, or -1 (draw blank)
 .objectFrameCounter     SKIP MAX_OBJECT_COUNT \ frame counter used to time animation durations
-.objectFrameCallback    SKIP MAX_OBJECT_COUNT \ frame callbacks, called every frame
+.objectFrameCallback    SKIP MAX_OBJECT_COUNT \ frame callback, called every frame
 
 \
 \ entry point
@@ -634,6 +669,7 @@ ORG &1100
 \
 \ includes...
 \
+INCLUDE "utils.6502"
 INCLUDE "sound.6502"
 INCLUDE "scroll.6502"
 INCLUDE "draw.6502"
@@ -645,7 +681,6 @@ INCLUDE "door.6502"
 INCLUDE "tilegrid.6502"
 INCLUDE "transition.6502"
 INCLUDE "switch.6502"
-INCLUDE "utils.6502"
 
 \
 \ in-game interrupt service routine
@@ -669,7 +704,7 @@ INCLUDE "utils.6502"
         LDA #LO(VSYNC_SIGNAL_DELAY) : STA &FE44
         LDA #HI(VSYNC_SIGNAL_DELAY) : STA &FE45
 
-         \ restore accumulator, updating &FC
+        \ restore accumulator, updating &FC
         PLA : STA &FC
 
         \ just return (we don't want MOS to process SYSTEM-VIA v-sync IRQ)
@@ -711,22 +746,29 @@ INCLUDE "utils.6502"
 \
 .updateObjects
 {
-    LDA #0 : STA outerIndex
+    LDX #&FF : STX type
+    INX \ = 0
     .loop
-        LDX outerIndex
+        STX outerIndex \ save X
 
-        \ cache extents
-        JSR cacheObjectExtents
+        \ cache object extents, if the object type changes
+        LDA objectType, X
+        AND #OBJECT_TYPE_MASK
+        CMP type
+        BEQ skip
+            STA type
+            JSR cacheObjectTypeExtents
+        .skip
 
         \ JSR (frameCallbackTbl[objectFrameCallback[X]])
         LDY objectFrameCallback, X
         LDA frameCallbackTbl+0, Y : STA jsr_inst+1
-        LDA frameCallbackTbl+1, Y : STA jsr_inst+2
+        LDA frameCallbackTbl+1, Y : STA jsr_inst+2        
         .jsr_inst JSR &FFFF
 
-        INC outerIndex
-        LDA outerIndex
-        CMP objectCount
+        LDX outerIndex \ restore X
+        INX
+        CPX objectCount
         BNE loop
 
     .return
@@ -787,7 +829,14 @@ INCLUDE "utils.6502"
 \
 .keyboardInputHandlers
 {
-    \ scan keys populating top bits in keyTbl
+    \ scan keys
+    LDY #SCAN_KEYS_CORE \ 9 keys
+    LDA frameCount
+    AND #3 : BNE endif
+        LDY #SCAN_KEYS_ALL \ 13 keys
+        LDA godMode : BNE endif
+            LDY #SCAN_KEYS_GOD_MODE_ALL \ 26 keys
+    .endif
     JSR scanKeys
 
     \ set god mode?
@@ -838,12 +887,16 @@ INCLUDE "utils.6502"
     \ 'T' key...
     LDA keyTbl + KEY_T
     BPL nopress_t
-        JSR moveSoundToggle
+        \ toggle move sound effect's volume
+        LDA soundEffects + SOUND_EFFECT_MOVE + 1
+        EOR #&FE
+        STA soundEffects + SOUND_EFFECT_MOVE + 1
          
         \ wait for key release
         .loop
-            LDA #&23 \ KEY_T
-            JSR scanKey
+            LDY #SCAN_KEYS_ALL \ includes 'T' key
+            JSR scanKeys
+            LDA keyTbl + KEY_T
             BMI loop
     .nopress_t
 
@@ -893,7 +946,6 @@ INCLUDE "utils.6502"
         BPL nopress2
             LDA directionTbl, X : STA scrollDirection
             LDA #2 : STA scrollCounter
-            RTS
         .nopress2
         DEX
         BPL loop2
@@ -909,11 +961,13 @@ INCLUDE "utils.6502"
 .drawObjects
 {
     \ draw objects, in draw order (except descending objects)
-    LDA #0 : STA outerIndex
+    LDY objectCount
+    DEY
     .loop
-        LDY outerIndex
-        LDX objectDrawOrder, Y
+        LDX objectReverseDrawOrder, Y
         LDA objectState, X : BPL skipDraw \ redraw flag clear?
+
+            STY outerIndex \ save Y
 
             \ to avoid rendering artifacts we draw descending elevators and 
             \ their passengers in reverse order
@@ -922,7 +976,7 @@ INCLUDE "utils.6502"
                 \ is the object an elevator?
                 LDA objectType, X
                 AND #OBJECT_TYPE_MASK
-                CMP #OBJECT_TYPE_ELEVATOR : BNE skipDraw
+                CMP #OBJECT_TYPE_ELEVATOR : BNE skipDraw_restoreY
 
                 \ get elevator's passenger index
                 LDA objectState, X
@@ -945,15 +999,19 @@ INCLUDE "utils.6502"
             \ render enemy health bar
             LDA objectType, X
             AND #OBJECT_TYPE_MASK
-            CMP #OBJECT_TYPE_ENEMY : BNE skipDraw
-                JSR drawEnemyHealthBar
+            CMP #OBJECT_TYPE_ENEMY : BNE skipDraw_restoreY \ is enemy?
+                LDA objectState, X
+                AND #ENEMY_STATE_HEALTH_MASK : BEQ skipDraw_restoreY \ destroyed?
+                CMP #ENEMY_STATE_HEALTH_MASK : BEQ skipDraw_restoreY \ max health?
+                    JSR drawEnemyHealthBar
 
+        .skipDraw_restoreY
+            LDY outerIndex \ restore Y
+        
         .skipDraw
 
-        INC outerIndex 
-        LDA outerIndex
-        CMP objectCount
-        BNE loop
+        DEY
+        BPL loop
 
     \ fall through to RTS
 }
@@ -998,7 +1056,21 @@ INCLUDE "utils.6502"
 {
     LDA objectType, X
 
-.^getObjectDirectionInternal \ invoked from getK9Direction (k9.6502)
+    \ fall through to getObjectTypeDirection
+}
+
+\
+\ getObjectTypeDirection(Accumulator)
+\
+\ params:
+\   Accumulator objectType[...] value
+\
+\ returns:
+\  accumulator   -1 (left), 0 (none), 1 (right)
+\  Y register    0 (ANIMATE_LOOK_LEFT) .. 5 (ANIMATE_TURN_RIGHT_TO_LEFT)
+\
+.getObjectTypeDirection
+{
     AND #ANIMATE_MASK
     LSR A : LSR A
     TAY
@@ -1023,33 +1095,40 @@ INCLUDE "utils.6502"
 {
     LDA objectType, X
     AND #OBJECT_TYPE_MASK
+
+    \ fall through to cacheObjectTypeExtents
+}
+
+\
+\ cacheObjectTypeExtents(accumulator)
+\
+\ cache object's width, widthMinusOne, height, and heightMinusOne
+\
+\ params:
+\   Accumulator  Object type (OBJECT_TYPE_K9, OBJECT_TYPE_ENEMY, OBJECT_TYPE_ELEVATOR, OBJECT_TYPE_DOOR)
+\
+.cacheObjectTypeExtents
+{
     TAY
 
-    LDA objectTypeWidths, Y
+    LDA objectExtents, Y
     STA width
-    SEC 
+    SEC
     SBC #1
     STA widthMinusOne
-
-    LDA objectTypeHeights, Y
+    
+    LDA objectExtents+4, Y
     STA height
     SBC #1
     STA heightMinusOne
-
+    
     RTS
-
-.objectTypeWidths
-    EQUB K9_SPRITE_WIDTH, ENEMY_SPRITE_WIDTH, ELEVATOR_SPRITE_WIDTH, DOOR_SPRITE_WIDTH
-
-.objectTypeHeights
-    EQUB K9_SPRITE_HEIGHT, ENEMY_SPRITE_HEIGHT, ELEVATOR_SPRITE_HEIGHT, DOOR_SPRITE_HEIGHT
-
 }
 
 \
 \ refreshObjectDrawOrder()
 \
-\ resort the objectDrawOrder array every 32 frames, using a bubble sort
+\ resort the objectReverseDrawOrder array every 32 frames
 \
 .refreshObjectDrawOrder
 {
@@ -1066,12 +1145,14 @@ INCLUDE "utils.6502"
 \
 \ sortObjectDrawOrder()
 \
-\ Sorts the objectDrawOrder array using a bubble sort
+\ sorts the objectReverseDrawOrder array using a bubble sort
 \
 .sortObjectDrawOrder
 {
-    \ outerCount = objectCount
-    LDA objectCount : STA outerCount
+    \ outerCount = objectCount - 1 (exclude K9 so he's drawn first) 
+    LDX objectCount
+    DEX
+    STX outerCount
 
     .outerLoop
         \ innerCount, count = 1
@@ -1083,23 +1164,23 @@ INCLUDE "utils.6502"
 
             \ X, Y = adjacent object indices
             LDY innerCount
-            LDX objectDrawOrder-1, Y
-            LDA objectDrawOrder, Y  
+            LDX objectReverseDrawOrder-1, Y
+            LDA objectReverseDrawOrder, Y  
             TAY
 
-            \ if (objectY[X] > object[Y]) swap
-            LDA objectYLo, Y
-            CMP objectYLo, X
-            LDA objectYHi, Y
-            SBC objectYHi, X
+            \ if (objectY[X] < object[Y]) swap
+            LDA objectYLo, X
+            CMP objectYLo, Y
+            LDA objectYHi, X
+            SBC objectYHi, Y
             BCS noswap
 
                 \ swap adjacent indices
                 TYA
                 LDY innerCount
-                STA objectDrawOrder-1, Y
+                STA objectReverseDrawOrder-1, Y
                 TXA
-                STA objectDrawOrder, Y
+                STA objectReverseDrawOrder, Y
 
                 \ count = innerCount
                 STY count
@@ -1123,8 +1204,9 @@ INCLUDE "utils.6502"
 
     RTS
 
-\ array holding object indices, in draw order (top to bottom)
-.^objectDrawOrder SKIP MAX_OBJECT_COUNT   
+\ array holding object indices, in reverse draw order (bottom to top)
+\ last index is always K9, so he's always drawn first
+.^objectReverseDrawOrder SKIP MAX_OBJECT_COUNT
 }
 
 \
@@ -1287,13 +1369,8 @@ INCLUDE "utils.6502"
 \
 .setLevelPalette
 {
-    LDY #15
-    .loop
-        LDA levelPalette, Y
-        STA &FE21
-        DEY
-        BPL loop
-    RTS
+    LDY #0
+    BEQ setPalette
 }
 
 \
@@ -1301,14 +1378,8 @@ INCLUDE "utils.6502"
 \
 .setBlackPalette
 {
-    LDY #15
-    .loop
-        LDA levelPalette, Y
-        ORA #7 \ make color black
-        STA &FE21
-        DEY
-        BPL loop
-    RTS
+    LDY #1
+    BNE setPalette
 }
 
 \
@@ -1316,14 +1387,40 @@ INCLUDE "utils.6502"
 \
 .setInvertedLevelPalette
 {
+    LDY #2
+
+    \ fall through to setPalette
+}
+
+\
+\ setPalette(Y register)
+\
+\ params:
+\   Y Register  
+\       0 = level palette
+\       1 = black palette, 
+\       2 = inverted level palette
+\
+\ note that carry flag is cleared
+\
+.setPalette
+{
+    LDA paletteOpTbl, Y : STA paletteOp
+    CLC
     LDY #15
     .loop
         LDA levelPalette, Y
-        EOR #7 \ invert color
+        .paletteOp
+        ORA #7
         STA &FE21
         DEY
         BPL loop
     RTS
+
+.paletteOpTbl
+    EQUB &B0 \ BCS
+    EQUB &09 \ ORA
+    EQUB &49 \ EOR
 }
 
 \
@@ -1378,7 +1475,7 @@ INCLUDE "utils.6502"
     \ JSR setInvertedLevelPalette or JSR setBlackPalette
     .^jsr_inst JSR &FFFF \ address patched in initializeLevelVariables (level.6502)
 
-    JMP (primarySoundVector_weaponFired) \ implicit RTS
+    JMP weaponFiredSoundEffect \ implicit RTS
 }
 
 \
@@ -1463,11 +1560,13 @@ INCLUDE "utils.6502"
 }
 
 \
+\ gameComplete(A = 0)
+\
 \ game completed
 \
 .gameComplete
 {
-    \ load finale experience (A = 0)
+    \ load finale experience
     JSR loadLevelFile
 
     \ invoke final experience
@@ -1477,7 +1576,7 @@ INCLUDE "utils.6502"
 \
 \ loadCurrentLevelFile()
 \
-\ Loads a the current level file
+\ Loads the current level file
 \
 .loadCurrentLevelFile
 {
@@ -1497,7 +1596,7 @@ ASSERT (HI(P%) > &1C) \ ensure loadLevelFile is assembled after page &17 and &1C
 
 .loadLevelFile
 {
-    \ patch level number in file name
+    \ patch level number 'N' in file name
     CLC
     ADC #'0'
     STA cmdLoadLevel+10
@@ -1514,7 +1613,7 @@ ASSERT (HI(P%) > &1C) \ ensure loadLevelFile is assembled after page &17 and &1C
     JMP releaseDFS
 
 .cmdLoadLevel
-    EQUS "LOAD levelX", 13
+    EQUS "LOAD levelN", 13
 }
 
 \
@@ -1556,7 +1655,7 @@ ASSERT (HI(P%) > &1C) \ ensure selectDFS is assembled after page &17 and &1C
 
 .releaseDFS
 {
-    \ restore page &17 or &1C, which DFS uses
+    \ restore page &17 or &1C, which DFS used
     LDX #0
     .loop
         LDA dfsPageBackup, X
@@ -1590,11 +1689,9 @@ INCLUDE "sample.6502"
 \
 ORG levelLoadAddr
 INCBIN "data\level1.dat" \ level data (palette, tile types, tiles, tile grid etc)
-
-.levelSpriteDataLoaded
 INCBIN "data\level1.atl" \ level atlas sprite data (enemies, elevators, doors)
 
-.levelCode
+ORG levelCode
 INCLUDE "level.6502" \ packaged level code
 
 \
@@ -1609,11 +1706,6 @@ INCLUDE "mode7.6502" \ packaged mode 7 code
 INCLUDE "titles.6502"
 INCLUDE "music.6502"
 
-\ guard PCM data load buffer through &7FFF
-FOR addr, pcmDataLoadBuffer, &7FFF
-    GUARD addr
-NEXT
-
 .end
 
 \
@@ -1624,14 +1716,76 @@ SAVE "program", start, end
 \
 \ finale --> SSD
 \
-
-\INCLUDE "mode7.6502"   \ packaged Mode 7 code (INCLUDE statement unnecessary)
 CLEAR titles, titlesEnd
 ORG titles
-INCLUDE "finale.6502"   \ replace titles code with finale code
-\INCLUDE "music.6502"   \ packaged music code and data (INCLUDE statement unnecessary)
+INCLUDE "finale.6502" \ replace titles code with finale code
+SAVE "level0", modeSevenCode, end \ includes mode7.6502 and music.6502
 
-SAVE "level0", modeSevenCode, end
+\
+\ Level 1..N
+\
+CLEAR titles, titlesEnd
+ORG titles
+INCLUDE "interstitial.6502" \ replace titles code with interstitial code
+.levelEnd
+
+\
+\ level 1 --> SSD
+\ 
+CLEAR levelLoadAddr, levelCode
+ORG levelLoadAddr
+INCBIN "data\level1.dat" \ level data (palette, tile grid, tiles etc)
+INCBIN "data\level1.atl" \ level atlas sprite data (enemies, elevators, doors etc)
+SAVE "level1", levelLoadAddr, levelEnd \ includes level.6502, mode7.6502, and interstitial.6502
+
+\
+\ level 2 --> SSD
+\
+CLEAR levelLoadAddr, levelCode
+ORG levelLoadAddr
+INCBIN "data\level2.dat" \ level data (palette, tile grid, tiles etc)
+INCBIN "data\level2.atl" \ level atlas sprite data (enemies, elevators, doors etc)
+SAVE "level2", levelLoadAddr, levelEnd \ includes level.6502, mode7.6502, and interstitial.6502
+
+\
+\ level 3 --> SSD
+\
+CLEAR levelLoadAddr, levelCode
+ORG levelLoadAddr
+INCBIN "data\level3.dat" \ level data (palette, tile grid, tiles etc)
+INCBIN "data\level3.atl" \ level atlas sprite data (enemies, elevators, doors etc)
+SAVE "level3", levelLoadAddr, levelEnd \ includes level.6502, mode7.6502, and interstitial.6502
+
+\
+\ level 4 --> SSD
+\
+CLEAR levelLoadAddr, levelCode
+ORG levelLoadAddr
+INCBIN "data\level4.dat" \ level data (palette, tile grid, tiles etc)
+INCBIN "data\level4.atl" \ level atlas sprite data (enemies, elevators, doors etc)
+SAVE "level4", levelLoadAddr, levelEnd \ includes level.6502, mode7.6502, and interstitial.6502
+
+\
+\ level 5 --> SSD
+\
+CLEAR levelLoadAddr, levelCode
+ORG levelLoadAddr
+INCBIN "data\level5.dat" \ level data (palette, tile grid, tiles etc)
+INCBIN "data\level5.atl" \ level atlas sprite data (enemies, elevators, doors etc)
+SAVE "level5", levelLoadAddr, levelEnd \ includes level.6502, mode7.6502, and interstitial.6502
+
+\
+\ level 6 --> SSD
+\
+CLEAR levelLoadAddr, levelCode
+ORG levelLoadAddr
+INCBIN "data\level6.dat" \ level data (palette, tile grid, tiles etc)
+INCBIN "data\level6.atl" \ level atlas sprite data (enemies, elevators, doors etc)
+SAVE "level6", levelLoadAddr, levelEnd \ includes level.6502, mode7.6502, and interstitial.6502
+
+\
+\ Levels 7..9 can optionally be added here (LEVEL_COUNT will also need updating)
+\
 
 \
 \ primary PCM data --> SSD 
@@ -1644,11 +1798,12 @@ SAVE "pcmP2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOA
 SAVE "pcmP3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 SAVE "pcmP4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 SAVE "pcmP5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
+SAVE "pcmP6", &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (6 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 
 \
-\ secondary PCM data --> SSD 
+\ secondary PCM data --> SSD
 \
-CLEAR &8000, &CF00
+CLEAR &8000, &B600
 ORG &8000
 INCBIN "data\pcm_secondary.dat"
 
@@ -1657,102 +1812,7 @@ SAVE "pcmS2", &8000 + (1 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (2 * PCM_DATA_LOA
 SAVE "pcmS3", &8000 + (2 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 SAVE "pcmS4", &8000 + (3 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 SAVE "pcmS5", &8000 + (4 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
-
-\
-\ Level 1..N
-\
-CLEAR titles, titlesEnd
-ORG titles
-INCLUDE "interstitial.6502"     \ replace titles code with interstitial code
-.levelEnd
-
-\
-\ level 1 --> SSD
-\
-CLEAR levelLoadAddr, levelCode
-
-ORG levelLoadAddr
-INCBIN "data\level1.dat"       \ level data (palette, tile grid, tiles etc)
-INCBIN "data\level1.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
-\INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
-\INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
-\INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
-
-SAVE "level1", levelLoadAddr, levelEnd
-
-\
-\ level 2 --> SSD
-\
-CLEAR levelLoadAddr, levelCode
-
-ORG levelLoadAddr
-INCBIN "data\level2.dat"       \ level data (palette, tile grid, tiles etc)
-INCBIN "data\level2.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
-\INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
-\INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
-\INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
-
-SAVE "level2", levelLoadAddr, levelEnd
-
-\
-\ level 3 --> SSD
-\
-CLEAR levelLoadAddr, levelCode
-
-ORG levelLoadAddr
-INCBIN "data\level3.dat"       \ level data (palette, tile grid, tiles etc)
-INCBIN "data\level3.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
-\INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
-\INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
-\INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
-
-SAVE "level3", levelLoadAddr, levelEnd
-
-\
-\ level 4 --> SSD
-\
-CLEAR levelLoadAddr, levelCode
-
-ORG levelLoadAddr
-INCBIN "data\level4.dat"       \ level data (palette, tile grid, tiles etc)
-INCBIN "data\level4.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
-\INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
-\INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
-\INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
-
-SAVE "level4", levelLoadAddr, levelEnd
-
-\
-\ level 5 --> SSD
-\
-CLEAR levelLoadAddr, levelCode
-
-ORG levelLoadAddr
-INCBIN "data\level5.dat"       \ level data (palette, tile grid, tiles etc)
-INCBIN "data\level5.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
-\INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
-\INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
-\INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
-
-SAVE "level5", levelLoadAddr, levelEnd
-
-\
-\ level 6 --> SSD
-\
-CLEAR levelLoadAddr, levelCode
-
-ORG levelLoadAddr
-INCBIN "data\level6.dat"       \ level data (palette, tile grid, tiles etc)
-INCBIN "data\level6.atl"       \ level atlas sprite data (enemies, elevators, doors etc)
-\INCLUDE "level.6502"           \ packaged level code (INCLUDE statement unnecessary)
-\INCLUDE "mode7.6502"           \ packaged mode 7 code (INCLUDE statement unnecessary)
-\INCLUDE "interstitial.6502"    \ packaged interstitial experiences (INCLUDE statement unnecessary)
-
-SAVE "level6", levelLoadAddr, levelEnd
-
-\
-\ Levels 7..9 can optionally be added here (LEVEL_COUNT will also need updating)
-\
+SAVE "pcmS6", &8000 + (5 * PCM_DATA_LOAD_BUFFER_SIZE), &8000 + (6 * PCM_DATA_LOAD_BUFFER_SIZE), pcmDataLoadBuffer, pcmDataLoadBuffer
 
 \ Report unused memory
 PRINT "Unused zero-page bytes: ", (zeroPageMOS - lastZeroPageAddr)

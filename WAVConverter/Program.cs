@@ -23,7 +23,7 @@
 //
 // This console app converts 8/8k WAV files into two packed 4/8k PCM files which
 // are packaged within the game image.
-// 
+//
 // The app also prints address tables which are embedded in sound.6503.  If the 
 // WAV files change, the tables in sound.6502 will need updating.
 //
@@ -31,44 +31,52 @@ namespace WAVConverter
 {
     internal class Program
     {
-        const int fileSize = 0x3F00; // 16K - 256
+        const int fileSize = 0x3600; // 16K - 10 pages
 
         static void Main(string[] _)
         {
-            List<int> startIndices = [];
-            List<int> endIndices = [];
+            try
+            {
+                List<int> startIndices = [];
+                List<int> endIndices = [];
 
-            string inputFolder = GetSolutionFolder() + "\\game\\assets\\samples\\";
-            string outputFolder = GetSolutionFolder() + "\\game\\data\\";
+                string inputFolder = GetSolutionFolder() + "\\game\\assets\\samples\\";
+                string outputFolder = GetSolutionFolder() + "\\game\\data\\";
 
-            // convert primary samples (loaded to first 16K of sideways RAM)
-            byte[][] pcmDataSamples = [
-                ExtractAndEncodeData(inputFolder + "dalek_exterminate.wav"),
-                ExtractAndEncodeData(inputFolder + "dalek_groan.wav"),
-                ExtractAndEncodeData(inputFolder + "dalek_weapon.wav")];
+                // convert primary samples (loaded to first 16K of sideways RAM)
+                byte[][] pcmDataSamples = [
+                    ExtractAndEncodeData(inputFolder + "dalek_exterminate.wav"),
+                    ExtractAndEncodeData(inputFolder + "dalek_groan.wav"),
+                    ExtractAndEncodeData(inputFolder + "dalek_weapon.wav")];
 
-            WriteData(startIndices, endIndices, pcmDataSamples, outputFolder + "pcm_primary.dat");
+                WriteData(startIndices, endIndices, pcmDataSamples, outputFolder + "pcm_primary.dat");
 
-            // convert secondary samples (loaded to second 16K of sideways RAM)
-            pcmDataSamples = [
-                ExtractAndEncodeData(inputFolder + "k9_affirmative.wav"),
-                ExtractAndEncodeData(inputFolder + "k9_insufficient_data.wav"),
-                ExtractAndEncodeData(inputFolder + "tardis_door.wav")];
+                // convert secondary samples (loaded to second 16K of sideways RAM)
+                pcmDataSamples = [
+                    ExtractAndEncodeData(inputFolder + "k9_affirmative.wav"),
+                    ExtractAndEncodeData(inputFolder + "k9_insufficient_data.wav"),
+                    ExtractAndEncodeData(inputFolder + "tardis_door.wav")];
 
-            WriteData(startIndices, endIndices, pcmDataSamples, outputFolder + "pcm_secondary.dat");
+                WriteData(startIndices, endIndices, pcmDataSamples, outputFolder + "pcm_secondary.dat");
 
-            // write address tables (copied to sound.6502)
-            WriteAddressTable("pcmDataStartAddrLoTbl", startIndices, (int value) => LO(value));
-            WriteAddressTable("pcmDataStartAddrHiTbl", startIndices, (int value) => HI(value));
-            WriteAddressTable("pcmDataEndAddrHiTbl  ", endIndices, (int value) => HI(value));
+                // write address tables (copied to sound.6502)
+                Console.WriteLine("Paste following lines into relocateSampleParams at the bottom of level.6502");
+                WriteAddressTable("pcmDataStartAddrLoTblLocal", startIndices, (int value) => LO(value));
+                WriteAddressTable("pcmDataStartAddrHiTblLocal", startIndices, (int value) => HI(value));
+                WriteAddressTable("pcmDataEndAddrHiTblLocal  ", endIndices, (int value) => HI(value));
 
-            // create 4-bit resolution WAV files for comparison
-            // ConvertWAVtoWAV(inputFolder + "dalek_exterminate.wav", inputFolder + "dalek_exterminate_4bit.wav");
-            // ConvertWAVtoWAV(inputFolder + "dalek_groan.wav", inputFolder + "dalek_groan_4bit.wav");
-            // ConvertWAVtoWAV(inputFolder + "dalek_weapon.wav", inputFolder + "dalek_weapon_4bit.wav");
-            // ConvertWAVtoWAV(inputFolder + "k9_affirmative.wav", inputFolder + "k9_affirmative_4bit.wav");
-            // ConvertWAVtoWAV(inputFolder + "k9_insufficient_data.wav", inputFolder + "k9_insufficient_data_4bit.wav");
-            // ConvertWAVtoWAV(inputFolder + "tardis_door.wav", inputFolder + "tardis_door_4bit.wav");
+                // create 4-bit resolution WAV files for comparison
+                // ConvertWAVtoWAV(inputFolder + "dalek_exterminate.wav", inputFolder + "dalek_exterminate_4bit.wav");
+                // ConvertWAVtoWAV(inputFolder + "dalek_groan.wav", inputFolder + "dalek_groan_4bit.wav");
+                // ConvertWAVtoWAV(inputFolder + "dalek_weapon.wav", inputFolder + "dalek_weapon_4bit.wav");
+                // ConvertWAVtoWAV(inputFolder + "k9_affirmative.wav", inputFolder + "k9_affirmative_4bit.wav");
+                // ConvertWAVtoWAV(inputFolder + "k9_insufficient_data.wav", inputFolder + "k9_insufficient_data_4bit.wav");
+                // ConvertWAVtoWAV(inputFolder + "tardis_door.wav", inputFolder + "tardis_door_4bit.wav");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
 
         private static void WriteAddressTable(string symbolName, List<int> addresses, Func<int, int> func)
@@ -91,13 +99,28 @@ namespace WAVConverter
             byte[] pcmData = new byte[fileSize];
 
             int offset = fileSize;
-            for (int i = 0; i < pcmDataSamples.Length; i++)
+            foreach (var pcmDataSample in pcmDataSamples)
             {
-                int sampleLength = pcmDataSamples[i].Length;
+                int sampleLength = pcmDataSample.Length;
 
-                Array.Copy(pcmDataSamples[i], 0, pcmData, offset - sampleLength, sampleLength);
+                int sampleOffset = offset - sampleLength;
+                if (sampleOffset < 0)
+                    throw new Exception($"Error writing {filePath}. Samples is to large to fit in available {fileSize:X2} bytes. ");
 
-                startIndices.Add(offset - sampleLength);
+                // zero duplicate encoded entries which don't lie on a page boundary. These
+                // are skipped during playback
+                int lastValue = -1;
+                for (int i = 0; i < sampleLength; i++)
+                {
+                    if (pcmDataSample[i] == lastValue && ((sampleOffset + i) % 0x100) != 0xFF)
+                        pcmDataSample[i] = 0;
+                    else
+                        lastValue = pcmDataSample[i];
+                }
+
+                Array.Copy(pcmDataSample, 0, pcmData, sampleOffset, sampleLength);
+
+                startIndices.Add(sampleOffset);
                 endIndices.Add(offset);
 
                 offset -= RoundToNextPage(sampleLength);

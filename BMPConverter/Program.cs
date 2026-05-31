@@ -104,6 +104,17 @@ namespace BMPConverter
 
                         data = ConvertBMPFile(folderPath + "gamebar.bmp", spriteCount: 1, spriteWidth: 112, spriteHeight: 8, palette);
                         fs.Write(data, 0, data.Length);
+
+                        data = ConvertBMPFile(folderPath + "enemy_left_lasered.bmp", spriteCount: 4, spriteWidth: 24, spriteHeight: 32, palette);
+                        fs.Write(data, 0, data.Length);
+
+                        data = ConvertBMPFile(folderPath + "enemy_right_lasered.bmp", spriteCount: 4, spriteWidth: 24, spriteHeight: 32, palette);
+                        fs.Write(data, 0, data.Length);
+
+                        data = ConvertBMPFile(folderPath + "enemy_turn_lasered.bmp", spriteCount: 3, spriteWidth: 24, spriteHeight: 32, palette);
+                        fs.Write(data, 0, data.Length);
+
+                        Console.WriteLine($"Level {level} BMP files successfully converted. Created altas file: {outputFileName}");
                     }
                 }
             }

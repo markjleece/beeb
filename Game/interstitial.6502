@@ -31,6 +31,9 @@
 \
 .showBatteryFlatScreen
 {
+    \ aquire NMI memory as we are going to refresh the sound effect data which lives there
+    JSR acquireNMImemory
+
     \ relocate sound effect data (which might have been modified by DFS)
     JSR relocateSoundEffectData
 

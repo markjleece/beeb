@@ -1244,7 +1244,7 @@
         JSR clearObjectInsideTileFlags 
 
         \ invoke enemy destroyed sound effect
-        JMP (secondarySoundVector_enemyDestroyed) \ implicit RTS
+        JMP enemyDestroyedSoundEffect \ implicit RTS
     .skip1
 
     \ does enemy have sufficient remaining health to pursue or use weapon?
@@ -1267,7 +1267,7 @@
     .skip3
 
     \ invoke enemy lasered sound effect
-    JMP (primarySoundVector_enemyLasered) \ implicit RTS
+    JMP enemyLaseredSoundEffect \ implicit RTS
 }
 
 \
